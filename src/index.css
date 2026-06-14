@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+@theme {
+  --color-elegant-bg: #0a0a0a;
+  --color-elegant-sidebar: #0f0f0f;
+  --color-elegant-card: #111111;
+  --color-elegant-card-hover: #161616;
+  --color-elegant-border: #262626;
+}
