@@ -167,13 +167,13 @@ export default function TimestampConverter() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-505">Unix Timestamp</label>
+            <label className="text-xs font-semibold text-slate-500 dark:text-slate-450">Unix Timestamp</label>
             <input
               type="text"
               value={epochInput}
               onChange={(e) => setEpochInput(e.target.value)}
               placeholder="e.g. 1718320000"
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 font-mono text-sm bg-white text-slate-800 focus:outline-none focus:border-indigo-505 dark:bg-elegant-bg dark:border-elegant-border dark:text-slate-100"
+              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 font-mono text-sm bg-white text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-elegant-bg dark:border-elegant-border dark:text-slate-100"
             />
           </div>
 
@@ -206,7 +206,7 @@ export default function TimestampConverter() {
                 type="number"
                 value={humanYear}
                 onChange={(e) => setHumanYear(Number(e.target.value))}
-                className="w-full rounded-lg border border-slate-250 px-3 py-1.5 font-mono text-xs text-center dark:bg-elegant-bg dark:border-elegant-border"
+                className="w-full rounded-lg border border-slate-200 px-3 py-1.5 font-mono text-xs text-center dark:bg-elegant-bg dark:border-elegant-border"
               />
             </div>
             <div className="space-y-1">
@@ -217,7 +217,7 @@ export default function TimestampConverter() {
                 max={12}
                 value={humanMonth}
                 onChange={(e) => setHumanMonth(Number(e.target.value))}
-                className="w-full rounded-lg border border-slate-250 px-3 py-1.5 font-mono text-xs text-center dark:bg-elegant-bg dark:border-elegant-border"
+                className="w-full rounded-lg border border-slate-200 px-3 py-1.5 font-mono text-xs text-center dark:bg-elegant-bg dark:border-elegant-border"
               />
             </div>
             <div className="space-y-1">
@@ -228,7 +228,7 @@ export default function TimestampConverter() {
                 max={31}
                 value={humanDay}
                 onChange={(e) => setHumanDay(Number(e.target.value))}
-                className="w-full rounded-lg border border-slate-250 px-3 py-1.5 font-mono text-xs text-center dark:bg-elegant-bg dark:border-elegant-border"
+                className="w-full rounded-lg border border-slate-200 px-3 py-1.5 font-mono text-xs text-center dark:bg-elegant-bg dark:border-elegant-border"
               />
             </div>
           </div>
@@ -242,7 +242,7 @@ export default function TimestampConverter() {
                 max={23}
                 value={humanHour}
                 onChange={(e) => setHumanHour(Number(e.target.value))}
-                className="w-full rounded-lg border border-slate-250 px-3 py-1.5 font-mono text-xs text-center dark:bg-elegant-bg dark:border-elegant-border"
+                className="w-full rounded-lg border border-slate-200 px-3 py-1.5 font-mono text-xs text-center dark:bg-elegant-bg dark:border-elegant-border"
               />
             </div>
             <div className="space-y-1">
@@ -253,7 +253,7 @@ export default function TimestampConverter() {
                 max={59}
                 value={humanMin}
                 onChange={(e) => setHumanMin(Number(e.target.value))}
-                className="w-full rounded-lg border border-slate-250 px-3 py-1.5 font-mono text-xs text-center dark:bg-elegant-bg dark:border-elegant-border"
+                className="w-full rounded-lg border border-slate-200 px-3 py-1.5 font-mono text-xs text-center dark:bg-elegant-bg dark:border-elegant-border"
               />
             </div>
             <div className="space-y-1">
@@ -264,7 +264,7 @@ export default function TimestampConverter() {
                 max={59}
                 value={humanSec}
                 onChange={(e) => setHumanSec(Number(e.target.value))}
-                className="w-full rounded-lg border border-slate-250 px-3 py-1.5 font-mono text-xs text-center dark:bg-elegant-bg dark:border-elegant-border"
+                className="w-full rounded-lg border border-slate-200 px-3 py-1.5 font-mono text-xs text-center dark:bg-elegant-bg dark:border-elegant-border"
               />
             </div>
           </div>

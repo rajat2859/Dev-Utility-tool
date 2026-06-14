@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Star, MessageSquareCode, ShieldCheck, Binary, Clock, Type, Palette, ArrowRight } from 'lucide-react';
+import { Search, Star, MessageSquareCode, ShieldCheck, Binary, Clock, Type, Palette, ArrowRight, Image } from 'lucide-react';
 import { Tool, ToolCategory } from '../types';
 
 interface DashboardGridProps {
@@ -55,6 +55,13 @@ export default function DashboardGrid({ onSelectTool, favorites, onToggleFavorit
       description: 'Convert RGB/HSL color spaces, generate palettes, and verify accessibility WCAG criteria.',
       category: 'design',
       iconName: 'color'
+    },
+    {
+      id: 'image',
+      name: 'Image Format Converter',
+      description: 'Batch convert image formats locally into custom size SVG, WebP, JPEG, or transparent PNG format outputs.',
+      category: 'converters',
+      iconName: 'image'
     }
   ];
 
@@ -72,6 +79,8 @@ export default function DashboardGrid({ onSelectTool, favorites, onToggleFavorit
         return <Type className="h-5 w-5 text-sky-600 dark:text-sky-400" />;
       case 'color':
         return <Palette className="h-5 w-5 text-purple-600 dark:text-purple-400" />;
+      case 'image':
+        return <Image className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />;
       default:
         return <MessageSquareCode className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />;
     }
@@ -181,7 +190,7 @@ export default function DashboardGrid({ onSelectTool, favorites, onToggleFavorit
         })}
 
         {filteredTools.length === 0 && (
-          <div className="col-span-full border border-dashed border-slate-205 dark:border-slate-800 p-12 text-center rounded-2xl bg-slate-50/10">
+          <div className="col-span-full border border-dashed border-slate-200 dark:border-slate-850 p-12 text-center rounded-2xl bg-slate-50/10">
             <span className="text-sm font-semibold text-slate-400 block mb-1">No services matched your query</span>
             <span className="text-xs text-slate-400">Try modifying your text criteria or switching active categories above.</span>
           </div>

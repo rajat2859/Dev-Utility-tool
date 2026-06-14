@@ -7,6 +7,7 @@ import GeneratorTool from './components/tools/GeneratorTool';
 import TimestampConverter from './components/tools/TimestampConverter';
 import TextAnalyzer from './components/tools/TextAnalyzer';
 import ColorUtility from './components/tools/ColorUtility';
+import ImageConverter from './components/tools/ImageConverter';
 import { Home, ArrowLeft, Heart, ShieldAlert, Sparkles, Terminal } from 'lucide-react';
 
 export default function App() {
@@ -26,20 +27,24 @@ export default function App() {
     }
 
     const savedTheme = localStorage.getItem('util_hub_theme');
+    let activeTheme: 'light' | 'dark' = 'light';
     if (savedTheme === 'dark' || savedTheme === 'light') {
-      setTheme(savedTheme);
+      activeTheme = savedTheme;
     } else {
       // Respect system color preference if not saved
       if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        setTheme('dark');
+        activeTheme = 'dark';
       }
     }
+    setTheme(activeTheme);
+    document.documentElement.classList.toggle('dark', activeTheme === 'dark');
   }, []);
 
   const handleToggleTheme = () => {
     const nextTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(nextTheme);
     localStorage.setItem('util_hub_theme', nextTheme);
+    document.documentElement.classList.toggle('dark', nextTheme === 'dark');
   };
 
   const handleToggleFavorite = (toolId: string, event: React.MouseEvent) => {
@@ -68,6 +73,8 @@ export default function App() {
         return <TextAnalyzer />;
       case 'color':
         return <ColorUtility />;
+      case 'image':
+        return <ImageConverter />;
       default:
         return (
           <DashboardGrid
@@ -94,6 +101,8 @@ export default function App() {
         return 'Text Metrics';
       case 'color':
         return 'Contrast & Palette';
+      case 'image':
+        return 'Image Converter';
       default:
         return 'Dashboard';
     }
@@ -120,7 +129,7 @@ export default function App() {
               {activeView !== 'dashboard' && (
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="flex items-center justify-center p-2 rounded-xl border border-slate-205 dark:border-elegant-border text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-elegant-card-hover cursor-pointer transition-colors"
+                  className="flex items-center justify-center p-2 rounded-xl border border-slate-200 dark:border-elegant-border text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-elegant-card-hover cursor-pointer transition-colors"
                 >
                   <ArrowLeft className="h-4.5 w-4.5" />
                 </button>

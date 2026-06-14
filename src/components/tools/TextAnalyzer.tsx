@@ -101,37 +101,37 @@ export default function TextAnalyzer() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Type or paste your content block here. Statistics will populate immediately..."
-            className="h-80 w-full rounded-2xl border border-slate-200 p-5 text-sm bg-white text-slate-850 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-505 dark:bg-elegant-card dark:border-elegant-border dark:text-slate-100 focus:outline-none resize-none leading-relaxed"
+            className="h-80 w-full rounded-2xl border border-slate-200 p-5 text-sm bg-white text-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-elegant-card dark:border-elegant-border dark:text-slate-100 focus:outline-none resize-none leading-relaxed"
           />
 
           <div className="flex flex-wrap gap-2.5">
             <button
               onClick={() => transformCase('upper')}
-              className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-elegant-card-hover text-slate-700 dark:text-slate-300 hover:bg-slate-202/80 cursor-pointer transition-colors"
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-elegant-card-hover text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 cursor-pointer transition-colors"
             >
               UPPERCASE
             </button>
             <button
               onClick={() => transformCase('lower')}
-              className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-elegant-card-hover text-slate-700 dark:text-slate-300 hover:bg-slate-202/80 cursor-pointer transition-colors"
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-elegant-card-hover text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 cursor-pointer transition-colors"
             >
               lowercase
             </button>
             <button
               onClick={() => transformCase('title')}
-              className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-elegant-card-hover text-slate-700 dark:text-slate-300 hover:bg-slate-202/80 cursor-pointer transition-colors"
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-elegant-card-hover text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 cursor-pointer transition-colors"
             >
               Title Case
             </button>
             <button
               onClick={() => transformCase('sentence')}
-              className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-elegant-card-hover text-slate-700 dark:text-slate-300 hover:bg-slate-202/80 cursor-pointer transition-colors"
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-elegant-card-hover text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 cursor-pointer transition-colors"
             >
               Sentence case
             </button>
             <button
               onClick={() => transformCase('trim')}
-              className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-elegant-card-hover text-slate-700 dark:text-slate-300 hover:bg-slate-202/80 cursor-pointer transition-colors"
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-elegant-card-hover text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 cursor-pointer transition-colors"
             >
               Trim Extra Spaces
             </button>
@@ -141,7 +141,7 @@ export default function TextAnalyzer() {
               disabled={!text}
               className={`flex items-center gap-1 border px-3.5 py-1.5 text-xs font-semibold rounded-lg cursor-pointer transition-all ${
                 copied
-                  ? 'bg-emerald-50 border-emerald-205 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30'
                   : 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700 shadow-sm disabled:opacity-50'
               }`}
             >

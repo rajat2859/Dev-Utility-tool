@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-elegant-bg: #0a0a0a;
   --color-elegant-sidebar: #0f0f0f;

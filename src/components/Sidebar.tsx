@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Star, MessageSquareCode, ShieldCheck, Binary, Clock, Type, Palette, Compass, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Star, MessageSquareCode, ShieldCheck, Binary, Clock, Type, Palette, Compass, Menu, X, Sun, Moon, Image } from 'lucide-react';
 import { ToolCategory } from '../types';
 
 interface SidebarProps {
@@ -28,6 +28,7 @@ export default function Sidebar({
     { id: 'timestamp', name: 'Epoch Conv', cat: 'converters', icon: Clock },
     { id: 'text', name: 'Text Metrics', cat: 'development', icon: Type },
     { id: 'color', name: 'Color Checker', cat: 'design', icon: Palette },
+    { id: 'image', name: 'Image Converter', cat: 'converters', icon: Image },
   ];
 
   const favoriteTools = toolsMenu.filter(t => favorites.includes(t.id));
@@ -135,7 +136,11 @@ export default function Sidebar({
               onClick={onToggleTheme}
               className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 dark:bg-elegant-sidebar dark:border-elegant-border text-slate-700 dark:text-slate-350 cursor-pointer shadow-xs transition-colors"
             >
-              <Compass className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              {theme === 'dark' ? (
+                <Sun className="h-4 w-4 text-amber-500 animate-spin-slow" />
+              ) : (
+                <Moon className="h-4 w-4 text-indigo-600" />
+              )}
             </button>
           </div>
           <span className="text-[10px] text-slate-400 font-medium block text-center leading-relaxed">

@@ -205,7 +205,7 @@ export default function GeneratorTool() {
             </div>
 
             <div className="grid grid-cols-2 gap-4 pt-2">
-              <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-105 hover:bg-slate-50 dark:border-elegant-border dark:hover:bg-elegant-card-hover cursor-pointer transition-all">
+              <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 dark:border-elegant-border dark:hover:bg-elegant-card-hover cursor-pointer transition-all">
                 <input
                   type="checkbox"
                   checked={useUpper}
@@ -230,7 +230,7 @@ export default function GeneratorTool() {
                   type="checkbox"
                   checked={useNumbers}
                   onChange={(e) => setUseNumbers(e.target.checked)}
-                  className="rounded text-indigo-600 focus:ring-indigo-505 accent-indigo-600 h-4.5 w-4.5"
+                  className="rounded text-indigo-600 focus:ring-indigo-500 accent-indigo-600 h-4.5 w-4.5"
                 />
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono">Numbers (0-9)</span>
               </label>
@@ -240,7 +240,7 @@ export default function GeneratorTool() {
                   type="checkbox"
                   checked={useSymbols}
                   onChange={(e) => setUseSymbols(e.target.checked)}
-                  className="rounded text-indigo-600 focus:ring-indigo-505 accent-indigo-600 h-4.5 w-4.5"
+                  className="rounded text-indigo-600 focus:ring-indigo-500 accent-indigo-600 h-4.5 w-4.5"
                 />
                 <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Symbols (%$#@)</span>
               </label>
@@ -248,8 +248,8 @@ export default function GeneratorTool() {
           </div>
 
           <div className="md:col-span-2 space-y-4">
-            <div className="h-full bg-slate-50 dark:bg-elegant-card border border-slate-205 dark:border-elegant-border p-6 rounded-2xl">
-              <span className="text-xs font-semibold text-slate-400 dark:text-slate-505 uppercase tracking-wider block mb-3">Generated Password</span>
+            <div className="h-full bg-slate-50 dark:bg-elegant-card border border-slate-200 dark:border-elegant-border p-6 rounded-2xl">
+              <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-3">Generated Password</span>
               <div className="relative flex items-center bg-white dark:bg-elegant-bg px-4 py-3.5 rounded-xl border border-slate-100 dark:border-elegant-border">
                 <span className="text-sm font-mono text-slate-800 dark:text-slate-100 select-all break-all overflow-hidden max-w-[85%]">
                   {password}
@@ -289,17 +289,17 @@ export default function GeneratorTool() {
 
       {subMode === 'uuid' && (
         <div className="grid gap-6 md:grid-cols-3">
-          <div className="space-y-4 bg-white dark:bg-elegant-card border border-slate-205 dark:border-elegant-border p-6 rounded-2xl shadow-sm">
+          <div className="space-y-4 bg-white dark:bg-elegant-card border border-slate-200 dark:border-elegant-border p-6 rounded-2xl shadow-sm">
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Batch Variables</h3>
             <div className="space-y-1.5">
-              <label className="text-xs text-slate-505 font-medium">Number of UUIDs to generate</label>
+              <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Number of UUIDs to generate</label>
               <input
                 type="number"
                 min={1}
                 max={50}
                 value={uuidCount}
                 onChange={(e) => setUuidCount(Number(e.target.value))}
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 font-mono text-sm bg-white text-slate-800 focus:outline-none focus:border-indigo-505 dark:bg-elegant-bg dark:border-elegant-border dark:text-slate-100"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 font-mono text-sm bg-white text-slate-800 focus:outline-none focus:border-indigo-500 dark:bg-elegant-bg dark:border-elegant-border dark:text-slate-100"
               />
               <span className="text-[10px] text-slate-400">Bulk output ranges from 1 to 50 UUIDs.</span>
             </div>
@@ -315,7 +315,7 @@ export default function GeneratorTool() {
 
           <div className="md:col-span-2 bg-slate-50 dark:bg-elegant-card border border-slate-200 dark:border-elegant-border p-6 rounded-2xl flex flex-col h-96">
             <div className="flex items-center justify-between mb-3.5">
-              <span className="text-xs font-semibold text-slate-400 dark:text-slate-505 uppercase tracking-wider">Bulk Log</span>
+              <span className="text-xs font-semibold text-slate-400 dark:text-slate-550 uppercase tracking-wider">Bulk Log</span>
               {uuids.length > 0 && (
                 <button
                   onClick={handleCopyBulkUuids}
@@ -342,7 +342,7 @@ export default function GeneratorTool() {
                   <span className="truncate">{val}</span>
                   <button
                     onClick={() => handleCopySingle(val, idx)}
-                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-205 cursor-pointer"
+                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                   >
                     {copiedIndex === idx ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Clipboard className="h-3.5 w-3.5" />}
                   </button>
@@ -355,7 +355,7 @@ export default function GeneratorTool() {
 
       {subMode === 'hex' && (
         <div className="grid gap-6 md:grid-cols-5">
-          <div className="md:col-span-2 space-y-4 bg-white dark:bg-elegant-card border border-slate-250 dark:border-elegant-border p-6 rounded-2xl shadow-sm">
+          <div className="md:col-span-2 space-y-4 bg-white dark:bg-elegant-card border border-slate-200 dark:border-elegant-border p-6 rounded-2xl shadow-sm">
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Hex Variables</h3>
             <div className="space-y-1">
               <div className="flex justify-between text-xs text-slate-500">
@@ -394,7 +394,7 @@ export default function GeneratorTool() {
               </button>
             </div>
 
-            <div className="bg-white dark:bg-elegant-bg p-4 rounded-xl border border-slate-105 dark:border-elegant-border font-mono text-sm break-all text-slate-700 dark:text-slate-300 select-all min-h-[140px] flex items-center">
+            <div className="bg-white dark:bg-elegant-bg p-4 rounded-xl border border-slate-200 dark:border-elegant-border font-mono text-sm break-all text-slate-700 dark:text-slate-300 select-all min-h-[140px] flex items-center">
               {hexResult}
             </div>
           </div>

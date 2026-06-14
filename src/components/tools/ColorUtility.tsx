@@ -218,7 +218,7 @@ export default function ColorUtility() {
         <div className="grid gap-6 md:grid-cols-3">
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-505">Foreground Color (Text)</label>
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Foreground Color (Text)</label>
               <div className="flex gap-2">
                 <input
                   type="color"
@@ -231,13 +231,13 @@ export default function ColorUtility() {
                   maxLength={7}
                   value={contrastFore}
                   onChange={(e) => setContrastFore(e.target.value)}
-                  className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 font-mono text-xs dark:bg-elegant-bg dark:border-elegant-border dark:text-slate-250"
+                  className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 font-mono text-xs dark:bg-elegant-bg dark:border-elegant-border dark:text-slate-200"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-505">Background Color (Canvas)</label>
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Background Color (Canvas)</label>
               <div className="flex gap-2">
                 <input
                   type="color"
@@ -250,7 +250,7 @@ export default function ColorUtility() {
                   maxLength={7}
                   value={contrastBack}
                   onChange={(e) => setContrastBack(e.target.value)}
-                  className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 font-mono text-xs dark:bg-elegant-bg dark:border-elegant-border dark:text-slate-250"
+                  className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 font-mono text-xs dark:bg-elegant-bg dark:border-elegant-border dark:text-slate-200"
                 />
               </div>
             </div>

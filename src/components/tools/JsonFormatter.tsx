@@ -110,7 +110,7 @@ export default function JsonFormatter() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Paste your unformatted JSON here..."
-            className="h-96 w-full rounded-xl border border-slate-200 p-4 font-mono text-sm bg-white text-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-505 dark:bg-elegant-card dark:border-elegant-border dark:text-slate-100 focus:outline-none resize-none"
+            className="h-96 w-full rounded-xl border border-slate-200 p-4 font-mono text-sm bg-white text-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-elegant-card dark:border-elegant-border dark:text-slate-100 focus:outline-none resize-none"
           />
           <div className="flex flex-wrap items-center gap-3 pt-1">
             <div className="flex items-center gap-1.5">
