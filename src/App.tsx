@@ -1,14 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import DashboardGrid from './components/DashboardGrid';
-import JsonFormatter from './components/tools/JsonFormatter';
-import EncoderDecoder from './components/tools/EncoderDecoder';
-import GeneratorTool from './components/tools/GeneratorTool';
-import TimestampConverter from './components/tools/TimestampConverter';
-import TextAnalyzer from './components/tools/TextAnalyzer';
-import ColorUtility from './components/tools/ColorUtility';
 import ImageConverter from './components/tools/ImageConverter';
-import { Home, ArrowLeft, Heart, ShieldAlert, Sparkles, Terminal } from 'lucide-react';
+import { ArrowLeft, Share2, Sparkles, Terminal } from 'lucide-react';
 
 export default function App() {
   const [activeView, setActiveView] = useState<string>('dashboard');
@@ -22,7 +16,7 @@ export default function App() {
       try {
         setFavorites(JSON.parse(savedFavs));
       } catch {
-        // use default
+        // Fallback
       }
     }
 
@@ -31,7 +25,6 @@ export default function App() {
     if (savedTheme === 'dark' || savedTheme === 'light') {
       activeTheme = savedTheme;
     } else {
-      // Respect system color preference if not saved
       if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
         activeTheme = 'dark';
       }
@@ -61,18 +54,6 @@ export default function App() {
 
   const renderActiveTool = () => {
     switch (activeView) {
-      case 'json':
-        return <JsonFormatter />;
-      case 'encoding':
-        return <EncoderDecoder />;
-      case 'generator':
-        return <GeneratorTool />;
-      case 'timestamp':
-        return <TimestampConverter />;
-      case 'text':
-        return <TextAnalyzer />;
-      case 'color':
-        return <ColorUtility />;
       case 'image':
         return <ImageConverter />;
       default:
@@ -89,22 +70,10 @@ export default function App() {
 
   const getToolTitle = () => {
     switch (activeView) {
-      case 'json':
-        return 'JSON Formatter';
-      case 'encoding':
-        return 'Base64 & Hash';
-      case 'generator':
-        return 'Secure Generators';
-      case 'timestamp':
-        return 'Epoch Converter';
-      case 'text':
-        return 'Text Metrics';
-      case 'color':
-        return 'Contrast & Palette';
       case 'image':
-        return 'Image Converter';
+        return 'Bulk Image Format Converter';
       default:
-        return 'Dashboard';
+        return 'Developer Dashboard';
     }
   };
 
@@ -122,7 +91,7 @@ export default function App() {
           onToggleOpen={() => setSidebarOpen(!sidebarOpen)}
         />
 
-        <div className="flex-1 md:pl-64 flex flex-col min-w-0">
+        <div className="flex-1 md:pl-64 flex flex-col min-w-0 pt-16 md:pt-0">
           
           <header className="sticky top-0 z-20 h-16 bg-white/70 dark:bg-elegant-bg/75 backdrop-blur-md border-b border-slate-200/80 dark:border-elegant-border px-6 md:px-8 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -140,9 +109,9 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[10px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-950/40 px-2.5 py-1 rounded-md font-semibold flex items-center gap-1">
+              <span className="hidden sm:inline-flex text-[10px] bg-slate-100 text-slate-650 dark:bg-elegant-card-hover dark:text-slate-400 border border-slate-200 dark:border-elegant-border px-2.5 py-1 rounded-md font-semibold items-center gap-1">
                 <Terminal className="h-3 w-3" />
-                In-Browser Only
+                In-Browser Native Sandbox
               </span>
             </div>
           </header>

@@ -1,6 +1,6 @@
 {
   "name": "Utility Tool Manager",
-  "description": "A comprehensive developer and user utility tool suite featuring JSON formatters, text tools, encoders, generators, and converters with beautiful light and dark modes.",
+  "description": "A professional, offline-first bulk image format converter supporting high-speed in-browser conversions for WebP, JPEG, PNG, and SVG tracings with high-accuracy live size forecasts.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
