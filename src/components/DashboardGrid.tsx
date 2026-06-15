@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileImage, Paintbrush, ArrowRight, Heart, Sparkles, Terminal, Plus, Search } from 'lucide-react';
+import { FileImage, Paintbrush, Key, ArrowRight, Heart, Sparkles, Terminal, Plus, Search } from 'lucide-react';
 
 interface DashboardGridProps {
   onSelectTool: (toolId: string) => void;
@@ -34,6 +34,15 @@ export default function DashboardGrid({
       icon: Paintbrush,
       badge: 'High Fidelity',
       stats: '💻 Designer Suite'
+    },
+    {
+      id: 'password',
+      name: 'Password Generator',
+      description: 'Design and export highly secure, cryptographically-secure random passwords or memorable readable passphrases with custom rules.',
+      category: 'Security Utilities',
+      icon: Key,
+      badge: 'Cryptographic',
+      stats: '🔑 High Entropy'
     }
   ];
 

@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import DashboardGrid from './components/DashboardGrid';
 import ImageConverter from './components/tools/ImageConverter';
 import GradientGenerator from './components/tools/GradientGenerator';
+import PasswordGenerator from './components/tools/PasswordGenerator';
 import { ArrowLeft, Share2, Sparkles, Terminal } from 'lucide-react';
 
 export default function App() {
@@ -59,6 +60,8 @@ export default function App() {
         return <ImageConverter />;
       case 'gradient':
         return <GradientGenerator />;
+      case 'password':
+        return <PasswordGenerator />;
       default:
         return (
           <DashboardGrid
@@ -77,6 +80,8 @@ export default function App() {
         return 'Bulk Image Format Converter';
       case 'gradient':
         return 'Gradient Studio';
+      case 'password':
+        return 'Cryptographic Password Generator';
       default:
         return 'Developer Dashboard';
     }
