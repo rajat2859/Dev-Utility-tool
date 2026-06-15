@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import DashboardGrid from './components/DashboardGrid';
 import ImageConverter from './components/tools/ImageConverter';
+import GradientGenerator from './components/tools/GradientGenerator';
 import { ArrowLeft, Share2, Sparkles, Terminal } from 'lucide-react';
 
 export default function App() {
@@ -56,6 +57,8 @@ export default function App() {
     switch (activeView) {
       case 'image':
         return <ImageConverter />;
+      case 'gradient':
+        return <GradientGenerator />;
       default:
         return (
           <DashboardGrid
@@ -72,6 +75,8 @@ export default function App() {
     switch (activeView) {
       case 'image':
         return 'Bulk Image Format Converter';
+      case 'gradient':
+        return 'Gradient Studio';
       default:
         return 'Developer Dashboard';
     }

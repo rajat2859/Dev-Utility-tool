@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileImage, Sun, Moon, Terminal, X, Menu } from 'lucide-react';
+import { LayoutDashboard, FileImage, Paintbrush, Sun, Moon, Terminal, X, Menu } from 'lucide-react';
 
 interface SidebarProps {
   currentView: string;
@@ -22,6 +22,7 @@ export default function Sidebar({
   const menuItems = [
     { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
     { id: 'image', name: 'Image Converter', icon: FileImage },
+    { id: 'gradient', name: 'Gradient Generator', icon: Paintbrush },
   ];
 
   return (

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileImage, ArrowRight, Heart, Sparkles, Terminal, Plus, Search } from 'lucide-react';
+import { FileImage, Paintbrush, ArrowRight, Heart, Sparkles, Terminal, Plus, Search } from 'lucide-react';
 
 interface DashboardGridProps {
   onSelectTool: (toolId: string) => void;
@@ -26,6 +26,15 @@ export default function DashboardGrid({
       badge: 'Highly Popular',
       stats: '⚡ 100% Offline'
     },
+    {
+      id: 'gradient',
+      name: 'Gradient Studio',
+      description: 'Generate, test, and export elegant CSS linear, radial, and conic color gradients to raw styling sheets or tailwind classes.',
+      category: 'Design & Assets',
+      icon: Paintbrush,
+      badge: 'High Fidelity',
+      stats: '💻 Designer Suite'
+    }
   ];
 
   const filteredTools = tools.filter(tool => 
