@@ -4,6 +4,7 @@ import DashboardGrid from './components/DashboardGrid';
 import ImageConverter from './components/tools/ImageConverter';
 import GradientGenerator from './components/tools/GradientGenerator';
 import PasswordGenerator from './components/tools/PasswordGenerator';
+import ContentChecker from './components/tools/ContentChecker';
 import { ArrowLeft, Share2, Sparkles, Terminal } from 'lucide-react';
 
 export default function App() {
@@ -62,6 +63,8 @@ export default function App() {
         return <GradientGenerator />;
       case 'password':
         return <PasswordGenerator />;
+      case 'content-checker':
+        return <ContentChecker />;
       default:
         return (
           <DashboardGrid
@@ -82,6 +85,8 @@ export default function App() {
         return 'Gradient Studio';
       case 'password':
         return 'Cryptographic Password Generator';
+      case 'content-checker':
+        return 'Content Copy & SEO Checker';
       default:
         return 'Developer Dashboard';
     }

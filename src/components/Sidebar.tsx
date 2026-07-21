@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileImage, Paintbrush, Key, Sun, Moon, Terminal, X, Menu } from 'lucide-react';
+import { LayoutDashboard, FileImage, Paintbrush, Key, Sun, Moon, Terminal, X, Menu, ShieldCheck } from 'lucide-react';
 
 interface SidebarProps {
   currentView: string;
@@ -24,6 +24,7 @@ export default function Sidebar({
     { id: 'image', name: 'Image Converter', icon: FileImage },
     { id: 'gradient', name: 'Gradient Generator', icon: Paintbrush },
     { id: 'password', name: 'Password Generator', icon: Key },
+    { id: 'content-checker', name: 'Content Checker', icon: ShieldCheck },
   ];
 
   return (

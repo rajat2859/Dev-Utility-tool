@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileImage, Paintbrush, Key, ArrowRight, Heart, Sparkles, Terminal, Plus, Search } from 'lucide-react';
+import { FileImage, Paintbrush, Key, ArrowRight, Heart, Sparkles, Terminal, Plus, Search, ShieldCheck } from 'lucide-react';
 
 interface DashboardGridProps {
   onSelectTool: (toolId: string) => void;
@@ -43,6 +43,15 @@ export default function DashboardGrid({
       icon: Key,
       badge: 'Cryptographic',
       stats: '🔑 High Entropy'
+    },
+    {
+      id: 'content-checker',
+      name: 'Content Copy & SEO Checker',
+      description: 'Crawl any target URL and audit its page text, headers, and metadata against a reference document screenshot using the server-side Gemini auditor.',
+      category: 'Security & QA Utilities',
+      icon: ShieldCheck,
+      badge: 'Full-Stack Agent',
+      stats: '🤖 Server-Side AI'
     }
   ];
 
