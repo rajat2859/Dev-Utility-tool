@@ -17,7 +17,6 @@ export interface ToolUsage {
 }
 
 export interface AppSettings {
-  theme: 'light' | 'dark';
   favorites: string[];
   recentTools: string[];
 }

@@ -2,22 +2,19 @@ import React, { useState, useRef } from 'react';
 import { 
   Globe, 
   FileImage, 
-  ArrowRight, 
   Search, 
   AlertTriangle, 
-  CheckCircle2, 
-  XCircle, 
   Info, 
   Sparkles, 
   RefreshCw, 
   Copy, 
   Check, 
-  ExternalLink, 
   FileSearch, 
   Layers, 
   Sliders, 
   CheckSquare, 
-  ArrowUpRight 
+  ArrowUpRight,
+  Code
 } from 'lucide-react';
 
 interface SEOSection {
@@ -34,7 +31,7 @@ interface SEOSection {
 }
 
 interface HeadingMatch {
-  level: 'h1' | 'h2' | 'h3';
+  level: 'h1' | 'h2' | 'h3' | 'h4';
   expectedText: string;
   actualText: string;
   status: 'match' | 'partial' | 'mismatch';
@@ -79,7 +76,9 @@ interface WebpageData {
 }
 
 export default function ContentChecker() {
+  const [inputType, setInputType] = useState<'url' | 'html'>('url');
   const [url, setUrl] = useState<string>('');
+  const [rawHtml, setRawHtml] = useState<string>('');
   const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -91,14 +90,12 @@ export default function ContentChecker() {
   const [activeTab, setActiveTab] = useState<'seo' | 'headings' | 'body' | 'recommendations'>('seo');
   const [copied, setCopied] = useState<boolean>(false);
 
-  // Awesome Screenshot & Paste states
   const [awesomeUrl, setAwesomeUrl] = useState<string>('');
   const [isResolvingAwesome, setIsResolvingAwesome] = useState<boolean>(false);
   const [awesomeError, setAwesomeError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Global listener for pasting image files directly from clipboard
   React.useEffect(() => {
     const handleGlobalPaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
@@ -120,7 +117,6 @@ export default function ContentChecker() {
     return () => window.removeEventListener('paste', handleGlobalPaste);
   }, []);
 
-  // File Upload Handlers
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -174,7 +170,6 @@ export default function ContentChecker() {
     setAwesomeError(null);
   };
 
-  // Resolve Awesome Screenshot or shared image URL on the server
   const resolveAwesomeLink = async () => {
     if (!awesomeUrl) {
       setAwesomeError('Please enter a valid Awesome Screenshot share link.');
@@ -188,24 +183,28 @@ export default function ContentChecker() {
     try {
       const response = await fetch('/api/content-checker/resolve-awesome-screenshot', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: awesomeUrl.trim() })
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Server error while resolving link.');
+      const responseText = await response.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseErr) {
+        throw new Error(`Server returned status ${response.status}. Received non-JSON response format.`);
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || `Server error (${response.status}) while resolving link.`);
+      }
+
       if (data.success && data.base64) {
         setScreenshotBase64(data.base64);
         setScreenshotPreview(data.base64);
-        setAwesomeUrl(''); // clear on success
+        setAwesomeUrl('');
       } else {
-        throw new Error(data.error || 'Failed to extract screenshot asset.');
+        throw new Error(data?.error || 'Failed to extract screenshot asset.');
       }
     } catch (err: any) {
       setAwesomeError(err.message || 'Could not resolve screenshot from link. Make sure it is a valid, public share page.');
@@ -214,10 +213,13 @@ export default function ContentChecker() {
     }
   };
 
-  // Run Auditor Analysis
   const runAnalysis = async () => {
-    if (!url) {
+    if (inputType === 'url' && !url) {
       setError('Please enter a valid website URL to crawl.');
+      return;
+    }
+    if (inputType === 'html' && !rawHtml.trim()) {
+      setError('Please paste the webpage HTML source code or text.');
       return;
     }
     if (!screenshotBase64) {
@@ -225,9 +227,8 @@ export default function ContentChecker() {
       return;
     }
 
-    // Basic URL validation
     let sanitizedUrl = url.trim();
-    if (!/^https?:\/\//i.test(sanitizedUrl)) {
+    if (inputType === 'url' && !/^https?:\/\//i.test(sanitizedUrl)) {
       sanitizedUrl = 'https://' + sanitizedUrl;
       setUrl(sanitizedUrl);
     }
@@ -237,10 +238,9 @@ export default function ContentChecker() {
     setReport(null);
     setWebpageData(null);
 
-    // Progressive loading updates for professional feel
     const steps = [
-      'Establishing connection & crawling webpage...',
-      'Extracting HTML metadata, SEO, and headers...',
+      inputType === 'url' ? 'Establishing connection & crawling webpage...' : 'Parsing raw HTML & metadata...',
+      'Extracting HTML metadata, SEO tags, and headers...',
       'Synthesizing webpage elements & reading screenshot document...',
       'Comparing expected specs with live metadata matches...',
       'Analyzing content body discrepancies...',
@@ -254,47 +254,51 @@ export default function ContentChecker() {
         currentStep++;
         setLoadingStep(steps[currentStep]);
       }
-    }, 2800);
+    }, 2000);
 
     try {
       const response = await fetch('/api/content-checker/analyze', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          url: sanitizedUrl,
+          url: inputType === 'url' ? sanitizedUrl : undefined,
+          rawHtml: inputType === 'html' ? rawHtml : undefined,
           image: screenshotBase64
         })
       });
 
       clearInterval(stepInterval);
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Server returned an error.');
+      const responseText = await response.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseErr) {
+        throw new Error(`Server returned status ${response.status} with a non-JSON response. If uploading a large screenshot, please try a smaller image or compressed file.`);
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || `Server returned error status ${response.status}.`);
+      }
+
       if (data.success) {
         setReport(data.report);
         setWebpageData(data.webpageData);
       } else {
-        throw new Error(data.error || 'Failed to complete analysis.');
+        throw new Error(data?.error || 'Failed to complete analysis.');
       }
     } catch (err: any) {
       clearInterval(stepInterval);
-      setError(err.message || 'An unexpected network error occurred while running the analysis.');
+      setError(err.message || 'An unexpected error occurred while running the analysis.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Copy to Clipboard helper
   const handleCopyReport = () => {
     if (!report) return;
     const reportText = `CONTENT COMPLIANCE REPORT
-Target Webpage: ${url}
+Target Source: ${inputType === 'url' ? url : 'Raw HTML Code'}
 Overall Score: ${report.overallScore}/100
 
 SUMMARY
@@ -317,81 +321,124 @@ ${report.recommendations.map((rec, i) => `${i + 1}. [ ] ${rec}`).join('\n')}
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Status helper color mapper
   const getStatusColor = (status: 'match' | 'partial' | 'mismatch' | string) => {
     switch (status) {
       case 'match':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'partial':
-        return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30';
+        return 'bg-amber-50 text-amber-700 border-amber-200';
       case 'mismatch':
       default:
-        return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/30';
+        return 'bg-rose-50 text-rose-700 border-rose-200';
     }
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Tool Introduction */}
-      <div className="space-y-1">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/30 uppercase tracking-wider">
-          <Sparkles className="h-3 w-3" />
-          <span>Full-Stack AI Agent</span>
+    <div className="space-y-6 text-zinc-900">
+      {/* Tool Header */}
+      <div className="border-b border-zinc-200 pb-4 space-y-1">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold tracking-tight">Content Copy & SEO Compliance Checker</h2>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800 border border-zinc-200">
+            <Sparkles className="h-3 w-3 text-zinc-700" />
+            AI Auditor
+          </span>
         </div>
-        <h2 className="text-2xl font-black text-slate-900 dark:text-neutral-100 tracking-tight">
-          Content Copy & SEO Compliance Checker
-        </h2>
-        <p className="text-sm text-slate-500 dark:text-slate-405 leading-relaxed max-w-3xl">
-          Upload a screenshot of your reference design or copy document and supply a live URL. The auditor will crawl the website, extract meta-properties and heading structures, and compare them with the document screenshot to identify content differences, SEO misses, and heading misalignments.
+        <p className="text-xs text-zinc-500">
+          Upload reference mockup screenshots and provide a live URL or raw HTML to verify metadata, heading hierarchy, and body copy accuracy.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Control Input Panel (4 cols) */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-2xl p-5 shadow-xs space-y-5">
-            <div className="flex items-center gap-2 pb-3.5 border-b border-slate-150 dark:border-elegant-border">
-              <Sliders className="h-4.5 w-4.5 text-indigo-500" />
-              <h3 className="text-sm font-semibold tracking-tight">Configuration Parameters</h3>
-            </div>
-
-            {/* Target URL Input */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-500 dark:text-slate-405 flex items-center justify-between">
-                <span>Target Webpage URL</span>
-                <span className="text-[10px] text-slate-400">Must be public</span>
-              </label>
-              <div className="relative">
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="e.g., example.com/landing-page"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  disabled={isLoading}
-                  className="w-full pl-9 pr-4 py-2.5 text-xs font-medium rounded-xl border border-slate-200 bg-white dark:bg-elegant-bg dark:border-elegant-border focus:outline-none focus:ring-2 focus:ring-indigo-550/20 focus:border-indigo-550 text-slate-800 dark:text-slate-200 shadow-2xs"
-                />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Control Input Panel (5 cols) */}
+        <div className="lg:col-span-5 space-y-5">
+          <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
+              <div className="flex items-center gap-2">
+                <Sliders className="h-4 w-4 text-zinc-700" />
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-900">Input Mode</h3>
+              </div>
+              <div className="flex items-center bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 text-[11px] font-medium">
+                <button
+                  type="button"
+                  onClick={() => setInputType('url')}
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                    inputType === 'url' ? 'bg-white text-zinc-900 shadow-xs font-semibold' : 'text-zinc-500 hover:text-zinc-900'
+                  }`}
+                >
+                  <span className="flex items-center gap-1">
+                    <Globe className="h-3 w-3" />
+                    Target URL
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInputType('html')}
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                    inputType === 'html' ? 'bg-white text-zinc-900 shadow-xs font-semibold' : 'text-zinc-500 hover:text-zinc-900'
+                  }`}
+                >
+                  <span className="flex items-center gap-1">
+                    <Code className="h-3 w-3" />
+                    Paste HTML
+                  </span>
+                </button>
               </div>
             </div>
 
+            {/* Target URL or HTML Source Input */}
+            {inputType === 'url' ? (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-zinc-500 flex items-center justify-between">
+                  <span>Target Webpage URL</span>
+                  <span className="text-[10px] text-zinc-400">Public web page</span>
+                </label>
+                <div className="relative">
+                  <Globe className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                  <input
+                    type="text"
+                    placeholder="e.g., example.com/landing-page"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    disabled={isLoading}
+                    className="w-full pl-8 pr-3 py-1.5 text-xs font-medium rounded-md border border-zinc-200 bg-white text-zinc-900 focus:ring-1 focus:ring-zinc-950 shadow-xs"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-zinc-500 flex items-center justify-between">
+                  <span>Webpage HTML Source / Text</span>
+                  <span className="text-[10px] text-zinc-400">Local dev or protected site</span>
+                </label>
+                <textarea
+                  rows={5}
+                  placeholder="Paste <!DOCTYPE html>... or text copy here"
+                  value={rawHtml}
+                  onChange={(e) => setRawHtml(e.target.value)}
+                  disabled={isLoading}
+                  className="w-full p-2.5 text-xs font-mono rounded-md border border-zinc-200 bg-white text-zinc-900 focus:ring-1 focus:ring-zinc-950 shadow-xs resize-y"
+                />
+              </div>
+            )}
+
             {/* Reference Screenshot Upload */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-500 dark:text-slate-405">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-zinc-500 block">
                 Reference Document Screenshot
               </label>
 
               {!screenshotPreview ? (
                 <div className="space-y-3">
-                  {/* Drag-and-drop zone with paste hint */}
                   <div
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
                     onClick={triggerFileInput}
-                    className={`border-2 border-dashed rounded-xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-150 min-h-[140px] ${
+                    className={`border-2 border-dashed rounded-xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-colors ${
                       isDragging
-                        ? 'border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/10'
-                        : 'border-slate-200 dark:border-elegant-border hover:border-slate-305 dark:hover:border-elegant-border-hover bg-slate-50/50 dark:bg-elegant-bg/20'
+                        ? 'border-zinc-900 bg-zinc-100'
+                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
                     }`}
                   >
                     <input
@@ -401,33 +448,31 @@ ${report.recommendations.map((rec, i) => `${i + 1}. [ ] ${rec}`).join('\n')}
                       accept="image/*"
                       className="hidden"
                     />
-                    <div className="h-9 w-9 rounded-full bg-slate-100 dark:bg-elegant-bg border border-slate-200/50 dark:border-elegant-border/80 flex items-center justify-center text-slate-500 dark:text-slate-400 mb-2">
-                      <FileImage className="h-4.5 w-4.5 text-indigo-500" />
+                    <div className="h-8 w-8 rounded-md bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-600 mb-2">
+                      <FileImage className="h-4 w-4" />
                     </div>
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <span className="text-xs font-semibold text-zinc-900">
                       Click to upload, drag image, or paste (Ctrl+V)
                     </span>
-                    <span className="text-[10px] text-slate-400 mt-0.5 block">
-                      Supports Clipboard image, PNG, JPEG, WebP
+                    <span className="text-[10px] text-zinc-400 mt-0.5">
+                      Supports Clipboard, PNG, JPEG, WebP
                     </span>
                   </div>
 
-                  {/* Divider */}
-                  <div className="flex items-center gap-2 py-1">
-                    <span className="h-px bg-slate-150 dark:bg-elegant-border flex-1" />
-                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">OR</span>
-                    <span className="h-px bg-slate-150 dark:bg-elegant-border flex-1" />
+                  <div className="flex items-center gap-2">
+                    <span className="h-px bg-zinc-200 flex-1" />
+                    <span className="text-[10px] font-semibold text-zinc-400 uppercase">OR</span>
+                    <span className="h-px bg-zinc-200 flex-1" />
                   </div>
 
-                  {/* Awesome Screenshot / general link input field */}
-                  <div className="space-y-1.5 p-3.5 bg-slate-50/50 dark:bg-elegant-bg/20 border border-slate-200/60 dark:border-elegant-border/60 rounded-xl">
-                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-405 block">
-                      Load from Awesome Screenshot Link
+                  <div className="space-y-1.5 p-3 bg-zinc-50 border border-zinc-200 rounded-lg">
+                    <span className="text-[10px] font-medium text-zinc-600 block">
+                      Awesome Screenshot Share Link
                     </span>
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder="Paste awesomescreenshot.com URL here..."
+                        placeholder="Paste URL..."
                         value={awesomeUrl}
                         onChange={(e) => setAwesomeUrl(e.target.value)}
                         onKeyDown={(e) => {
@@ -437,47 +482,42 @@ ${report.recommendations.map((rec, i) => `${i + 1}. [ ] ${rec}`).join('\n')}
                           }
                         }}
                         disabled={isResolvingAwesome || isLoading}
-                        className="flex-1 min-w-0 px-3 py-2 text-xs font-medium rounded-lg border border-slate-200 bg-white dark:bg-elegant-bg dark:border-elegant-border focus:outline-none focus:ring-2 focus:ring-indigo-550/20 focus:border-indigo-550 text-slate-800 dark:text-slate-200 shadow-2xs"
+                        className="flex-1 px-2.5 py-1 text-xs font-medium rounded-md border border-zinc-200 bg-white text-zinc-900 focus:ring-1 focus:ring-zinc-950 shadow-xs"
                       />
                       <button
                         type="button"
                         onClick={resolveAwesomeLink}
                         disabled={isResolvingAwesome || isLoading || !awesomeUrl}
-                        className="px-3 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:bg-elegant-bg dark:disabled:text-slate-600 rounded-lg shadow-xs cursor-pointer flex items-center justify-center gap-1 shrink-0"
+                        className="px-3 py-1 text-xs font-medium text-zinc-50 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 rounded-md shadow-xs cursor-pointer flex items-center gap-1"
                       >
                         {isResolvingAwesome ? (
-                          <>
-                            <RefreshCw className="h-3 w-3 animate-spin" />
-                            <span>Resolving...</span>
-                          </>
+                          <RefreshCw className="h-3 w-3 animate-spin" />
                         ) : (
                           <span>Resolve</span>
                         )}
                       </button>
                     </div>
                     {awesomeError && (
-                      <p className="text-[10px] text-rose-500 dark:text-rose-400 font-medium mt-1">
+                      <p className="text-[10px] text-rose-600 font-medium mt-1">
                         {awesomeError}
                       </p>
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="relative border border-slate-200 dark:border-elegant-border rounded-xl p-2 bg-slate-50/30 dark:bg-elegant-bg/10">
+                <div className="relative border border-zinc-200 rounded-lg p-2 bg-zinc-50">
                   <img
                     src={screenshotPreview}
-                    alt="Uploaded reference document preview"
-                    className="w-full h-auto max-h-[180px] object-contain rounded-lg"
+                    alt="Uploaded reference preview"
+                    className="w-full h-auto max-h-[160px] object-contain rounded-md"
                   />
-                  <div className="absolute top-4 right-4 flex items-center gap-1.5">
-                    <button
-                      onClick={resetScreenshot}
-                      disabled={isLoading}
-                      className="px-2 py-1 rounded-md text-[10px] font-bold bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-950/40 shadow-xs cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  </div>
+                  <button
+                    onClick={resetScreenshot}
+                    disabled={isLoading}
+                    className="absolute top-3 right-3 px-2 py-0.5 rounded text-[10px] font-medium bg-white border border-zinc-200 text-rose-600 hover:bg-rose-50 shadow-xs cursor-pointer"
+                  >
+                    Remove
+                  </button>
                 </div>
               )}
             </div>
@@ -485,473 +525,402 @@ ${report.recommendations.map((rec, i) => `${i + 1}. [ ] ${rec}`).join('\n')}
             {/* Run Button */}
             <button
               onClick={runAnalysis}
-              disabled={isLoading || !url || !screenshotBase64}
-              className={`w-full py-3 rounded-xl font-bold text-sm tracking-tight flex items-center justify-center gap-2 transition-all duration-150 shadow-md ${
-                isLoading || !url || !screenshotBase64
-                  ? 'bg-slate-100 dark:bg-elegant-bg text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-elegant-border cursor-not-allowed shadow-none'
-                  : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/15 cursor-pointer hover:shadow-lg'
-              }`}
+              disabled={isLoading || (inputType === 'url' ? !url : !rawHtml.trim()) || !screenshotBase64}
+              className="w-full py-2 px-4 rounded-md font-medium text-xs tracking-tight flex items-center justify-center gap-2 transition-colors shadow-xs bg-zinc-900 text-zinc-50 hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               {isLoading ? (
                 <>
-                  <RefreshCw className="h-4.5 w-4.5 animate-spin" />
-                  <span>Crawl & Analyze Compliance...</span>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  <span>Analyzing Content...</span>
                 </>
               ) : (
                 <>
-                  <FileSearch className="h-4.5 w-4.5" />
-                  <span>Verify Live Content Compliance</span>
+                  <FileSearch className="h-3.5 w-3.5" />
+                  <span>Verify Content Compliance</span>
                 </>
               )}
             </button>
           </div>
 
-          {/* Guidelines info card */}
-          <div className="bg-slate-50/60 dark:bg-elegant-card border border-slate-200/50 dark:border-elegant-border rounded-xl p-4 text-xs space-y-3">
-            <h4 className="font-bold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
-              <Info className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+          <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 text-xs space-y-2">
+            <h4 className="font-semibold text-zinc-900 flex items-center gap-1.5">
+              <Info className="h-3.5 w-3.5 text-zinc-700 shrink-0" />
               <span>How compliance audit works</span>
             </h4>
-            <ol className="list-decimal pl-4 space-y-1.5 text-slate-500 dark:text-slate-400 font-medium">
-              <li>Our backend runs a server-side curl to safely fetch the live HTML (bypassing CORS).</li>
-              <li>A high-fidelity parser extracts metadata (title, metas) and heading levels (h1-h3).</li>
-              <li>The screenshot reference and page variables are fed to the Gemini 3.6 Flash engine.</li>
-              <li>The model calculates alignment scores, checks metadata syntax, heading wording, and looks for missing content.</li>
+            <ol className="list-decimal pl-4 space-y-1 text-zinc-600 font-normal">
+              <li>Analyzes webpage title, meta description, and heading hierarchy (h1-h6).</li>
+              <li>Compares target text content against reference document screenshots.</li>
+              <li>Produces precise accuracy scores, discrepancy highlights, and actionable fixes.</li>
             </ol>
           </div>
         </div>
 
         {/* Right Output Analysis Panel (7 cols) */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* 1. Loading state */}
+        <div className="lg:col-span-7 space-y-5">
+          {/* Loading state */}
           {isLoading && (
-            <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-2xl p-12 shadow-xs text-center flex flex-col items-center justify-center space-y-6 min-h-[460px]">
+            <div className="bg-white border border-zinc-200 rounded-xl p-10 text-center flex flex-col items-center justify-center space-y-4 min-h-[400px]">
               <div className="relative">
-                <div className="h-16 w-16 rounded-full border-4 border-indigo-50 dark:border-indigo-950/20 border-t-indigo-600 dark:border-t-indigo-400 animate-spin"></div>
+                <div className="h-12 w-12 rounded-full border-2 border-zinc-200 border-t-zinc-900 animate-spin" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Search className="h-5 w-5 text-indigo-500 animate-pulse" />
+                  <Search className="h-4 w-4 text-zinc-700" />
                 </div>
               </div>
-              <div className="space-y-2 max-w-md">
-                <h3 className="font-extrabold text-base text-slate-900 dark:text-neutral-100 tracking-tight">
-                  Running Deep Compliance Analysis
+              <div className="space-y-1 max-w-sm">
+                <h3 className="font-semibold text-sm text-zinc-900">
+                  Running Compliance Analysis
                 </h3>
-                <p className="text-xs text-slate-405 dark:text-slate-400 font-medium font-mono bg-slate-50 dark:bg-elegant-bg px-4 py-2 rounded-lg border border-slate-150 dark:border-elegant-border animate-pulse">
+                <p className="text-xs text-zinc-500 font-mono bg-zinc-50 px-3 py-1.5 rounded-md border border-zinc-200">
                   {loadingStep}
                 </p>
-                <span className="text-[10px] text-slate-400 block pt-1">
-                  Please do not reload, parsing public website assets took 5-8 seconds.
-                </span>
               </div>
             </div>
           )}
 
-          {/* 2. Error state */}
+          {/* Error state */}
           {error && (
-            <div className="bg-rose-50/50 dark:bg-rose-950/5 border border-rose-200 dark:border-rose-900/30 rounded-2xl p-6 shadow-xs flex gap-4 min-h-[220px] items-center">
-              <div className="h-11 w-11 rounded-full bg-rose-50 dark:bg-rose-950 border border-rose-200 text-rose-500 flex items-center justify-center shrink-0">
-                <AlertTriangle className="h-5 w-5" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="font-bold text-sm text-slate-900 dark:text-rose-400">Analysis Error Encountered</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-405 font-medium leading-relaxed">
+            <div className="bg-rose-50/50 border border-rose-200 rounded-xl p-5 shadow-xs flex gap-3 items-start">
+              <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+              <div className="space-y-1.5">
+                <h3 className="font-semibold text-xs text-rose-900">Analysis Notice</h3>
+                <p className="text-xs text-zinc-600 leading-relaxed">
                   {error}
                 </p>
-                <div className="pt-1.5 flex gap-2">
-                  <button
-                    onClick={runAnalysis}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-elegant-card hover:bg-slate-100 dark:hover:bg-elegant-card-hover border border-rose-200 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 cursor-pointer shadow-xs"
-                  >
-                    Retry Verification
-                  </button>
-                </div>
+                <button
+                  onClick={runAnalysis}
+                  className="px-2.5 py-1 rounded text-xs font-medium bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 cursor-pointer shadow-xs"
+                >
+                  Retry
+                </button>
               </div>
             </div>
           )}
 
-          {/* 3. Empty State (Initial/Static) */}
+          {/* Empty State */}
           {!isLoading && !error && !report && (
-            <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-2xl p-10 shadow-xs text-center flex flex-col items-center justify-center space-y-5 min-h-[460px]">
-              <div className="h-14 w-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-center text-indigo-500">
-                <Globe className="h-7 w-7" />
+            <div className="bg-white border border-zinc-200 rounded-xl p-10 text-center flex flex-col items-center justify-center space-y-4 min-h-[400px]">
+              <div className="h-10 w-10 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-700">
+                <Globe className="h-5 w-5" />
               </div>
-              <div className="space-y-2 max-w-sm">
-                <h3 className="font-extrabold text-base text-slate-800 dark:text-neutral-100 tracking-tight">
+              <div className="space-y-1 max-w-xs">
+                <h3 className="font-semibold text-sm text-zinc-900">
                   Awaiting Compliance Target
                 </h3>
-                <p className="text-xs text-slate-405 dark:text-slate-400 font-medium leading-relaxed">
-                  Enter a target webpage and drag in your reference mockup screenshot, then run the checker to verify alignment and compliance instantly.
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  Provide a target webpage URL or HTML source code, and upload a reference mockup image to start the automated audit.
                 </p>
               </div>
             </div>
           )}
 
-          {/* 4. Complete Audit Report View */}
+          {/* Complete Audit Report View */}
           {!isLoading && !error && report && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Report Header Card */}
-              <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="space-y-2 flex-1">
+            <div className="space-y-5">
+              {/* Summary Header Card */}
+              <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="space-y-1 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-bold font-mono text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-elegant-bg px-2 py-0.5 rounded border border-slate-200 dark:border-elegant-border">
-                      TARGET: {url.replace(/^https?:\/\/(www\.)?/, '').substring(0, 32)}...
+                    <span className="text-[10px] font-mono text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200">
+                      TARGET: {inputType === 'url' ? url.replace(/^https?:\/\/(www\.)?/, '').substring(0, 30) : 'Pasted HTML'}...
                     </span>
                     {webpageData && (
-                      <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/15 border border-emerald-100 dark:border-emerald-900/30 px-2 py-0.5 rounded">
-                        Successfully Crawled
+                      <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                        Analyzed
                       </span>
                     )}
                   </div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-neutral-100 tracking-tight">
-                    Auditor Compliance Assessment
+                  <h3 className="text-sm font-semibold text-zinc-900">
+                    Compliance Assessment
                   </h3>
-                  <p className="text-xs text-slate-405 dark:text-slate-400 font-medium leading-relaxed">
+                  <p className="text-xs text-zinc-600 leading-relaxed">
                     {report.summary}
                   </p>
                 </div>
 
-                {/* Big Score Circular-ish widget */}
-                <div className="sm:self-center shrink-0 flex flex-col items-center justify-center p-3 bg-slate-50 dark:bg-elegant-bg border border-slate-150 dark:border-elegant-border rounded-xl min-w-[100px]">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Overall Match</span>
-                  <span className={`text-3xl font-black ${
+                <div className="shrink-0 flex flex-col items-center justify-center p-3 bg-zinc-50 border border-zinc-200 rounded-lg min-w-[90px]">
+                  <span className="text-[9px] uppercase font-semibold text-zinc-500">Score</span>
+                  <span className={`text-2xl font-bold ${
                     report.overallScore >= 90 
-                      ? 'text-emerald-500' 
+                      ? 'text-emerald-600' 
                       : report.overallScore >= 70 
-                        ? 'text-amber-500' 
-                        : 'text-rose-500'
+                        ? 'text-amber-600' 
+                        : 'text-rose-600'
                   }`}>
                     {report.overallScore}%
                   </span>
-                  <span className="text-[9px] text-slate-455 font-semibold">compliance score</span>
                 </div>
               </div>
 
-              {/* Tab Navigation buttons */}
-              <div className="flex border-b border-slate-250 dark:border-elegant-border gap-1 overflow-x-auto pb-px">
+              {/* Tab Navigation */}
+              <div className="flex border-b border-zinc-200 gap-1 overflow-x-auto pb-px text-xs">
                 <button
                   onClick={() => setActiveTab('seo')}
-                  className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 font-medium border-b-2 cursor-pointer ${
                     activeTab === 'seo'
-                      ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
-                      : 'border-transparent text-slate-500 dark:text-slate-405 hover:text-slate-800 dark:hover:text-neutral-200'
+                      ? 'border-zinc-900 text-zinc-900 font-semibold'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-900'
                   }`}
                 >
-                  SEO & Metas Match
+                  SEO & Metas
                 </button>
                 <button
                   onClick={() => setActiveTab('headings')}
-                  className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 font-medium border-b-2 cursor-pointer ${
                     activeTab === 'headings'
-                      ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
-                      : 'border-transparent text-slate-500 dark:text-slate-405 hover:text-slate-800 dark:hover:text-neutral-200'
+                      ? 'border-zinc-900 text-zinc-900 font-semibold'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-900'
                   }`}
                 >
-                  Heading Match
+                  Headings
                 </button>
                 <button
                   onClick={() => setActiveTab('body')}
-                  className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 font-medium border-b-2 cursor-pointer ${
                     activeTab === 'body'
-                      ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
-                      : 'border-transparent text-slate-500 dark:text-slate-405 hover:text-slate-800 dark:hover:text-neutral-200'
+                      ? 'border-zinc-900 text-zinc-900 font-semibold'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-900'
                   }`}
                 >
-                  Body Copy Differences
+                  Copy Differences
                 </button>
                 <button
                   onClick={() => setActiveTab('recommendations')}
-                  className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 font-medium border-b-2 cursor-pointer ${
                     activeTab === 'recommendations'
-                      ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
-                      : 'border-transparent text-slate-500 dark:text-slate-405 hover:text-slate-800 dark:hover:text-neutral-200'
+                      ? 'border-zinc-900 text-zinc-900 font-semibold'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-900'
                   }`}
                 >
-                  Actionable Recommendations
+                  Recommendations
                 </button>
               </div>
 
               {/* Tab Contents */}
               <div className="space-y-4">
                 
-                {/* 4.1 SEO & METAS TAB */}
+                {/* SEO & METAS TAB */}
                 {activeTab === 'seo' && (
-                  <div className="space-y-4 animate-fade-in">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
                         Meta Compliance Status
                       </h4>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusColor(report.seo.status)}`}>
-                        SEO Status: {report.seo.status.toUpperCase()}
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusColor(report.seo.status)}`}>
+                        {report.seo.status.toUpperCase()}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Document Title Match */}
-                      <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-xl p-4 space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="bg-white border border-zinc-200 rounded-xl p-4 space-y-2 text-xs">
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Page Title &lt;title&gt;</span>
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
-                            report.seo.titleMatches 
-                              ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/10 dark:text-emerald-400 dark:border-emerald-900/20' 
-                              : 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/10 dark:text-rose-400 dark:border-rose-900/20'
+                          <span className="font-semibold text-zinc-700">Page Title</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                            report.seo.titleMatches ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
                           }`}>
                             {report.seo.titleMatches ? 'Match' : 'Mismatch'}
                           </span>
                         </div>
-                        <div className="space-y-1.5 text-xs">
-                          <div>
-                            <span className="text-[10px] font-semibold text-slate-400 block">Expected Title:</span>
-                            <span className="font-semibold text-slate-700 dark:text-slate-300">{report.seo.expectedTitle || '(Empty)'}</span>
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-semibold text-slate-400 block">Actual Title:</span>
-                            <span className="font-semibold text-slate-700 dark:text-slate-300 font-mono break-all bg-slate-50 dark:bg-elegant-bg px-1.5 py-0.5 rounded border border-slate-150 dark:border-elegant-border/50 block mt-0.5">
-                              {report.seo.actualTitle || '(None found)'}
-                            </span>
-                          </div>
-                          {report.seo.titleDifference && (
-                            <div className="pt-1.5 border-t border-slate-100 dark:border-elegant-border/50">
-                              <span className="text-[10px] font-semibold text-rose-400 block">Discrepancy:</span>
-                              <span className="text-slate-500 dark:text-slate-400 leading-relaxed block text-[11px]">{report.seo.titleDifference}</span>
-                            </div>
-                          )}
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block">Expected:</span>
+                          <span className="font-medium text-zinc-800">{report.seo.expectedTitle || '(Empty)'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block">Actual:</span>
+                          <span className="font-mono text-zinc-800 bg-zinc-50 p-1 rounded border border-zinc-200 block text-[11px] break-all">
+                            {report.seo.actualTitle || '(None)'}
+                          </span>
                         </div>
                       </div>
 
-                      {/* Meta Description Match */}
-                      <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-xl p-4 space-y-3">
+                      <div className="bg-white border border-zinc-200 rounded-xl p-4 space-y-2 text-xs">
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Meta Description</span>
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
-                            report.seo.descriptionMatches 
-                              ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/10 dark:text-emerald-400 dark:border-emerald-900/20' 
-                              : 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/10 dark:text-rose-400 dark:border-rose-900/20'
+                          <span className="font-semibold text-zinc-700">Meta Description</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                            report.seo.descriptionMatches ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
                           }`}>
                             {report.seo.descriptionMatches ? 'Match' : 'Mismatch'}
                           </span>
                         </div>
-                        <div className="space-y-1.5 text-xs">
-                          <div>
-                            <span className="text-[10px] font-semibold text-slate-400 block">Expected Meta Description:</span>
-                            <span className="font-semibold text-slate-700 dark:text-slate-300 block leading-normal">{report.seo.expectedDescription || '(Empty)'}</span>
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-semibold text-slate-400 block">Actual Meta Description:</span>
-                            <span className="font-semibold text-slate-700 dark:text-slate-300 font-mono text-[11px] leading-normal bg-slate-50 dark:bg-elegant-bg p-1.5 rounded border border-slate-150 dark:border-elegant-border/50 block mt-0.5">
-                              {report.seo.actualDescription || '(None found)'}
-                            </span>
-                          </div>
-                          {report.seo.descriptionDifference && (
-                            <div className="pt-1.5 border-t border-slate-100 dark:border-elegant-border/50">
-                              <span className="text-[10px] font-semibold text-rose-400 block">Discrepancy:</span>
-                              <span className="text-slate-500 dark:text-slate-400 leading-relaxed block text-[11px]">{report.seo.descriptionDifference}</span>
-                            </div>
-                          )}
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block">Expected:</span>
+                          <span className="font-medium text-zinc-800">{report.seo.expectedDescription || '(Empty)'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block">Actual:</span>
+                          <span className="font-mono text-zinc-800 bg-zinc-50 p-1 rounded border border-zinc-200 block text-[11px] break-all">
+                            {report.seo.actualDescription || '(None)'}
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Meta SEO Overview */}
-                    <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-xl p-4 text-xs space-y-2">
-                      <h5 className="font-bold text-slate-800 dark:text-slate-300">Auditor SEO Assessment</h5>
-                      <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                    <div className="bg-white border border-zinc-200 rounded-xl p-4 text-xs space-y-1">
+                      <h5 className="font-semibold text-zinc-900">SEO Assessment</h5>
+                      <p className="text-zinc-600 leading-relaxed font-normal">
                         {report.seo.analysis}
                       </p>
                     </div>
                   </div>
                 )}
 
-                {/* 4.2 HEADINGS MATCH TAB */}
+                {/* HEADINGS MATCH TAB */}
                 {activeTab === 'headings' && (
-                  <div className="space-y-4 animate-fade-in">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
                         Heading Structure Assessment
                       </h4>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusColor(report.headings.status)}`}>
-                        Headings status: {report.headings.status.toUpperCase()}
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusColor(report.headings.status)}`}>
+                        {report.headings.status.toUpperCase()}
                       </span>
                     </div>
 
-                    {/* Heading Matches Table / List */}
-                    <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-xl overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs">
-                          <thead className="bg-slate-50 dark:bg-elegant-bg text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-elegant-border font-bold">
-                            <tr>
-                              <th className="px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider">Level</th>
-                              <th className="px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider">Expected Text (Doc)</th>
-                              <th className="px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider">Actual Text (Live URL)</th>
-                              <th className="px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider">Status</th>
+                    <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-zinc-50 text-zinc-500 border-b border-zinc-200 font-semibold">
+                          <tr>
+                            <th className="px-3 py-2 text-[10px] uppercase">Level</th>
+                            <th className="px-3 py-2 text-[10px] uppercase">Expected</th>
+                            <th className="px-3 py-2 text-[10px] uppercase">Actual</th>
+                            <th className="px-3 py-2 text-[10px] uppercase">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100 text-zinc-800">
+                          {report.headings.matches.map((heading, index) => (
+                            <tr key={index} className="hover:bg-zinc-50/50">
+                              <td className="px-3 py-2 font-mono">
+                                <span className="bg-zinc-100 text-zinc-800 border border-zinc-200 px-1.5 py-0.5 rounded text-[10px] font-semibold">
+                                  {heading.level.toUpperCase()}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 font-medium">{heading.expectedText || <span className="text-zinc-400 italic">(None)</span>}</td>
+                              <td className="px-3 py-2 font-medium">{heading.actualText || <span className="text-rose-600 font-medium">Missing</span>}</td>
+                              <td className="px-3 py-2">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                                  heading.status === 'match' 
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                                    : heading.status === 'partial' 
+                                      ? 'bg-amber-50 text-amber-700 border-amber-200' 
+                                      : 'bg-rose-50 text-rose-700 border-rose-200'
+                                }`}>
+                                  {heading.status.toUpperCase()}
+                                </span>
+                              </td>
                             </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 dark:divide-elegant-border/50 text-slate-650 dark:text-slate-350">
-                            {report.headings.matches.map((heading, index) => (
-                              <React.Fragment key={index}>
-                                <tr className="hover:bg-slate-50/40 dark:hover:bg-elegant-bg/10">
-                                  <td className="px-4 py-3.5 font-mono">
-                                    <span className="bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/30 px-2 py-0.5 rounded text-[10px] font-bold">
-                                      {heading.level.toUpperCase()}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-3.5 font-semibold leading-relaxed">{heading.expectedText || <span className="text-slate-400 font-normal italic">(None expected)</span>}</td>
-                                  <td className="px-4 py-3.5 font-semibold leading-relaxed">{heading.actualText || <span className="text-rose-500 font-bold bg-rose-50 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/20 px-1.5 py-0.5 rounded text-[10px] italic">Missing</span>}</td>
-                                  <td className="px-4 py-3.5 font-bold">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] inline-flex border ${
-                                      heading.status === 'match' 
-                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/15 dark:text-emerald-400 dark:border-emerald-900/30' 
-                                        : heading.status === 'partial' 
-                                          ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/15 dark:text-amber-400 dark:border-amber-900/30' 
-                                          : 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/15 dark:text-rose-400 dark:border-rose-900/30'
-                                    }`}>
-                                      {heading.status.toUpperCase()}
-                                    </span>
-                                  </td>
-                                </tr>
-                                {heading.comment && (
-                                  <tr className="bg-slate-50/20 dark:bg-elegant-bg/5">
-                                    <td colSpan={4} className="px-4 py-2 border-b border-slate-100 dark:border-elegant-border/30 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                                      <span className="font-bold text-slate-455">Auditor's Note:</span> {heading.comment}
-                                    </td>
-                                  </tr>
-                                )}
-                              </React.Fragment>
-                            ))}
-                            {report.headings.matches.length === 0 && (
-                              <tr>
-                                <td colSpan={4} className="text-center py-6 text-slate-400 italic">No headings identified during comparative check.</td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
 
-                    {/* Heading Analysis Summary */}
-                    <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-xl p-4 text-xs space-y-2">
-                      <h5 className="font-bold text-slate-800 dark:text-slate-300">Auditor Heading Compliance Breakdown</h5>
-                      <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                    <div className="bg-white border border-zinc-200 rounded-xl p-4 text-xs space-y-1">
+                      <h5 className="font-semibold text-zinc-900">Heading Assessment</h5>
+                      <p className="text-zinc-600 leading-relaxed font-normal">
                         {report.headings.analysis}
                       </p>
                     </div>
                   </div>
                 )}
 
-                {/* 4.3 BODY COPY DISCREPANCIES TAB */}
+                {/* BODY COPY DISCREPANCIES TAB */}
                 {activeTab === 'body' && (
-                  <div className="space-y-4 animate-fade-in">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                        Website Copy Match Report
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                        Website Copy Match
                       </h4>
-                      <div className="flex gap-2 text-[10px] font-bold">
+                      <div className="flex gap-2 text-[10px] font-medium">
                         <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded">Matches: {report.bodyContent.matchesCount}</span>
                         <span className="bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded">Discrepancies: {report.bodyContent.mismatchesCount}</span>
                       </div>
                     </div>
 
-                    {/* Discrepancies listing */}
                     <div className="space-y-3">
                       {report.bodyContent.mismatches.map((mismatch, index) => (
-                        <div key={index} className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-xl p-4 text-xs space-y-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-elegant-border/30 pb-2.5">
-                            <span className="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide text-[10px] flex items-center gap-1.5">
-                              <Layers className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                        <div key={index} className="bg-white border border-zinc-200 rounded-xl p-4 text-xs space-y-2">
+                          <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
+                            <span className="font-semibold text-zinc-900 flex items-center gap-1.5">
+                              <Layers className="h-3.5 w-3.5 text-zinc-500" />
                               <span>Category: {mismatch.category}</span>
                             </span>
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
                               mismatch.severity === 'high'
-                                ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400'
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
                                 : mismatch.severity === 'medium'
-                                  ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400'
-                                  : 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/20 dark:text-indigo-400'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : 'bg-zinc-100 text-zinc-700 border-zinc-200'
                             }`}>
                               Severity: {mismatch.severity.toUpperCase()}
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                            <div className="space-y-1">
-                              <span className="text-[10px] font-semibold text-slate-400 block uppercase">Expected Text (Doc specification)</span>
-                              <p className="font-semibold text-slate-700 dark:text-slate-300 leading-normal font-sans bg-slate-50 dark:bg-elegant-bg/30 px-2 py-1.5 rounded border border-slate-100 dark:border-elegant-border/30">
-                                {mismatch.expected || <span className="text-slate-400 italic font-normal">(None specified)</span>}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                            <div>
+                              <span className="text-[10px] text-zinc-400 block uppercase font-medium">Expected:</span>
+                              <p className="font-medium text-zinc-800 bg-zinc-50 p-2 rounded border border-zinc-100">
+                                {mismatch.expected || <span className="text-zinc-400 italic">(None)</span>}
                               </p>
                             </div>
-                            <div className="space-y-1">
-                              <span className="text-[10px] font-semibold text-rose-400 block uppercase">Actual Text (Live on page)</span>
-                              <p className="font-semibold text-slate-700 dark:text-slate-300 leading-normal font-sans bg-rose-50/10 dark:bg-rose-950/5 px-2 py-1.5 rounded border border-rose-100/30 dark:border-rose-900/10">
-                                {mismatch.actual || <span className="text-rose-500 italic font-bold">Omitted / Missing</span>}
+                            <div>
+                              <span className="text-[10px] text-rose-600 block uppercase font-medium">Actual:</span>
+                              <p className="font-medium text-zinc-800 bg-rose-50/20 p-2 rounded border border-rose-100">
+                                {mismatch.actual || <span className="text-rose-600 italic">Missing</span>}
                               </p>
                             </div>
                           </div>
 
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed bg-slate-50/50 dark:bg-elegant-bg/10 p-2.5 rounded border border-slate-150 dark:border-elegant-border/30">
-                            <span className="font-bold text-slate-455">Analysis:</span> {mismatch.comment}
+                          <p className="text-[11px] text-zinc-500 pt-1">
+                            <strong className="text-zinc-700">Analysis:</strong> {mismatch.comment}
                           </p>
                         </div>
                       ))}
 
                       {report.bodyContent.mismatches.length === 0 && (
-                        <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-xl p-8 text-center text-slate-400 italic">
-                          Perfect match! No textual copy discrepancies found between reference document and target URL.
+                        <div className="bg-white border border-zinc-200 rounded-xl p-6 text-center text-zinc-400 italic text-xs">
+                          No text copy discrepancies found.
                         </div>
                       )}
-                    </div>
-
-                    {/* Copy overall assessment */}
-                    <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-xl p-4 text-xs space-y-2">
-                      <h5 className="font-bold text-slate-800 dark:text-slate-300">Auditor Copy Compliance Assessment</h5>
-                      <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                        {report.bodyContent.analysis}
-                      </p>
                     </div>
                   </div>
                 )}
 
-                {/* 4.4 ACTIONABLE RECOMMENDATIONS TAB */}
+                {/* ACTIONABLE RECOMMENDATIONS TAB */}
                 {activeTab === 'recommendations' && (
-                  <div className="space-y-4 animate-fade-in">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Step-by-Step Action Plan
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                      Action Plan
                     </h4>
 
-                    {/* Recommendations Checklist */}
-                    <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-xl p-5 shadow-xs space-y-4">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                        Implement the following recommended content corrections to achieve 100% SEO, Meta, and Heading compliance on your target webpage:
-                      </p>
-
-                      <div className="space-y-3">
+                    <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs space-y-3">
+                      <div className="space-y-2">
                         {report.recommendations.map((recommendation, i) => (
-                          <div key={i} className="flex gap-3 text-xs items-start font-medium leading-normal hover:bg-slate-50/40 dark:hover:bg-elegant-bg/5 p-2 rounded-lg transition-colors">
-                            <div className="h-4.5 w-4.5 rounded border border-slate-300 dark:border-elegant-border flex items-center justify-center shrink-0 mt-0.5 text-slate-300 hover:text-indigo-500 transition-colors">
-                              <CheckSquare className="h-3.5 w-3.5 opacity-0 hover:opacity-100 hover:text-indigo-600 cursor-pointer" />
-                            </div>
-                            <span className="text-slate-650 dark:text-slate-350">{recommendation}</span>
+                          <div key={i} className="flex gap-2.5 text-xs items-start font-medium text-zinc-800">
+                            <CheckSquare className="h-4 w-4 text-zinc-400 shrink-0 mt-0.5" />
+                            <span>{recommendation}</span>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    {/* Action Tools and Share buttons */}
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={handleCopyReport}
-                        className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white dark:bg-elegant-card dark:border-elegant-border hover:bg-slate-50 dark:hover:bg-elegant-card-hover text-xs font-bold text-slate-750 dark:text-slate-300 flex items-center gap-2 shadow-xs cursor-pointer"
+                        className="px-3 py-1.5 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-900 flex items-center gap-1.5 shadow-xs cursor-pointer"
                       >
-                        {copied ? <Check className="h-4 w-4 text-emerald-500 animate-bounce" /> : <Copy className="h-4 w-4 text-indigo-500" />}
-                        <span>{copied ? 'Copied Assessment!' : 'Copy Full Audit Report'}</span>
+                        {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-zinc-700" />}
+                        <span>{copied ? 'Copied!' : 'Copy Assessment'}</span>
                       </button>
 
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white dark:bg-elegant-card dark:border-elegant-border hover:bg-slate-50 dark:hover:bg-elegant-card-hover text-xs font-bold text-slate-750 dark:text-slate-300 flex items-center gap-2 shadow-xs"
-                      >
-                        <ArrowUpRight className="h-4 w-4 text-slate-400" />
-                        <span>Visit Target Webpage</span>
-                      </a>
+                      {inputType === 'url' && url && (
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-900 flex items-center gap-1.5 shadow-xs"
+                        >
+                          <ArrowUpRight className="h-3.5 w-3.5 text-zinc-500" />
+                          <span>Visit Target Webpage</span>
+                        </a>
+                      )}
                     </div>
                   </div>
                 )}

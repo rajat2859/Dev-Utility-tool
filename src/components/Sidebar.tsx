@@ -1,12 +1,11 @@
 import React from 'react';
-import { LayoutDashboard, FileImage, Paintbrush, Key, Sun, Moon, Terminal, X, Menu, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, FileImage, Paintbrush, Key, X, Menu, ShieldCheck, Wrench, Zap, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface SidebarProps {
   currentView: string;
   onSelectView: (view: string) => void;
   favorites: string[];
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
   isOpen: boolean;
   onToggleOpen: () => void;
 }
@@ -14,66 +13,75 @@ interface SidebarProps {
 export default function Sidebar({
   currentView,
   onSelectView,
-  theme,
-  onToggleTheme,
   isOpen,
   onToggleOpen,
 }: SidebarProps) {
   const menuItems = [
     { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
-    { id: 'image', name: 'Image Converter', icon: FileImage },
-    { id: 'gradient', name: 'Gradient Generator', icon: Paintbrush },
-    { id: 'password', name: 'Password Generator', icon: Key },
-    { id: 'content-checker', name: 'Content Checker', icon: ShieldCheck },
+    { id: 'content-checker', name: 'SEO & Copy Auditor', icon: ShieldCheck, badge: 'AI', badgeColor: 'bg-indigo-100 text-indigo-700' },
+    { id: 'image', name: 'Image Converter', icon: FileImage, badgeColor: 'bg-emerald-100 text-emerald-700' },
+    { id: 'gradient', name: 'Gradient Studio', icon: Paintbrush, badgeColor: 'bg-fuchsia-100 text-fuchsia-700' },
+    { id: 'password', name: 'Password Generator', icon: Key, badgeColor: 'bg-amber-100 text-amber-800' },
   ];
 
   return (
     <>
       {/* Mobile top bar trigger */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-elegant-bg border-b border-slate-200 dark:border-elegant-border px-4 flex items-center justify-between z-30">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-extrabold text-sm shadow-md">
-            U
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 flex items-center justify-between z-30">
+        <div className="flex items-center gap-2.5">
+          <div className="h-7 w-7 bg-indigo-600 rounded-md flex items-center justify-center text-white font-bold text-xs shadow-xs">
+            <Wrench className="h-4 w-4" />
           </div>
-          <span className="font-extrabold text-sm tracking-tight text-slate-850 dark:text-neutral-100">Utility Hub</span>
+          <span className="font-semibold text-sm tracking-tight text-slate-900">Utility Tool Manager</span>
         </div>
         <button
           onClick={onToggleOpen}
-          className="p-2 rounded-lg border border-slate-200 dark:border-elegant-border text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-elegant-card-hover cursor-pointer"
+          className="p-1.5 rounded-md border border-slate-200 text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
         >
-          {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {isOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
         </button>
       </div>
 
       {/* Sidebar background overlay for mobile */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 md:hidden"
-          onClick={onToggleOpen}
-        />
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
+            className="fixed inset-0 bg-slate-950/25 backdrop-blur-xs z-40 md:hidden"
+            onClick={onToggleOpen}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Sidebar container */}
       <aside
-        className={`fixed inset-y-0 left-0 w-64 bg-white dark:bg-elegant-bg border-r border-slate-200/80 dark:border-elegant-border flex flex-col z-50 transition-transform duration-300 transform md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 w-64 bg-slate-900 text-slate-100 border-r border-slate-800 flex flex-col z-50 transition-transform duration-200 ease-in-out md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Header */}
-        <div className="h-16 px-6 border-b border-slate-200/80 dark:border-elegant-border flex items-center gap-3">
-          <div className="h-9 w-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-md shadow-indigo-600/30">
-            U
+        <div className="h-14 px-5 border-b border-slate-800 flex items-center gap-3 bg-slate-950/60">
+          <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm relative overflow-hidden group">
+            <Wrench className="h-4 w-4 text-white" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-violet-500 opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
-          <div>
-            <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-neutral-100 block">Utility Hub</span>
-            <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider block">Development suite</span>
+          <div className="min-w-0 flex-1">
+            <span className="font-semibold text-sm tracking-tight text-white block leading-tight truncate">
+              Utility Tool Manager
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium tracking-wide block">
+              Developer Suite & AI Audit
+            </span>
           </div>
         </div>
 
         {/* Navigation items */}
-        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-3 block mb-2">
-            Navigation
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-2.5 block mb-2">
+            Main Workspace
           </span>
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -85,37 +93,46 @@ export default function Sidebar({
                   onSelectView(item.id);
                   if (isOpen) onToggleOpen();
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 cursor-pointer ${
+                className={`relative w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer group ${
                   isActive
-                    ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/30'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-elegant-card-hover hover:text-slate-900 dark:hover:text-neutral-100 border border-transparent'
+                    ? 'text-white font-semibold'
+                    : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-100'
                 }`}
               >
-                <Icon className={`h-4 w-4 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`} />
-                <span>{item.name}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="activeSidebarPill"
+                    className="absolute inset-0 bg-indigo-600 rounded-lg shadow-sm"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <div className="relative z-10 flex items-center gap-2.5 min-w-0">
+                  <Icon className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                  <span className="truncate">{item.name}</span>
+                </div>
+
+                {item.badge && (
+                  <span className={`relative z-10 text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                    isActive ? 'bg-indigo-800 text-indigo-100 border border-indigo-700' : 'bg-slate-800 text-indigo-300'
+                  }`}>
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}
         </nav>
 
         {/* Footer actions */}
-        <div className="p-4 border-t border-slate-200/85 dark:border-elegant-border space-y-3">
-          <button
-            onClick={onToggleTheme}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-slate-200/80 dark:border-elegant-border text-sm font-medium text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-elegant-card-hover cursor-pointer transition-colors"
-          >
-            <span className="flex items-center gap-2.5">
-              {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4 text-indigo-600" />}
-              <span>Theme Preference</span>
+        <div className="p-3 border-t border-slate-800 bg-slate-950/60">
+          <div className="px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700/80 text-[11px] text-slate-300 font-medium flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+              <span>Native Runtime Engine</span>
+            </div>
+            <span className="text-[10px] font-mono text-emerald-400 font-semibold bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-800">
+              Active
             </span>
-            <span className="text-[10px] font-bold uppercase text-slate-400 font-mono">
-              {theme}
-            </span>
-          </button>
-
-          <div className="px-3 py-2 rounded-xl bg-slate-50/50 dark:bg-slate-900/20 border border-slate-150 dark:border-elegant-border/50 text-[10px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-2">
-            <Terminal className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
-            <span>Pure Browser Runtime</span>
           </div>
         </div>
       </aside>

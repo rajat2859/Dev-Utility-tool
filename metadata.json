@@ -1,6 +1,6 @@
 {
   "name": "Utility Tool Manager",
-  "description": "A professional, offline-first bulk image format converter supporting high-speed in-browser conversions for WebP, JPEG, PNG, and SVG tracings with high-accuracy live size forecasts.",
+  "description": "An all-in-one developer & designer workspace featuring AI Content Copy & SEO Auditor, Bulk Image Converter, Gradient Studio, and Cryptographic Password Generator with lightning-fast performance.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

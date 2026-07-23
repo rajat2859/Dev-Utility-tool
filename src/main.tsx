@@ -5,29 +5,30 @@ import './index.css';
 
 // Gracefully intercept and suppress benign HMR WebSocket/Vite connection errors
 if (typeof window !== 'undefined') {
+  const isBenignWSError = (err: any): boolean => {
+    if (!err) return false;
+    const str = String(err?.message || err?.reason || err);
+    const targetStr = String(err?.target?.constructor?.name || '');
+    return (
+      str.includes('WebSocket') ||
+      str.includes('websocket') ||
+      str.includes('vite') ||
+      str.includes('closed without opened') ||
+      targetStr.includes('WebSocket')
+    );
+  };
+
   window.addEventListener('unhandledrejection', (event) => {
-    const reason = event.reason;
-    if (
-      reason &&
-      (reason.message?.includes('WebSocket') ||
-       reason.message?.includes('vite') ||
-       String(reason).includes('WebSocket') ||
-       String(reason).includes('vite'))
-    ) {
+    if (isBenignWSError(event.reason) || isBenignWSError(event)) {
       event.preventDefault();
-      event.stopPropagation();
+      event.stopImmediatePropagation();
     }
-  });
+  }, true);
 
   window.addEventListener('error', (event) => {
-    if (
-      event.message?.includes('WebSocket') ||
-      event.message?.includes('vite') ||
-      event.error?.message?.includes('WebSocket') ||
-      event.error?.message?.includes('vite')
-    ) {
+    if (isBenignWSError(event.error) || isBenignWSError(event.message) || isBenignWSError(event)) {
       event.preventDefault();
-      event.stopPropagation();
+      event.stopImmediatePropagation();
     }
   }, true);
 }

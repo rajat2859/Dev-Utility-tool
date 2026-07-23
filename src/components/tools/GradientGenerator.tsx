@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Copy, Check, RefreshCw, Sparkles, Plus, Trash2, ArrowRightLeft, LayoutGrid, FileDown, Layers, MoveRight, Paintbrush } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Copy, Check, RefreshCw, Plus, Trash2, ArrowRightLeft, LayoutGrid, FileDown, Layers, MoveRight, Paintbrush } from 'lucide-react';
 
 interface ColorStop {
   id: string;
@@ -190,40 +190,40 @@ export default function GradientGenerator() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fade-in text-slate-800 dark:text-slate-100">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start text-zinc-900">
       
       {/* Control Pane */}
-      <div className="lg:col-span-7 bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-3xl p-6 md:p-8 shadow-xs space-y-6">
+      <div className="lg:col-span-7 bg-white border border-zinc-200 rounded-xl p-6 shadow-xs space-y-6">
         
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-elegant-border/70 pb-5">
+        <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 rounded-xl">
-              <Paintbrush className="h-5 w-5" />
+            <div className="p-2 bg-zinc-100 text-zinc-900 rounded-md">
+              <Paintbrush className="h-4 w-4" />
             </div>
             <div>
-              <h1 className="text-xl font-extrabold tracking-tight">Gradient Studio</h1>
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Dynamic CSS Stop Synthesizer</p>
+              <h2 className="text-base font-semibold tracking-tight">Gradient Studio</h2>
+              <p className="text-xs text-zinc-500 font-medium">Dynamic CSS Color Synthesizer</p>
             </div>
           </div>
           
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <button
               onClick={handleRandomize}
-              className="p-2 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 rounded-xl hover:bg-slate-50 dark:hover:bg-elegant-bg cursor-pointer transition-all"
-              title="Randomize Harmonized Swatches"
+              className="p-1.5 text-zinc-500 hover:text-zinc-900 rounded-md hover:bg-zinc-100 cursor-pointer transition-colors"
+              title="Randomize Swatches"
             >
               <RefreshCw className="h-4 w-4" />
             </button>
             <button
               onClick={handleReverse}
-              className="p-2 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 rounded-xl hover:bg-slate-50 dark:hover:bg-elegant-bg cursor-pointer transition-all"
-              title="Reverse Stops Order"
+              className="p-1.5 text-zinc-500 hover:text-zinc-900 rounded-md hover:bg-zinc-100 cursor-pointer transition-colors"
+              title="Reverse Order"
             >
               <ArrowRightLeft className="h-4 w-4" />
             </button>
             <button
               onClick={handleDistributeEvenly}
-              className="p-2 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 rounded-xl hover:bg-slate-50 dark:hover:bg-elegant-bg cursor-pointer transition-all"
+              className="p-1.5 text-zinc-500 hover:text-zinc-900 rounded-md hover:bg-zinc-100 cursor-pointer transition-colors"
               title="Distribute Evenly"
             >
               <LayoutGrid className="h-4 w-4" />
@@ -232,18 +232,18 @@ export default function GradientGenerator() {
         </div>
 
         {/* Configuration sliders */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="text-xs font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Gradient Direction Mode</label>
-            <div className="grid grid-cols-3 gap-1 bg-slate-50 dark:bg-elegant-bg p-1 rounded-xl border border-slate-150 dark:border-elegant-border/80">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-zinc-500 block">Gradient Direction</label>
+            <div className="grid grid-cols-3 gap-1 bg-zinc-100 p-1 rounded-md border border-zinc-200">
               {(['linear', 'radial', 'conic'] as const).map(type => (
                 <button
                   key={type}
                   onClick={() => setGradientType(type)}
-                  className={`py-1.5 text-xs font-bold rounded-lg capitalize cursor-pointer transition-all ${
+                  className={`py-1 text-xs font-medium rounded capitalize cursor-pointer transition-all ${
                     gradientType === type
-                      ? 'bg-white dark:bg-elegant-card shadow-sm text-indigo-600 dark:text-indigo-400 border border-slate-200/50 dark:border-elegant-border/30'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                      ? 'bg-white shadow-xs text-zinc-900 font-semibold'
+                      : 'text-zinc-500 hover:text-zinc-900'
                   }`}
                 >
                   {type}
@@ -252,31 +252,31 @@ export default function GradientGenerator() {
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {gradientType === 'linear' || gradientType === 'conic' ? (
               <>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Rotation Angle</label>
-                  <span className="text-xs font-mono font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 px-2 py-0.5 rounded-md border border-indigo-100/50 dark:border-indigo-950/30">
+                  <label className="text-xs font-medium text-zinc-500 block">Rotation Angle</label>
+                  <span className="text-xs font-mono font-semibold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200">
                     {angle}°
                   </span>
                 </div>
-                <div className="flex gap-4 items-center">
+                <div className="flex gap-4 items-center pt-1">
                   <input
                     type="range"
                     min={0}
                     max={360}
                     value={angle}
                     onChange={(e) => setAngle(Number(e.target.value))}
-                    className="w-full accent-indigo-550 h-1.5 bg-slate-100 dark:bg-elegant-bg rounded-lg cursor-pointer"
+                    className="w-full accent-zinc-900 h-1.5 bg-zinc-100 rounded-lg cursor-pointer"
                   />
                 </div>
               </>
             ) : (
               <>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Position Origin</label>
-                  <span className="text-xs font-mono font-extrabold text-indigo-600 dark:text-indigo-400 capitalize bg-indigo-50/50 dark:bg-indigo-950/20 px-2 py-0.5 rounded-md border border-indigo-100/50 dark:border-indigo-950/30">
+                  <label className="text-xs font-medium text-zinc-500 block">Position Origin</label>
+                  <span className="text-xs font-mono font-semibold text-zinc-900 capitalize bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200">
                     {radialShape}
                   </span>
                 </div>
@@ -284,7 +284,7 @@ export default function GradientGenerator() {
                   <select
                     value={radialShape}
                     onChange={(e) => setRadialShape(e.target.value as any)}
-                    className="text-xs font-semibold rounded-xl border border-slate-200 bg-white dark:bg-elegant-bg dark:border-elegant-border px-3 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none"
+                    className="text-xs font-medium rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-zinc-900 focus:ring-1 focus:ring-zinc-950 shadow-xs"
                   >
                     <option value="circle">Circle</option>
                     <option value="ellipse">Ellipse</option>
@@ -292,7 +292,7 @@ export default function GradientGenerator() {
                   <select
                     value={radialPosition}
                     onChange={(e) => setRadialPosition(e.target.value)}
-                    className="text-xs font-semibold rounded-xl border border-slate-200 bg-white dark:bg-elegant-bg dark:border-elegant-border px-3 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none"
+                    className="text-xs font-medium rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-zinc-900 focus:ring-1 focus:ring-zinc-950 shadow-xs"
                   >
                     <option value="center">Center</option>
                     <option value="top">Top</option>
@@ -309,23 +309,23 @@ export default function GradientGenerator() {
         </div>
 
         {/* Unified timeline stops visualizer & active slider */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest">
-              Stops Array & Density Config
+            <span className="text-xs font-medium text-zinc-500">
+              Color Stops Timeline
             </span>
             <button
               onClick={handleAddStop}
-              className="flex items-center gap-1 text-[10px] bg-indigo-550 hover:bg-indigo-650 text-white font-extrabold px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-50 font-medium px-2.5 py-1 rounded-md shadow-xs transition-colors cursor-pointer"
             >
               <Plus className="h-3 w-3" />
               <span>Add Stop</span>
             </button>
           </div>
 
-          <div className="relative h-10 flex items-center bg-slate-50/60 dark:bg-slate-900/40 rounded-xl px-4 border border-slate-150 dark:border-elegant-border/50">
+          <div className="relative h-10 flex items-center bg-zinc-50 rounded-lg px-4 border border-zinc-200">
             <div 
-              className="absolute left-4 right-4 h-3.5 rounded-full shadow-inner border border-slate-200/50 dark:border-slate-800"
+              className="absolute left-4 right-4 h-3.5 rounded-md border border-zinc-200"
               style={{
                 backgroundImage: `linear-gradient(90deg, ${sortedStops.map(s => `${s.color} ${s.stop}%`).join(', ')})`
               }}
@@ -335,7 +335,7 @@ export default function GradientGenerator() {
                 key={s.id}
                 onClick={() => setSelectedStopId(s.id)}
                 className={`absolute w-5 h-5 rounded-full border-2 transform -translate-x-1/2 shadow-xs cursor-pointer active:scale-110 transition-transform ${
-                  selectedStopId === s.id ? 'border-indigo-600 scale-120 z-10' : 'border-white dark:border-slate-800'
+                  selectedStopId === s.id ? 'border-zinc-900 scale-125 z-10' : 'border-white'
                 }`}
                 style={{
                   left: `calc(1rem + ${s.stop}% * (100% - 2rem) / 100)`,
@@ -356,27 +356,24 @@ export default function GradientGenerator() {
           ];
           
           return (
-            <div className="p-5 bg-slate-50 dark:bg-slate-900/40 border border-slate-150 dark:border-elegant-border rounded-2xl space-y-5 animate-fade-in">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-elegant-border/30 pb-3">
+            <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-lg space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200/60 pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="h-5 w-5 bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-md flex items-center justify-center">
+                  <div className="h-5 w-5 bg-zinc-200 text-zinc-900 rounded flex items-center justify-center">
                     <Paintbrush className="h-3 w-3" />
                   </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-800 dark:text-neutral-100">Stop Modifier</h3>
-                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Configure Gradient Node</p>
-                  </div>
+                  <h3 className="text-xs font-semibold text-zinc-900">Stop Modifier</h3>
                 </div>
 
-                <div className="flex items-center gap-2 self-start sm:self-auto">
-                  <span className="text-[10px] bg-slate-100 dark:bg-elegant-bg px-2.5 py-1 rounded-md text-slate-500 dark:text-slate-405 font-mono font-bold border border-slate-200/50 dark:border-elegant-border/30">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs bg-white px-2 py-0.5 rounded text-zinc-600 font-mono border border-zinc-200">
                     Active Stop ({activeStop.stop}%)
                   </span>
                   
                   <button
                     onClick={() => handleRemoveStop(activeStop.id)}
                     disabled={stops.length <= 2}
-                    className="p-1 px-2 border border-slate-200 hover:border-red-500 dark:border-elegant-border text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/25 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all text-[10px] font-bold flex items-center gap-1"
+                    className="p-1 px-2 border border-zinc-200 hover:border-rose-500 text-zinc-600 hover:text-rose-600 rounded bg-white hover:bg-rose-50 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all text-xs font-medium flex items-center gap-1"
                     title="Remove Selected Stop"
                   >
                     <Trash2 className="h-3 w-3" />
@@ -385,105 +382,90 @@ export default function GradientGenerator() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
                 
                 {/* Palette Selector & Manual Input */}
-                <div className="md:col-span-7 space-y-3.5">
+                <div className="md:col-span-7 space-y-3">
                   <div className="flex items-center gap-3">
-                    {/* Native Picker Wrapper */}
-                    <div className="relative group shrink-0">
-                      <div className="absolute inset-0 rounded-xl bg-slate-200 dark:bg-slate-800 opacity-20 group-hover:scale-105 transition-transform" />
-                      {/* Checkerboard bg underneath */}
-                      <div className="w-12 h-12 rounded-xl bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:8px_8px] border border-slate-200 dark:border-elegant-border flex items-center justify-center overflow-hidden shadow-xs cursor-pointer">
+                    <div className="relative shrink-0">
+                      <div className="w-10 h-10 rounded-md border border-zinc-200 flex items-center justify-center overflow-hidden shadow-xs cursor-pointer bg-white">
                         <input
                           type="color"
                           value={activeStop.color}
                           onChange={(e) => handleUpdateColor(activeStop.id, e.target.value)}
                           className="absolute inset-0 w-[200%] h-[200%] -translate-x-1/4 -translate-y-1/4 cursor-pointer opacity-0"
-                          id="color-picker-input"
                         />
-                        <div className="w-9 h-9 rounded-lg shadow-sm transition-transform group-hover:scale-105 pointer-events-none" style={{ backgroundColor: activeStop.color }} />
+                        <div className="w-7 h-7 rounded shadow-xs pointer-events-none" style={{ backgroundColor: activeStop.color }} />
                       </div>
                     </div>
 
-                    {/* Text Inputs */}
                     <div className="flex-1 min-w-0">
-                      <label htmlFor="stop-color-code" className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Color Value (Hex)</label>
+                      <label className="text-[11px] font-medium text-zinc-500 block mb-1">Color Value (Hex)</label>
                       <div className="relative flex items-center">
-                        <span className="absolute left-3 text-xs font-mono font-bold text-slate-400 dark:text-slate-500">#</span>
+                        <span className="absolute left-2.5 text-xs font-mono font-medium text-zinc-400">#</span>
                         <input
-                          id="stop-color-code"
                           type="text"
                           value={activeStop.color.replace('#', '').toUpperCase()}
                           onChange={(e) => {
                             const val = e.target.value;
-                            // Clean input to hex parts
                             const cleanHex = val.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6);
                             const updatedColor = '#' + cleanHex;
                             handleUpdateColor(activeStop.id, updatedColor.length >= 4 ? updatedColor : activeStop.color);
                           }}
-                          className="w-full pl-6 pr-3 py-1.5 text-xs font-mono font-bold text-slate-800 dark:text-neutral-100 bg-white dark:bg-elegant-bg border border-slate-200 dark:border-elegant-border rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none uppercase transition-all"
+                          className="w-full pl-6 pr-3 py-1 text-xs font-mono font-semibold text-zinc-900 bg-white border border-zinc-200 rounded-md focus:ring-1 focus:ring-zinc-950 outline-none uppercase shadow-xs"
                           placeholder="HEX"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Curated Swatches Grid */}
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest block mb-1.5">Trendy Designer Swatches</label>
-                    <div className="grid grid-cols-7 gap-1.5 p-1 bg-slate-100/50 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/60 rounded-xl">
+                    <label className="text-[11px] font-medium text-zinc-500 block mb-1">Preset Swatches</label>
+                    <div className="grid grid-cols-7 gap-1.5 p-1 bg-white border border-zinc-200 rounded-md">
                       {miniSwatches.map((color) => (
                         <button
                           key={color}
                           onClick={() => handleUpdateColor(activeStop.id, color)}
-                          className={`h-6 rounded-md hover:scale-110 active:scale-95 transition-all shadow-xs cursor-pointer border relative flex items-center justify-center ${
+                          className={`h-5 rounded hover:scale-105 active:scale-95 transition-all cursor-pointer border relative flex items-center justify-center ${
                             activeStop.color.toLowerCase() === color.toLowerCase()
-                              ? 'border-indigo-600 ring-2 ring-indigo-500/20 scale-105 z-10'
-                              : 'border-slate-200/40 dark:border-slate-800'
+                              ? 'border-zinc-900 ring-1 ring-zinc-950 z-10'
+                              : 'border-zinc-200'
                           }`}
                           style={{ backgroundColor: color }}
                           title={color}
-                        >
-                          {activeStop.color.toLowerCase() === color.toLowerCase() && (
-                            <div className="w-1.5 h-1.5 rounded-full bg-white mix-blend-difference" />
-                          )}
-                        </button>
+                        />
                       ))}
                     </div>
                   </div>
                 </div>
 
                 {/* Placement Node Positioning */}
-                <div className="md:col-span-5 space-y-3">
-                  <div className="flex justify-between text-[10px] font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest">
+                <div className="md:col-span-5 space-y-2.5">
+                  <div className="flex justify-between text-xs font-medium text-zinc-600">
                     <span>Node Position</span>
-                    <span className="font-mono bg-indigo-50 dark:bg-indigo-950/35 px-2 py-0.5 rounded-md text-indigo-600 dark:text-indigo-400">{activeStop.stop}%</span>
+                    <span className="font-mono bg-white px-2 py-0.5 rounded text-zinc-900 border border-zinc-200">{activeStop.stop}%</span>
                   </div>
                   
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={activeStop.stop}
-                      onChange={(e) => handleUpdateStopValue(activeStop.id, Number(e.target.value))}
-                      className="w-full accent-indigo-500 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg cursor-pointer"
-                    />
-                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={activeStop.stop}
+                    onChange={(e) => handleUpdateStopValue(activeStop.id, Number(e.target.value))}
+                    className="w-full accent-zinc-900 h-1.5 bg-zinc-200 rounded-lg cursor-pointer"
+                  />
 
-                  {/* Quick Snap Alignment Presets */}
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Snap Stop To Origin</span>
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-medium text-zinc-500 block">Snap Position</span>
                     <div className="grid grid-cols-5 gap-1">
                       {[0, 25, 50, 75, 100].map(pos => (
                         <button
                           key={pos}
                           onClick={() => handleUpdateStopValue(activeStop.id, pos)}
-                          className={`py-1 text-[10px] font-bold rounded-lg border cursor-pointer transition-all ${
+                          className={`py-0.5 text-xs font-medium rounded border cursor-pointer transition-all ${
                             activeStop.stop === pos
-                              ? 'bg-indigo-600 border-indigo-600 text-white shadow-xs'
-                              : 'bg-white dark:bg-elegant-bg border-slate-200 dark:border-elegant-border text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-elegant-card-hover hover:text-slate-900 dark:hover:text-slate-200'
+                              ? 'bg-zinc-900 border-zinc-900 text-zinc-50 shadow-xs'
+                              : 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-100'
                           }`}
                         >
                           {pos}%
@@ -499,38 +481,38 @@ export default function GradientGenerator() {
         })()}
 
         {/* CSS Code Outputs card */}
-        <div className="space-y-3 pt-2">
-          <label className="text-xs font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest block font-sans">
+        <div className="space-y-2 pt-1">
+          <label className="text-xs font-medium text-zinc-500 block">
             Code Output Exporters
           </label>
           <div className="space-y-2">
-            <div className="bg-slate-50 dark:bg-elegant-bg rounded-xl border border-slate-150 dark:border-elegant-border px-4 py-3 flex items-center justify-between gap-4">
+            <div className="bg-zinc-50 rounded-lg border border-zinc-200 px-3 py-2 flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 block uppercase tracking-wider">CSS Rule Format</span>
-                <code className="text-xs font-mono text-indigo-600 dark:text-indigo-400 select-all truncate block">
+                <span className="text-[10px] font-medium text-zinc-500 block uppercase">CSS Rule Format</span>
+                <code className="text-xs font-mono text-zinc-900 select-all truncate block">
                   background: {getGradientString()};
                 </code>
               </div>
               <button
                 onClick={() => copyToClipboard(`background: ${getGradientString()};`, 'css')}
-                className="p-2 bg-white dark:bg-elegant-card border border-slate-250 dark:border-elegant-border/80 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-elegant-bg-hover rounded-xl shadow-xs shrink-0 cursor-pointer transition-colors"
+                className="p-1.5 bg-white border border-zinc-200 text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 rounded-md shadow-xs shrink-0 cursor-pointer transition-colors"
               >
-                {copiedType === 'css' ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                {copiedType === 'css' ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
               </button>
             </div>
 
-            <div className="bg-slate-50 dark:bg-elegant-bg rounded-xl border border-slate-150 dark:border-elegant-border px-4 py-3 flex items-center justify-between gap-4">
+            <div className="bg-zinc-50 rounded-lg border border-zinc-200 px-3 py-2 flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 block uppercase tracking-wider">Tailwind CSS Format</span>
-                <code className="text-xs font-mono text-indigo-600 dark:text-indigo-400 select-all truncate block">
+                <span className="text-[10px] font-medium text-zinc-500 block uppercase">Tailwind CSS Format</span>
+                <code className="text-xs font-mono text-zinc-900 select-all truncate block">
                   {getTailwindArbitraryValue()}
                 </code>
               </div>
               <button
                 onClick={() => copyToClipboard(getTailwindArbitraryValue(), 'tailwind')}
-                className="p-2 bg-white dark:bg-elegant-card border border-slate-250 dark:border-elegant-border/80 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-elegant-bg-hover rounded-xl shadow-xs shrink-0 cursor-pointer transition-colors"
+                className="p-1.5 bg-white border border-zinc-200 text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 rounded-md shadow-xs shrink-0 cursor-pointer transition-colors"
               >
-                {copiedType === 'tailwind' ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                {copiedType === 'tailwind' ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
               </button>
             </div>
           </div>
@@ -542,20 +524,20 @@ export default function GradientGenerator() {
       <div className="lg:col-span-5 space-y-6">
         
         {/* Interactive Sandbox card */}
-        <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-3xl p-6 shadow-xs space-y-5">
+        <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest">
+            <span className="text-xs font-semibold text-zinc-900 uppercase tracking-wider">
               Live Preview Board
             </span>
-            <div className="flex items-center gap-1 bg-slate-50 dark:bg-elegant-bg p-1 rounded-lg border border-slate-150 dark:border-elegant-border/50">
+            <div className="flex items-center gap-1 bg-zinc-100 p-0.5 rounded-md border border-zinc-200">
               {(['full', 'card', 'text', 'button'] as const).map(style => (
                 <button
                   key={style}
                   onClick={() => setPreviewTemplate(style)}
-                  className={`px-2 py-1 text-[10px] font-extrabold rounded-md uppercase cursor-pointer transition-all ${
+                  className={`px-2 py-0.5 text-xs font-medium rounded capitalize cursor-pointer transition-all ${
                     previewTemplate === style
-                      ? 'bg-white dark:bg-elegant-card shadow-xs text-indigo-600 dark:text-indigo-400'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-neutral-200'
+                      ? 'bg-white shadow-xs text-zinc-900 font-semibold'
+                      : 'text-zinc-500 hover:text-zinc-900'
                   }`}
                 >
                   {style}
@@ -564,7 +546,7 @@ export default function GradientGenerator() {
             </div>
           </div>
 
-          <div className="relative h-64 w-full rounded-2xl overflow-hidden border border-slate-150 dark:border-elegant-border flex items-center justify-center bg-slate-100/50">
+          <div className="relative h-60 w-full rounded-lg overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-100">
             {previewTemplate === 'full' && (
               <div 
                 ref={previewRef}
@@ -574,28 +556,28 @@ export default function GradientGenerator() {
             )}
 
             {previewTemplate === 'card' && (
-              <div className="w-4/5 shadow-lg bg-neutral-900 overflow-hidden border border-neutral-800 rounded-2xl flex flex-col justify-between">
+              <div className="w-4/5 shadow-md bg-zinc-900 overflow-hidden border border-zinc-800 rounded-xl flex flex-col justify-between">
                 <div 
-                  className="h-28 w-full relative"
+                  className="h-24 w-full relative"
                   style={{ background: getGradientString() }}
                 />
-                <div className="p-4 space-y-1.5 flex flex-col justify-end">
-                  <div className="h-3 w-16 bg-neutral-800 rounded-md" />
-                  <div className="h-2 w-full bg-neutral-800/60 rounded-md" />
+                <div className="p-3 space-y-1 flex flex-col justify-end">
+                  <div className="h-2.5 w-16 bg-zinc-800 rounded" />
+                  <div className="h-2 w-full bg-zinc-800/60 rounded" />
                 </div>
               </div>
             )}
 
             {previewTemplate === 'text' && (
-              <div className="text-center p-6 select-none bg-slate-900 border border-slate-800/60 rounded-2xl w-full h-full flex flex-col items-center justify-center">
+              <div className="text-center p-6 select-none bg-zinc-900 border border-zinc-800 rounded-xl w-full h-full flex flex-col items-center justify-center">
                 <h1 
-                  className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent transform duration-150 hover:scale-105"
+                  className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent transform duration-150 hover:scale-105"
                   style={{ backgroundImage: getGradientString() }}
                 >
                   Spectacular Typography
                 </h1>
-                <p className="text-xs text-slate-500 font-mono font-semibold uppercase tracking-widest mt-2">
-                  Clipping gradient pattern
+                <p className="text-[11px] text-zinc-500 font-mono font-medium uppercase tracking-wider mt-2">
+                  Gradient text clip
                 </p>
               </div>
             )}
@@ -603,11 +585,11 @@ export default function GradientGenerator() {
             {previewTemplate === 'button' && (
               <div className="p-6 text-center">
                 <button 
-                  className="px-6 py-3 text-white font-extrabold text-sm rounded-xl tracking-tight shadow-md transition-transform active:scale-95 duration-100 hover:shadow-lg hover:brightness-105 flex items-center gap-2"
+                  className="px-5 py-2.5 text-white font-semibold text-xs rounded-md shadow-sm transition-transform active:scale-95 duration-100 hover:shadow flex items-center gap-2 cursor-pointer"
                   style={{ background: getGradientString() }}
                 >
-                  <span>Launcher Action</span>
-                  <MoveRight className="h-4 w-4" />
+                  <span>Action Button</span>
+                  <MoveRight className="h-3.5 w-3.5" />
                 </button>
               </div>
             )}
@@ -615,41 +597,41 @@ export default function GradientGenerator() {
 
           <button
             onClick={downloadAsPng}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-50 rounded-md text-xs font-medium shadow-xs transition-colors cursor-pointer"
           >
-            <FileDown className="h-4 w-4" />
-            <span>Produce & Export High-Res PNG (1080p)</span>
+            <FileDown className="h-3.5 w-3.5 text-zinc-300" />
+            <span>Export High-Res PNG (1080p)</span>
           </button>
         </div>
 
         {/* Color Palette Presets Catalog Card */}
-        <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-3xl p-6 shadow-xs space-y-4">
+        <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs space-y-3">
           <div className="flex items-center gap-1.5">
-            <Layers className="h-4.5 w-4.5 text-indigo-500" />
-            <span className="text-xs font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest">
-              Gradients Gallery
+            <Layers className="h-4 w-4 text-zinc-700" />
+            <span className="text-xs font-semibold text-zinc-900 uppercase tracking-wider">
+              Presets Gallery
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             {PRESETS.map((preset) => (
               <button
                 key={preset.name}
                 onClick={() => handleLoadPreset(preset)}
-                className="group relative p-3 border border-slate-150 dark:border-elegant-border rounded-2xl hover:border-indigo-400 dark:hover:border-indigo-900 bg-white dark:bg-elegant-bg cursor-pointer transition-all flex items-center gap-3 text-left shadow-xs"
+                className="group relative p-2.5 border border-zinc-200 rounded-lg hover:border-zinc-400 bg-white cursor-pointer transition-all flex items-center gap-2.5 text-left shadow-xs"
               >
                 <div 
-                  className="w-8 h-8 rounded-lg shrink-0"
+                  className="w-7 h-7 rounded shrink-0 border border-zinc-200"
                   style={{
                     backgroundImage: `linear-gradient(135deg, ${preset.colors.join(', ')})`
                   }}
                 />
                 <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-slate-800 dark:text-neutral-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  <h4 className="text-xs font-medium text-zinc-900 truncate group-hover:text-zinc-900">
                     {preset.name}
                   </h4>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 font-mono tracking-wider">
-                    {preset.colors.length} Color Swatches
+                  <span className="text-[10px] uppercase font-medium text-zinc-400 font-mono">
+                    {preset.colors.length} Colors
                   </span>
                 </div>
               </button>

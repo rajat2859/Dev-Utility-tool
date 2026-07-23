@@ -5,12 +5,12 @@ import ImageConverter from './components/tools/ImageConverter';
 import GradientGenerator from './components/tools/GradientGenerator';
 import PasswordGenerator from './components/tools/PasswordGenerator';
 import ContentChecker from './components/tools/ContentChecker';
-import { ArrowLeft, Share2, Sparkles, Terminal } from 'lucide-react';
+import { ArrowLeft, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
   const [activeView, setActiveView] = useState<string>('dashboard');
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -22,26 +22,9 @@ export default function App() {
         // Fallback
       }
     }
-
-    const savedTheme = localStorage.getItem('util_hub_theme');
-    let activeTheme: 'light' | 'dark' = 'light';
-    if (savedTheme === 'dark' || savedTheme === 'light') {
-      activeTheme = savedTheme;
-    } else {
-      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        activeTheme = 'dark';
-      }
-    }
-    setTheme(activeTheme);
-    document.documentElement.classList.toggle('dark', activeTheme === 'dark');
+    document.documentElement.classList.remove('dark');
+    localStorage.removeItem('util_hub_theme');
   }, []);
-
-  const handleToggleTheme = () => {
-    const nextTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(nextTheme);
-    localStorage.setItem('util_hub_theme', nextTheme);
-    document.documentElement.classList.toggle('dark', nextTheme === 'dark');
-  };
 
   const handleToggleFavorite = (toolId: string, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -84,57 +67,71 @@ export default function App() {
       case 'gradient':
         return 'Gradient Studio';
       case 'password':
-        return 'Cryptographic Password Generator';
+        return 'Cryptographic Key & Password Generator';
       case 'content-checker':
-        return 'Content Copy & SEO Checker';
+        return 'SEO & Copy Content Auditor (Gemini AI)';
       default:
-        return 'Developer Dashboard';
+        return 'Utility Tool Manager Workspace';
     }
   };
 
   return (
-    <div className={theme === 'dark' ? 'dark' : ''}>
-      <div className="min-h-screen bg-slate-50 dark:bg-elegant-bg text-slate-900 dark:text-neutral-200 transition-colors duration-200 font-sans flex">
-        
-        <Sidebar
-          currentView={activeView}
-          onSelectView={setActiveView}
-          favorites={favorites}
-          theme={theme}
-          onToggleTheme={handleToggleTheme}
-          isOpen={sidebarOpen}
-          onToggleOpen={() => setSidebarOpen(!sidebarOpen)}
-        />
+    <div className="min-h-screen bg-slate-50 text-slate-950 font-sans antialiased flex selection:bg-indigo-600 selection:text-white">
+      <Sidebar
+        currentView={activeView}
+        onSelectView={setActiveView}
+        favorites={favorites}
+        isOpen={sidebarOpen}
+        onToggleOpen={() => setSidebarOpen(!sidebarOpen)}
+      />
 
-        <div className="flex-1 md:pl-64 flex flex-col min-w-0 pt-16 md:pt-0">
-          
-          <header className="sticky top-0 z-20 h-16 bg-white/70 dark:bg-elegant-bg/75 backdrop-blur-md border-b border-slate-200/80 dark:border-elegant-border px-6 md:px-8 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {activeView !== 'dashboard' && (
-                <button
-                  onClick={() => setActiveView('dashboard')}
-                  className="flex items-center justify-center p-2 rounded-xl border border-slate-200 dark:border-elegant-border text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-elegant-card-hover cursor-pointer transition-colors"
-                >
-                  <ArrowLeft className="h-4.5 w-4.5" />
-                </button>
-              )}
-              <span className="font-extrabold text-base tracking-tight text-slate-850 dark:text-neutral-100">
-                {getToolTitle()}
-              </span>
-            </div>
-
+      <div className="flex-1 md:pl-64 flex flex-col min-w-0 pt-14 md:pt-0">
+        <header className="sticky top-0 z-20 h-14 bg-white/90 backdrop-blur-md border-b border-slate-200/90 px-6 md:px-8 flex items-center justify-between shadow-2xs">
+          <div className="flex items-center gap-3">
+            {activeView !== 'dashboard' && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveView('dashboard')}
+                className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-950 cursor-pointer transition-colors shadow-2xs"
+                title="Return to Dashboard"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </motion.button>
+            )}
             <div className="flex items-center gap-2">
-              <span className="hidden sm:inline-flex text-[10px] bg-slate-100 text-slate-650 dark:bg-elegant-card-hover dark:text-slate-400 border border-slate-200 dark:border-elegant-border px-2.5 py-1 rounded-md font-semibold items-center gap-1">
-                <Terminal className="h-3 w-3" />
-                In-Browser Native Sandbox
-              </span>
+              <span className="text-xs font-semibold text-slate-400 hidden sm:inline uppercase tracking-wider">Utility Tool Manager</span>
+              {activeView !== 'dashboard' && <span className="text-slate-300 hidden sm:inline">/</span>}
+              <h1 className="font-bold text-sm tracking-tight text-slate-900">
+                {getToolTitle()}
+              </h1>
             </div>
-          </header>
+          </div>
 
-          <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
-            {renderActiveTool()}
-          </main>
-        </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 px-2.5 py-1 rounded-md font-semibold items-center gap-1.5 shadow-2xs">
+              <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+              <span className="hidden sm:inline font-mono">Ultra Fast Runtime</span>
+              <span className="sm:hidden font-mono">Fast</span>
+            </span>
+          </div>
+        </header>
+
+        <main className="flex-1 p-5 md:p-8 max-w-7xl w-full mx-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeView}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.12, ease: 'easeOut' }}
+            >
+              {renderActiveTool()}
+            </motion.div>
+          </AnimatePresence>
+        </main>
       </div>
     </div>
   );

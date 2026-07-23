@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, Check, RefreshCw, Shield, Key, Eye, EyeOff, Sparkles, Clipboard, CheckCircle, List, ListPlus, History, Trash2 } from 'lucide-react';
+import { Copy, Check, RefreshCw, Key, Eye, EyeOff, Sparkles, ListPlus, History, Trash2 } from 'lucide-react';
 
 const WORDS_POOL = [
   'apple', 'banana', 'cherry', 'durian', 'elder', 'fig', 'grape', 'honey', 'iron', 'joker',
@@ -67,7 +67,6 @@ export default function PasswordGenerator() {
     if (useSymbols) allowedChars += symbolChars;
 
     if (excludeSimilar) {
-      // Exclude i, l, 1, o, 0, O
       allowedChars = allowedChars.replace(/[il1o0O]/g, '');
     }
 
@@ -77,7 +76,6 @@ export default function PasswordGenerator() {
     }
 
     let generated = '';
-    // Ensure at least one character from each selected set is included
     const mandatoryChars: string[] = [];
     if (useUppercase) {
       let pool = excludeSimilar ? uppercaseChars.replace(/[O]/g, '') : uppercaseChars;
@@ -104,7 +102,6 @@ export default function PasswordGenerator() {
       }
     }
 
-    // Shuffle the generated password
     const shuffled = generated.split('').sort(() => Math.random() - 0.5).join('');
     setPassword(shuffled);
     setHistory(prev => [shuffled, ...prev.slice(0, 19)]);
@@ -184,14 +181,13 @@ export default function PasswordGenerator() {
 
   // Strength check metrics
   const getPasswordStrength = (pass: string) => {
-    if (!pass) return { score: 0, label: 'None', color: 'bg-slate-200', text: 'text-slate-400' };
+    if (!pass) return { score: 0, label: 'None', color: 'bg-zinc-200', text: 'text-zinc-400' };
     
     let score = 0;
     if (pass.length >= 8) score += 1;
     if (pass.length >= 14) score += 1;
     if (pass.length >= 20) score += 1;
     
-    // Check entropy/diversity
     const hasUpper = /[A-Z]/.test(pass);
     const hasLower = /[a-z]/.test(pass);
     const hasNumbers = /[0-9]/.test(pass);
@@ -201,17 +197,17 @@ export default function PasswordGenerator() {
     score += Math.floor(diversityCount / 2);
 
     if (pass.length < 8) {
-      return { score: 1, label: 'Critical / Weak', color: 'bg-rose-500', text: 'text-rose-500' };
+      return { score: 1, label: 'Weak', color: 'bg-rose-500', text: 'text-rose-600' };
     }
 
     if (score <= 2) {
-      return { score: 2, label: 'Weak', color: 'bg-amber-500', text: 'text-amber-500' };
+      return { score: 2, label: 'Fair', color: 'bg-amber-500', text: 'text-amber-600' };
     } else if (score === 3) {
-      return { score: 3, label: 'Moderate', color: 'bg-yellow-500', text: 'text-yellow-500' };
+      return { score: 3, label: 'Good', color: 'bg-yellow-500', text: 'text-yellow-600' };
     } else if (score === 4) {
-      return { score: 4, label: 'Strong', color: 'bg-emerald-500', text: 'text-emerald-500' };
+      return { score: 4, label: 'Strong', color: 'bg-emerald-500', text: 'text-emerald-600' };
     } else {
-      return { score: 5, label: 'Military & Epic Shield', color: 'bg-indigo-600', text: 'text-indigo-600' };
+      return { score: 5, label: 'Very Strong', color: 'bg-zinc-900', text: 'text-zinc-900' };
     }
   };
 
@@ -225,31 +221,31 @@ export default function PasswordGenerator() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fade-in text-slate-800 dark:text-slate-100">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start text-zinc-900">
       
       {/* Control Configuration Panel */}
-      <div className="lg:col-span-7 bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-3xl p-6 md:p-8 shadow-xs space-y-6">
+      <div className="lg:col-span-7 bg-white border border-zinc-200 rounded-xl p-6 shadow-xs space-y-6">
         
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-elegant-border/70 pb-5">
+        <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 rounded-xl">
-              <Key className="h-5 w-5" />
+            <div className="p-2 bg-zinc-100 text-zinc-900 rounded-md">
+              <Key className="h-4 w-4" />
             </div>
             <div>
-              <h1 className="text-xl font-extrabold tracking-tight">Key Generator</h1>
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Secure Cryptographic Generator</p>
+              <h2 className="text-base font-semibold tracking-tight">Key Generator</h2>
+              <p className="text-xs text-zinc-500 font-medium">Secure Cryptographic Generator</p>
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-1 bg-slate-50 dark:bg-elegant-bg p-1 rounded-xl border border-slate-150 dark:border-elegant-border/80">
+          <div className="grid grid-cols-2 gap-1 bg-zinc-100 p-1 rounded-md border border-zinc-200/80">
             {(['random', 'passphrase'] as const).map(mode => (
               <button
                 key={mode}
                 onClick={() => setPasswordMode(mode)}
-                className={`px-3 py-1 text-[10px] uppercase font-bold rounded-lg cursor-pointer transition-all ${
+                className={`px-2.5 py-1 text-xs font-medium capitalize rounded transition-all cursor-pointer ${
                   passwordMode === mode
-                    ? 'bg-white dark:bg-elegant-card shadow-sm text-indigo-600 dark:text-indigo-400'
-                    : 'text-slate-500 dark:text-slate-400'
+                    ? 'bg-white shadow-xs text-zinc-900 font-semibold'
+                    : 'text-zinc-500 hover:text-zinc-900'
                 }`}
               >
                 {mode}
@@ -260,22 +256,22 @@ export default function PasswordGenerator() {
 
         {/* Display Generated Area */}
         <div className="space-y-2">
-          <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Active Signature</label>
-          <div className="relative group bg-slate-50 dark:bg-elegant-bg border border-slate-200 dark:border-elegant-border rounded-2xl p-4 flex items-center justify-between gap-4 transition-all hover:bg-slate-100/50 dark:hover:bg-elegant-bg-hover">
+          <label className="text-xs font-medium text-zinc-500 block">Generated Key</label>
+          <div className="relative bg-zinc-50 border border-zinc-200 rounded-lg p-3.5 flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
               <input
                 type={showPassword ? 'text' : 'password'}
                 readOnly
                 value={password}
-                className="w-full bg-transparent font-mono text-base md:text-lg font-bold text-indigo-600 dark:text-indigo-400 outline-none select-all"
+                className="w-full bg-transparent font-mono text-base font-bold text-zinc-900 outline-none select-all"
                 placeholder="Select requirements to generate..."
               />
             </div>
-            <div className="flex items-center gap-2.5 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="p-2 bg-white dark:bg-elegant-card border border-slate-200 dark:border-elegant-border text-slate-550 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl cursor-pointer"
+                className="p-1.5 bg-white border border-zinc-200 text-zinc-600 hover:text-zinc-900 rounded-md shadow-xs cursor-pointer transition-colors"
                 title={showPassword ? 'Hide Key' : 'Display Key'}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -283,7 +279,7 @@ export default function PasswordGenerator() {
               <button
                 type="button"
                 onClick={generatePassword}
-                className="p-2 bg-white dark:bg-elegant-card border border-slate-200 dark:border-elegant-border text-slate-555 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl cursor-pointer"
+                className="p-1.5 bg-white border border-zinc-200 text-zinc-600 hover:text-zinc-900 rounded-md shadow-xs cursor-pointer transition-colors"
                 title="Regenerate"
               >
                 <RefreshCw className="h-4 w-4" />
@@ -291,10 +287,10 @@ export default function PasswordGenerator() {
               <button
                 type="button"
                 onClick={() => copyToClipboard(password)}
-                className="p-2 bg-white dark:bg-elegant-card border border-slate-200 dark:border-elegant-border text-slate-555 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl cursor-pointer"
+                className="p-1.5 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 rounded-md shadow-xs cursor-pointer transition-colors"
                 title="Copy Signature"
               >
-                {copied ? <Check className="h-4 w-4 text-emerald-500 animate-pulse" /> : <Copy className="h-4 w-4" />}
+                {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
               </button>
             </div>
           </div>
@@ -302,16 +298,16 @@ export default function PasswordGenerator() {
           {/* Strength visualization */}
           {password && (
             <div className="space-y-1.5 pt-1">
-              <div className="flex items-center justify-between text-[10px] font-extrabold uppercase">
-                <span className="text-slate-400 dark:text-slate-500">Defense Strength:</span>
-                <span className={`${strength.text} tracking-wider font-extrabold`}>{strength.label}</span>
+              <div className="flex items-center justify-between text-xs font-medium">
+                <span className="text-zinc-500">Security Score:</span>
+                <span className={`${strength.text} font-semibold`}>{strength.label}</span>
               </div>
-              <div className="h-1.5 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden flex gap-1">
+              <div className="h-1.5 bg-zinc-100 rounded-full overflow-hidden flex gap-1">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div
                     key={i}
                     className={`h-full flex-1 transition-all duration-300 ${
-                      i < strength.score ? strength.color : 'bg-slate-205 dark:bg-slate-800'
+                      i < strength.score ? strength.color : 'bg-zinc-200'
                     }`}
                   />
                 ))}
@@ -323,10 +319,10 @@ export default function PasswordGenerator() {
         {passwordMode === 'random' ? (
           <div className="space-y-5">
             {/* Length Configuration */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest mb-1">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-medium text-zinc-600">
                 <span>Character Length</span>
-                <span className="font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-950/30 px-2 py-0.5 rounded-lg font-bold">
+                <span className="font-mono text-zinc-900 bg-zinc-100 border border-zinc-200 px-2 py-0.5 rounded font-semibold">
                   {length} characters
                 </span>
               </div>
@@ -336,38 +332,38 @@ export default function PasswordGenerator() {
                 max={64}
                 value={length}
                 onChange={(e) => setLength(Number(e.target.value))}
-                className="w-full accent-indigo-500 h-1.5 bg-slate-100 dark:bg-slate-900 rounded-lg cursor-pointer"
+                className="w-full accent-zinc-900 h-1.5 bg-zinc-100 rounded-lg cursor-pointer"
               />
             </div>
 
             {/* Checklist options */}
-            <div className="space-y-3 pt-1">
-              <label className="text-[10px] font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Allowed Elements</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-zinc-500 block">Character Types</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {[
-                  { state: useUppercase, set: setUseUppercase, label: 'Capital Letters (A-Z)', desc: 'Include alphabetical uppercase' },
-                  { state: useLowercase, set: setUseLowercase, label: 'Small Letters (a-z)', desc: 'Include alphabetical lowercase' },
-                  { state: useNumbers, set: setUseNumbers, label: 'Numbers (0-9)', desc: 'Include decimal figures' },
-                  { state: useSymbols, set: setUseSymbols, label: 'Symbols (!@#$...)', desc: 'Include strong custom glyphs' }
+                  { state: useUppercase, set: setUseUppercase, label: 'Capital Letters (A-Z)', desc: 'Include uppercase' },
+                  { state: useLowercase, set: setUseLowercase, label: 'Small Letters (a-z)', desc: 'Include lowercase' },
+                  { state: useNumbers, set: setUseNumbers, label: 'Numbers (0-9)', desc: 'Include digits' },
+                  { state: useSymbols, set: setUseSymbols, label: 'Symbols (!@#$...)', desc: 'Include special characters' }
                 ].map((opt, i) => (
                   <div
                     key={i}
                     onClick={() => opt.set(!opt.state)}
-                    className={`p-3.5 border rounded-2xl cursor-pointer transition-all flex items-start gap-3.5 select-none ${
+                    className={`p-3 border rounded-lg cursor-pointer transition-all flex items-start gap-3 select-none ${
                       opt.state
-                        ? 'bg-indigo-50/40 border-indigo-200 dark:bg-indigo-950/15 dark:border-indigo-900/60'
-                        : 'bg-white dark:bg-elegant-bg border-slate-200 dark:border-elegant-border hover:bg-slate-50 dark:hover:bg-elegant-bg-hover'
+                        ? 'bg-zinc-50 border-zinc-900/80 shadow-xs'
+                        : 'bg-white border-zinc-200 hover:bg-zinc-50'
                     }`}
                   >
                     <input
                       type="checkbox"
                       checked={opt.state}
-                      onChange={() => {}} // handled by div click
-                      className="mt-0.5 accent-indigo-550 h-4 w-4 shrink-0 rounded"
+                      onChange={() => {}}
+                      className="mt-0.5 accent-zinc-900 h-4 w-4 shrink-0 rounded border-zinc-300"
                     />
                     <div>
-                      <h4 className="text-xs font-bold text-slate-800 dark:text-neutral-100 leading-tight">{opt.label}</h4>
-                      <p className="text-[10px] text-slate-450 dark:text-slate-500 font-semibold">{opt.desc}</p>
+                      <h4 className="text-xs font-semibold text-zinc-900 leading-tight">{opt.label}</h4>
+                      <p className="text-[11px] text-zinc-500 font-normal">{opt.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -376,31 +372,30 @@ export default function PasswordGenerator() {
 
             <div 
               onClick={() => setExcludeSimilar(!excludeSimilar)}
-              className={`p-3.5 border rounded-2xl cursor-pointer transition-all flex items-start gap-3.5 select-none ${
+              className={`p-3 border rounded-lg cursor-pointer transition-all flex items-start gap-3 select-none ${
                 excludeSimilar
-                  ? 'bg-indigo-50/40 border-indigo-200 dark:bg-indigo-950/15 dark:border-indigo-900/60'
-                  : 'bg-white dark:bg-elegant-bg border-slate-200 dark:border-elegant-border hover:bg-slate-50 dark:hover:bg-elegant-bg-hover'
+                  ? 'bg-zinc-50 border-zinc-900/80 shadow-xs'
+                  : 'bg-white border-zinc-200 hover:bg-zinc-50'
               }`}
             >
               <input
                 type="checkbox"
                 checked={excludeSimilar}
                 onChange={() => {}}
-                className="mt-0.5 accent-indigo-550 h-4 w-4 shrink-0 rounded"
+                className="mt-0.5 accent-zinc-900 h-4 w-4 shrink-0 rounded border-zinc-300"
               />
               <div>
-                <h4 className="text-xs font-bold text-slate-800 dark:text-neutral-100 leading-tight">Exclude Mimic Characters</h4>
-                <p className="text-[10px] text-slate-450 dark:text-slate-500 font-semibold">Disable ambiguous figures such as <code className="font-mono bg-slate-100 dark:bg-slate-900 px-1 py-0.5 rounded">i, l, 1, o, 0, O</code></p>
+                <h4 className="text-xs font-semibold text-zinc-900 leading-tight">Exclude Similar Characters</h4>
+                <p className="text-[11px] text-zinc-500 font-normal">Omit ambiguous characters like <code className="font-mono bg-zinc-100 px-1 py-0.5 rounded text-zinc-800">i, l, 1, o, 0, O</code></p>
               </div>
             </div>
           </div>
         ) : (
-          <div className="space-y-5">
-            {/* Word Count */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-medium text-zinc-600">
                 <span>Number of Words</span>
-                <span className="font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-950/30 px-2 py-0.5 rounded-lg font-bold">
+                <span className="font-mono text-zinc-900 bg-zinc-100 border border-zinc-200 px-2 py-0.5 rounded font-semibold">
                   {wordCount} words
                 </span>
               </div>
@@ -410,37 +405,37 @@ export default function PasswordGenerator() {
                 max={9}
                 value={wordCount}
                 onChange={(e) => setWordCount(Number(e.target.value))}
-                className="w-full accent-indigo-500 h-1.5 bg-slate-100 dark:bg-slate-900 rounded-lg cursor-pointer"
+                className="w-full accent-zinc-900 h-1.5 bg-zinc-100 rounded-lg cursor-pointer"
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Separator Token</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-zinc-500 block">Separator Token</label>
                 <input
                   type="text"
                   maxLength={1}
                   value={separator}
                   onChange={(e) => setSeparator(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white dark:bg-elegant-bg dark:border-elegant-border font-mono text-center outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full px-3 py-1.5 text-xs font-semibold rounded-md border border-zinc-200 bg-white font-mono text-center outline-none focus:ring-1 focus:ring-zinc-950 shadow-xs"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Capitalization</label>
-                <div className="grid grid-cols-2 gap-1 bg-slate-50 dark:bg-elegant-bg p-1 rounded-xl border border-slate-150 dark:border-elegant-border/80 h-[38px] items-center">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-zinc-500 block">Capitalization</label>
+                <div className="grid grid-cols-2 gap-1 bg-zinc-100 p-1 rounded-md border border-zinc-200 h-[34px] items-center">
                   <button
                     onClick={() => setCapitalizeWords(true)}
-                    className={`py-1 text-[10px] font-bold rounded-lg cursor-pointer ${
-                      capitalizeWords ? 'bg-white dark:bg-elegant-card shadow-xs text-indigo-600 dark:text-indigo-400' : 'text-slate-500'
+                    className={`py-0.5 text-xs font-medium rounded cursor-pointer ${
+                      capitalizeWords ? 'bg-white shadow-xs text-zinc-900 font-semibold' : 'text-zinc-500'
                     }`}
                   >
-                    Camel
+                    Title
                   </button>
                   <button
                     onClick={() => setCapitalizeWords(false)}
-                    className={`py-1 text-[10px] font-bold rounded-lg cursor-pointer ${
-                      !capitalizeWords ? 'bg-white dark:bg-elegant-card shadow-xs text-indigo-600 dark:text-indigo-400' : 'text-slate-500'
+                    className={`py-0.5 text-xs font-medium rounded cursor-pointer ${
+                      !capitalizeWords ? 'bg-white shadow-xs text-zinc-900 font-semibold' : 'text-zinc-500'
                     }`}
                   >
                     Lower
@@ -451,21 +446,21 @@ export default function PasswordGenerator() {
 
             <div 
               onClick={() => setIncludeNumberPass(!includeNumberPass)}
-              className={`p-3.5 border rounded-2xl cursor-pointer transition-all flex items-start gap-3.5 select-none ${
+              className={`p-3 border rounded-lg cursor-pointer transition-all flex items-start gap-3 select-none ${
                 includeNumberPass
-                  ? 'bg-indigo-50/40 border-indigo-200 dark:bg-indigo-950/15 dark:border-indigo-900/60'
-                  : 'bg-white dark:bg-elegant-bg border-slate-200 dark:border-elegant-border hover:bg-slate-50 dark:hover:bg-elegant-bg-hover'
+                  ? 'bg-zinc-50 border-zinc-900/80 shadow-xs'
+                  : 'bg-white border-zinc-200 hover:bg-zinc-50'
               }`}
             >
               <input
                 type="checkbox"
                 checked={includeNumberPass}
                 onChange={() => {}}
-                className="mt-0.5 accent-indigo-550 h-4 w-4 shrink-0 rounded"
+                className="mt-0.5 accent-zinc-900 h-4 w-4 shrink-0 rounded border-zinc-300"
               />
               <div>
-                <h4 className="text-xs font-bold text-slate-800 dark:text-neutral-100 leading-tight">Append Random Cipher Digits</h4>
-                <p className="text-[10px] text-slate-450 dark:text-slate-500 font-semibold font-sans">Appends two randomized digit blocks to the tail (e.g. <code className="font-mono bg-slate-100 dark:bg-slate-905 px-1 py-0.5 rounded">Apple-Honey74</code>)</p>
+                <h4 className="text-xs font-semibold text-zinc-900 leading-tight">Append Random Digits</h4>
+                <p className="text-[11px] text-zinc-500 font-normal">Appends random numbers to the tail (e.g. <code className="font-mono bg-zinc-100 px-1 py-0.5 rounded text-zinc-800">Apple-Honey74</code>)</p>
               </div>
             </div>
           </div>
@@ -477,11 +472,11 @@ export default function PasswordGenerator() {
       <div className="lg:col-span-5 space-y-6">
         
         {/* Bulk Area */}
-        <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-3xl p-6 shadow-xs space-y-4">
+        <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <ListPlus className="h-4.5 w-4.5 text-indigo-500" />
-              <span className="text-xs font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest">
+            <div className="flex items-center gap-2">
+              <ListPlus className="h-4 w-4 text-zinc-700" />
+              <span className="text-xs font-semibold text-zinc-900 uppercase tracking-wider">
                 Bulk Generation
               </span>
             </div>
@@ -489,7 +484,7 @@ export default function PasswordGenerator() {
             <select
               value={batchCount}
               onChange={(e) => setBatchCount(Number(e.target.value))}
-              className="text-[10px] font-extrabold rounded-lg border border-slate-200 dark:border-elegant-border bg-slate-50 dark:bg-elegant-bg px-2.5 py-1 text-slate-755 dark:text-neutral-200 outline-none"
+              className="text-xs font-medium rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-zinc-900 outline-none shadow-xs"
             >
               <option value={5}>5 keys</option>
               <option value={10}>10 keys</option>
@@ -499,23 +494,23 @@ export default function PasswordGenerator() {
 
           <button
             onClick={generateBatch}
-            className="w-full flex items-center justify-center gap-2 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-50 rounded-md text-xs font-medium shadow-xs transition-colors cursor-pointer"
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Generate Random Pool</span>
+            <Sparkles className="h-3.5 w-3.5 text-zinc-300" />
+            <span>Generate Batch Keys</span>
           </button>
 
           {batchPasswords.length > 0 && (
-            <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 p-1 bg-slate-50/50 dark:bg-slate-900/30 border border-slate-150 dark:border-elegant-border/50 rounded-2xl">
+            <div className="space-y-1 max-h-56 overflow-y-auto pr-1 p-1 bg-zinc-50 border border-zinc-200 rounded-lg">
               {batchPasswords.map((pass, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between gap-3 p-2 bg-white dark:bg-elegant-card border border-slate-150 dark:border-elegant-border/80 rounded-xl hover:border-indigo-400 dark:hover:border-indigo-900 transition-colors"
+                  className="flex items-center justify-between gap-3 p-2 bg-white border border-zinc-200 rounded-md hover:border-zinc-300 transition-colors"
                 >
-                  <code className="text-xs font-mono font-bold text-slate-705 dark:text-neutral-200 truncate select-all">{pass}</code>
+                  <code className="text-xs font-mono font-medium text-zinc-800 truncate select-all">{pass}</code>
                   <button
                     onClick={() => copyToClipboard(pass)}
-                    className="p-1 px-1.5 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-400 transition-colors shrink-0 cursor-pointer"
+                    className="p-1 hover:text-zinc-900 text-zinc-400 transition-colors shrink-0 cursor-pointer"
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>
@@ -526,11 +521,11 @@ export default function PasswordGenerator() {
         </div>
 
         {/* History Area */}
-        <div className="bg-white dark:bg-elegant-card border border-slate-200/80 dark:border-elegant-border rounded-3xl p-6 shadow-xs space-y-4">
+        <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <History className="h-4.5 w-4.5 text-indigo-500" />
-              <span className="text-xs font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest">
+            <div className="flex items-center gap-2">
+              <History className="h-4 w-4 text-zinc-700" />
+              <span className="text-xs font-semibold text-zinc-900 uppercase tracking-wider">
                 Session Audit History
               </span>
             </div>
@@ -538,29 +533,29 @@ export default function PasswordGenerator() {
             {history.length > 0 && (
               <button
                 onClick={() => setHistory([])}
-                className="text-[10px] font-extrabold text-rose-500 hover:text-rose-600 uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                className="text-xs font-medium text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer"
               >
                 <Trash2 className="h-3 w-3" />
-                <span>Flush</span>
+                <span>Clear</span>
               </button>
             )}
           </div>
 
           {history.length === 0 ? (
             <div className="text-center py-6">
-              <p className="text-xs text-slate-400 font-semibold font-sans">No signatures generated in this session yet.</p>
+              <p className="text-xs text-zinc-400 font-normal">No signatures generated in this session yet.</p>
             </div>
           ) : (
-            <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1 p-1 bg-slate-50/50 dark:bg-slate-900/30 border border-slate-150 dark:border-elegant-border/50 rounded-2xl">
+            <div className="space-y-1 max-h-52 overflow-y-auto pr-1 p-1 bg-zinc-50 border border-zinc-200 rounded-lg">
               {history.map((pass, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between gap-3 p-2 bg-white dark:bg-elegant-card border border-slate-155 dark:border-elegant-border/80 rounded-xl hover:border-indigo-400 dark:hover:border-indigo-900 transition-colors"
+                  className="flex items-center justify-between gap-3 p-2 bg-white border border-zinc-200 rounded-md hover:border-zinc-300 transition-colors"
                 >
-                  <code className="text-xs font-mono font-bold text-slate-455 dark:text-neutral-400 truncate select-all">{pass}</code>
+                  <code className="text-xs font-mono font-medium text-zinc-600 truncate select-all">{pass}</code>
                   <button
                     onClick={() => copyToClipboard(pass)}
-                    className="p-1 px-1.5 hover:text-indigo-650 dark:hover:text-indigo-400 text-slate-400 transition-colors shrink-0 cursor-pointer"
+                    className="p-1 hover:text-zinc-900 text-zinc-400 transition-colors shrink-0 cursor-pointer"
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>
