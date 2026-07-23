@@ -4,6 +4,58 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Utility Tool Manager</title>
+    <script>
+      (function() {
+        const OriginalWebSocket = window.WebSocket;
+        if (OriginalWebSocket) {
+          window.WebSocket = function(url, protocols) {
+            if (typeof url === 'string' && (url.includes('vite') || protocols === 'vite-hmr' || (Array.isArray(protocols) && protocols.includes('vite-hmr')))) {
+              const fakeWS = {
+                addEventListener: function() {},
+                removeEventListener: function() {},
+                send: function() {},
+                close: function() {},
+                readyState: 3,
+                URL: url,
+              };
+              setTimeout(function() {
+                if (typeof fakeWS.onclose === 'function') {
+                  fakeWS.onclose({ wasClean: true, code: 1000, reason: 'HMR Disabled' });
+                }
+              }, 0);
+              return fakeWS;
+            }
+            return new OriginalWebSocket(url, protocols);
+          };
+          window.WebSocket.prototype = OriginalWebSocket.prototype;
+        }
+
+        const origError = console.error;
+        console.error = function(...args) {
+          const msg = args.map(a => String(a || '')).join(' ');
+          if (msg.includes('[vite] failed to connect to websocket') || msg.includes('WebSocket closed without opened')) {
+            return;
+          }
+          origError.apply(console, args);
+        };
+
+        window.addEventListener('unhandledrejection', function(e) {
+          const msg = String(e?.reason?.message || e?.reason || e || '');
+          if (msg.includes('WebSocket') || msg.includes('websocket') || msg.includes('closed without opened') || msg.includes('vite')) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }, true);
+
+        window.addEventListener('error', function(e) {
+          const msg = String(e?.message || e?.error?.message || '');
+          if (msg.includes('WebSocket') || msg.includes('websocket') || msg.includes('closed without opened') || msg.includes('vite')) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }, true);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
