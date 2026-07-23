@@ -26,6 +26,13 @@ export default function App() {
     localStorage.removeItem('util_hub_theme');
   }, []);
 
+  useEffect(() => {
+    const title = activeView === 'dashboard' 
+      ? 'Utility Tool Manager' 
+      : `${getToolTitle()} - Utility Tool Manager`;
+    document.title = title;
+  }, [activeView]);
+
   const handleToggleFavorite = (toolId: string, event: React.MouseEvent) => {
     event.stopPropagation();
     let updated: string[];
