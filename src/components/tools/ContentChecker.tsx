@@ -96,6 +96,45 @@ export default function ContentChecker() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const compressImage = (dataUrl: string, maxWidth = 1600, maxHeight = 1600, quality = 0.85): Promise<string> => {
+    return new Promise((resolve) => {
+      if (!dataUrl || !dataUrl.startsWith('data:image/')) {
+        return resolve(dataUrl);
+      }
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width / height > maxWidth / maxHeight) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedDataUrl);
+        } else {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  };
+
   React.useEffect(() => {
     const handleGlobalPaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
@@ -132,10 +171,11 @@ export default function ContentChecker() {
 
     setError(null);
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       if (typeof reader.result === 'string') {
-        setScreenshotBase64(reader.result);
-        setScreenshotPreview(reader.result);
+        const compressed = await compressImage(reader.result);
+        setScreenshotBase64(compressed);
+        setScreenshotPreview(compressed);
       }
     };
     reader.readAsDataURL(file);
@@ -192,6 +232,9 @@ export default function ContentChecker() {
       try {
         data = JSON.parse(responseText);
       } catch (parseErr) {
+        if (response.status === 404) {
+          throw new Error('Analysis service endpoint not found (404). Please verify backend server is active.');
+        }
         throw new Error(`Server returned status ${response.status}. Received non-JSON response format.`);
       }
 
@@ -200,8 +243,9 @@ export default function ContentChecker() {
       }
 
       if (data.success && data.base64) {
-        setScreenshotBase64(data.base64);
-        setScreenshotPreview(data.base64);
+        const compressed = await compressImage(data.base64);
+        setScreenshotBase64(compressed);
+        setScreenshotPreview(compressed);
         setAwesomeUrl('');
       } else {
         throw new Error(data?.error || 'Failed to extract screenshot asset.');
@@ -257,13 +301,16 @@ export default function ContentChecker() {
     }, 2000);
 
     try {
+      // Ensure image payload is optimized before sending
+      const finalImagePayload = await compressImage(screenshotBase64);
+
       const response = await fetch('/api/content-checker/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url: inputType === 'url' ? sanitizedUrl : undefined,
           rawHtml: inputType === 'html' ? rawHtml : undefined,
-          image: screenshotBase64
+          image: finalImagePayload
         })
       });
 
@@ -274,7 +321,12 @@ export default function ContentChecker() {
       try {
         data = JSON.parse(responseText);
       } catch (parseErr) {
-        throw new Error(`Server returned status ${response.status} with a non-JSON response. If uploading a large screenshot, please try a smaller image or compressed file.`);
+        if (response.status === 404) {
+          throw new Error('Analysis server API route (/api/content-checker/analyze) returned 404. Ensure backend dev server is running.');
+        } else if (response.status === 413) {
+          throw new Error('Screenshot payload exceeded server limits. Please try a smaller or compressed screenshot.');
+        }
+        throw new Error(`Server returned status ${response.status} with a non-JSON response.`);
       }
 
       if (!response.ok) {
@@ -284,6 +336,13 @@ export default function ContentChecker() {
       if (data.success) {
         setReport(data.report);
         setWebpageData(data.webpageData);
+        if (data.report.bodyContent && (data.report.bodyContent.mismatchesCount > 0 || (data.report.bodyContent.mismatches && data.report.bodyContent.mismatches.length > 0))) {
+          setActiveTab('body');
+        } else if (data.report.headings && data.report.headings.status === 'mismatch') {
+          setActiveTab('headings');
+        } else {
+          setActiveTab('seo');
+        }
       } else {
         throw new Error(data?.error || 'Failed to complete analysis.');
       }
@@ -651,11 +710,24 @@ ${report.recommendations.map((rec, i) => `${i + 1}. [ ] ${rec}`).join('\n')}
                 </div>
               </div>
 
+              {/* Warning alert if copy discrepancies detected */}
+              {report.bodyContent && report.bodyContent.mismatchesCount > 0 && (
+                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 flex items-start gap-2.5 text-xs text-rose-900">
+                  <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold">Copy Discrepancies Detected!</span>
+                    <p className="text-[11px] text-rose-700 mt-0.5">
+                      Found {report.bodyContent.mismatchesCount} paragraph/copy discrepancy(ies) between the reference document screenshot and the webpage content. Check the "Copy Differences" tab below for line-by-line comparison.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Tab Navigation */}
-              <div className="flex border-b border-zinc-200 gap-1 overflow-x-auto pb-px text-xs">
+              <div className="flex border-b border-zinc-200 gap-1 overflow-x-auto pb-px text-xs no-scrollbar">
                 <button
                   onClick={() => setActiveTab('seo')}
-                  className={`px-3 py-1.5 font-medium border-b-2 cursor-pointer ${
+                  className={`px-3 py-1.5 font-medium border-b-2 cursor-pointer whitespace-nowrap shrink-0 ${
                     activeTab === 'seo'
                       ? 'border-zinc-900 text-zinc-900 font-semibold'
                       : 'border-transparent text-zinc-500 hover:text-zinc-900'
@@ -665,7 +737,7 @@ ${report.recommendations.map((rec, i) => `${i + 1}. [ ] ${rec}`).join('\n')}
                 </button>
                 <button
                   onClick={() => setActiveTab('headings')}
-                  className={`px-3 py-1.5 font-medium border-b-2 cursor-pointer ${
+                  className={`px-3 py-1.5 font-medium border-b-2 cursor-pointer whitespace-nowrap shrink-0 ${
                     activeTab === 'headings'
                       ? 'border-zinc-900 text-zinc-900 font-semibold'
                       : 'border-transparent text-zinc-500 hover:text-zinc-900'
@@ -675,17 +747,22 @@ ${report.recommendations.map((rec, i) => `${i + 1}. [ ] ${rec}`).join('\n')}
                 </button>
                 <button
                   onClick={() => setActiveTab('body')}
-                  className={`px-3 py-1.5 font-medium border-b-2 cursor-pointer ${
+                  className={`px-3 py-1.5 font-medium border-b-2 cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                     activeTab === 'body'
                       ? 'border-zinc-900 text-zinc-900 font-semibold'
                       : 'border-transparent text-zinc-500 hover:text-zinc-900'
                   }`}
                 >
-                  Copy Differences
+                  <span>Copy Differences</span>
+                  {report.bodyContent && report.bodyContent.mismatchesCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-100 text-rose-800 font-bold border border-rose-200">
+                      {report.bodyContent.mismatchesCount}
+                    </span>
+                  )}
                 </button>
                 <button
                   onClick={() => setActiveTab('recommendations')}
-                  className={`px-3 py-1.5 font-medium border-b-2 cursor-pointer ${
+                  className={`px-3 py-1.5 font-medium border-b-2 cursor-pointer whitespace-nowrap shrink-0 ${
                     activeTab === 'recommendations'
                       ? 'border-zinc-900 text-zinc-900 font-semibold'
                       : 'border-transparent text-zinc-500 hover:text-zinc-900'
@@ -775,7 +852,7 @@ ${report.recommendations.map((rec, i) => `${i + 1}. [ ] ${rec}`).join('\n')}
                       </span>
                     </div>
 
-                    <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
+                    <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-zinc-50 text-zinc-500 border-b border-zinc-200 font-semibold">
                           <tr>

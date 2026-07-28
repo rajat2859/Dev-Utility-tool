@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileImage, Paintbrush, Key, ArrowRight, Heart, Sparkles, Terminal, Search, ShieldCheck, Zap, CheckCircle2, Cpu, Activity } from 'lucide-react';
+import { FileImage, Paintbrush, Key, ArrowRight, Heart, Sparkles, Terminal, Search, ShieldCheck, Zap, CheckCircle2, Cpu, Activity, FileCode } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface DashboardGridProps {
@@ -19,6 +19,18 @@ export default function DashboardGrid({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const tools = [
+    {
+      id: 'html-cleaner',
+      name: 'HTML Cleaner & Sanitizer',
+      description: 'Strip dirty inline styles, tracking scripts, Word document bloat, and broken tags instantly with custom sanitizer rules and live previews.',
+      category: 'Design & Assets',
+      icon: FileCode,
+      badge: 'Sanitizer',
+      badgeStyle: 'bg-sky-100 text-sky-800 border-sky-200',
+      iconBg: 'bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-sky-200/50',
+      hoverBorder: 'hover:border-sky-300 hover:shadow-sky-100/50',
+      stats: '100% Offline'
+    },
     {
       id: 'content-checker',
       name: 'SEO & Copy Content Auditor',

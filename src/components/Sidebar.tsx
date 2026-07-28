@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileImage, Paintbrush, Key, X, Menu, ShieldCheck, Wrench, Zap, Sparkles } from 'lucide-react';
+import { LayoutDashboard, FileImage, Paintbrush, Key, X, Menu, ShieldCheck, Wrench, Zap, Sparkles, FileCode } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface SidebarProps {
@@ -19,6 +19,7 @@ export default function Sidebar({
   const menuItems = [
     { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
     { id: 'content-checker', name: 'SEO & Copy Auditor', icon: ShieldCheck, badge: 'AI', badgeColor: 'bg-indigo-100 text-indigo-700' },
+    { id: 'html-cleaner', name: 'HTML Cleaner', icon: FileCode, badge: 'NEW', badgeColor: 'bg-sky-100 text-sky-700' },
     { id: 'image', name: 'Image Converter', icon: FileImage, badgeColor: 'bg-emerald-100 text-emerald-700' },
     { id: 'gradient', name: 'Gradient Studio', icon: Paintbrush, badgeColor: 'bg-fuchsia-100 text-fuchsia-700' },
     { id: 'password', name: 'Password Generator', icon: Key, badgeColor: 'bg-amber-100 text-amber-800' },

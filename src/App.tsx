@@ -5,6 +5,7 @@ import ImageConverter from './components/tools/ImageConverter';
 import GradientGenerator from './components/tools/GradientGenerator';
 import PasswordGenerator from './components/tools/PasswordGenerator';
 import ContentChecker from './components/tools/ContentChecker';
+import HtmlCleaner from './components/tools/HtmlCleaner';
 import { ArrowLeft, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -47,6 +48,8 @@ export default function App() {
 
   const renderActiveTool = () => {
     switch (activeView) {
+      case 'html-cleaner':
+        return <HtmlCleaner />;
       case 'image':
         return <ImageConverter />;
       case 'gradient':
@@ -69,6 +72,8 @@ export default function App() {
 
   const getToolTitle = () => {
     switch (activeView) {
+      case 'html-cleaner':
+        return 'HTML Cleaner & Sanitizer';
       case 'image':
         return 'Bulk Image Format Converter';
       case 'gradient':
@@ -93,8 +98,8 @@ export default function App() {
       />
 
       <div className="flex-1 md:pl-64 flex flex-col min-w-0 pt-14 md:pt-0">
-        <header className="sticky top-0 z-20 h-14 bg-white/90 backdrop-blur-md border-b border-slate-200/90 px-6 md:px-8 flex items-center justify-between shadow-2xs">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-14 md:top-0 z-20 h-14 bg-white/90 backdrop-blur-md border-b border-slate-200/90 px-3 sm:px-6 md:px-8 flex items-center justify-between shadow-2xs min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {activeView !== 'dashboard' && (
               <motion.button
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -102,31 +107,31 @@ export default function App() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setActiveView('dashboard')}
-                className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-950 cursor-pointer transition-colors shadow-2xs"
+                className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-950 cursor-pointer transition-colors shadow-2xs shrink-0"
                 title="Return to Dashboard"
               >
                 <ArrowLeft className="h-4 w-4" />
               </motion.button>
             )}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-400 hidden sm:inline uppercase tracking-wider">Utility Tool Manager</span>
-              {activeView !== 'dashboard' && <span className="text-slate-300 hidden sm:inline">/</span>}
-              <h1 className="font-bold text-sm tracking-tight text-slate-900">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs font-semibold text-slate-400 hidden sm:inline uppercase tracking-wider shrink-0">Utility Tool Manager</span>
+              {activeView !== 'dashboard' && <span className="text-slate-300 hidden sm:inline shrink-0">/</span>}
+              <h1 className="font-bold text-xs sm:text-sm tracking-tight text-slate-900 truncate">
                 {getToolTitle()}
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="inline-flex text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 px-2.5 py-1 rounded-md font-semibold items-center gap-1.5 shadow-2xs">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="inline-flex text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 px-2 sm:px-2.5 py-1 rounded-md font-semibold items-center gap-1.5 shadow-2xs">
               <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0" />
               <span className="hidden sm:inline font-mono">Ultra Fast Runtime</span>
-              <span className="sm:hidden font-mono">Fast</span>
+              <span className="sm:hidden font-mono text-[11px]">Fast</span>
             </span>
           </div>
         </header>
 
-        <main className="flex-1 p-5 md:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-3.5 sm:p-6 md:p-8 max-w-7xl w-full mx-auto min-w-0">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeView}

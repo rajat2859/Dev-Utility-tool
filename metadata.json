@@ -1,6 +1,6 @@
 {
   "name": "Utility Tool Manager",
-  "description": "An all-in-one developer & designer workspace featuring AI Content Copy & SEO Auditor, Bulk Image Converter, Gradient Studio, and Cryptographic Password Generator with lightning-fast performance.",
+  "description": "An all-in-one developer & designer workspace featuring HTML Cleaner & Sanitizer, AI Content Copy & SEO Auditor, Bulk Image Converter, Gradient Studio, and Cryptographic Password Generator with ultra-fast performance.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
