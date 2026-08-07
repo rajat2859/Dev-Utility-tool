@@ -1,15 +1,32 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import DashboardGrid from './components/DashboardGrid';
-import { ArrowLeft, Zap, Loader2 } from 'lucide-react';
+import { ArrowLeft, Zap, Wrench, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-// Lazy load tool components for optimal code-splitting and instant initial page loading
-const ImageConverter = lazy(() => import('./components/tools/ImageConverter'));
-const GradientGenerator = lazy(() => import('./components/tools/GradientGenerator'));
-const PasswordGenerator = lazy(() => import('./components/tools/PasswordGenerator'));
-const ContentChecker = lazy(() => import('./components/tools/ContentChecker'));
-const HtmlCleaner = lazy(() => import('./components/tools/HtmlCleaner'));
+// Tool component imports with prefetching support
+const toolsMap: Record<string, () => Promise<any>> = {
+  'seo-checker': () => import('./components/tools/SeoChecker'),
+  'html-cleaner': () => import('./components/tools/HtmlCleaner'),
+  'image': () => import('./components/tools/ImageConverter'),
+  'gradient': () => import('./components/tools/GradientGenerator'),
+  'password': () => import('./components/tools/PasswordGenerator'),
+  'content-checker': () => import('./components/tools/ContentChecker'),
+};
+
+const ImageConverter = lazy(toolsMap['image']);
+const GradientGenerator = lazy(toolsMap['gradient']);
+const PasswordGenerator = lazy(toolsMap['password']);
+const ContentChecker = lazy(toolsMap['content-checker']);
+const SeoChecker = lazy(toolsMap['seo-checker']);
+const HtmlCleaner = lazy(toolsMap['html-cleaner']);
+
+// Global prefetch helper for instant tool opening on hover
+export const prefetchTool = (toolId: string) => {
+  if (toolsMap[toolId]) {
+    toolsMap[toolId]().catch(() => {});
+  }
+};
 
 export default function App() {
   const [activeView, setActiveView] = useState<string>('dashboard');
@@ -27,6 +44,12 @@ export default function App() {
     }
     document.documentElement.classList.remove('dark');
     localStorage.removeItem('util_hub_theme');
+
+    // Idle background prefetching of all tool bundles for instantaneous navigation
+    const timer = setTimeout(() => {
+      Object.values(toolsMap).forEach(fn => fn().catch(() => {}));
+    }, 800);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -50,6 +73,8 @@ export default function App() {
 
   const renderActiveTool = () => {
     switch (activeView) {
+      case 'seo-checker':
+        return <SeoChecker />;
       case 'html-cleaner':
         return <HtmlCleaner />;
       case 'image':
@@ -63,7 +88,10 @@ export default function App() {
       default:
         return (
           <DashboardGrid
-            onSelectTool={setActiveView}
+            onSelectTool={(id) => {
+              prefetchTool(id);
+              setActiveView(id);
+            }}
             favorites={favorites}
             onToggleFavorite={handleToggleFavorite}
             userEmail="stavro3804@gmail.com"
@@ -74,6 +102,8 @@ export default function App() {
 
   const getToolTitle = () => {
     switch (activeView) {
+      case 'seo-checker':
+        return 'SEO & Schema Auditor';
       case 'html-cleaner':
         return 'HTML Cleaner & Sanitizer';
       case 'image':
@@ -83,7 +113,7 @@ export default function App() {
       case 'password':
         return 'Cryptographic Key & Password Generator';
       case 'content-checker':
-        return 'SEO & Copy Content Auditor (Gemini AI)';
+        return 'Visual Copy & Screenshot Auditor';
       default:
         return 'Utility Tool Manager Workspace';
     }
@@ -93,7 +123,10 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-950 font-sans antialiased flex selection:bg-indigo-600 selection:text-white">
       <Sidebar
         currentView={activeView}
-        onSelectView={setActiveView}
+        onSelectView={(id) => {
+          prefetchTool(id);
+          setActiveView(id);
+        }}
         isOpen={sidebarOpen}
         onToggleOpen={() => setSidebarOpen(!sidebarOpen)}
       />
@@ -125,27 +158,33 @@ export default function App() {
 
           <div className="flex items-center gap-2 shrink-0">
             <span className="inline-flex text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 px-2 sm:px-2.5 py-1 rounded-md font-semibold items-center gap-1.5 shadow-2xs">
-              <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-              <span className="hidden sm:inline font-mono">Ultra Fast Runtime</span>
-              <span className="sm:hidden font-mono text-[11px]">Fast</span>
+              <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0 animate-pulse" />
+              <span className="hidden sm:inline font-mono">Instant Turbo Engine</span>
+              <span className="sm:hidden font-mono text-[11px]">Turbo</span>
             </span>
           </div>
         </header>
 
         <main className="flex-1 p-3.5 sm:p-6 md:p-8 max-w-7xl w-full mx-auto min-w-0">
           <Suspense fallback={
-            <div className="flex flex-col items-center justify-center min-h-[300px] gap-3 text-slate-500">
-              <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
-              <span className="text-xs font-semibold tracking-wide uppercase font-mono">Loading Tool...</span>
+            <div className="space-y-6 animate-pulse">
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-3">
+                <div className="h-5 bg-slate-200 rounded-md w-1/4"></div>
+                <div className="h-4 bg-slate-100 rounded-md w-1/2"></div>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4">
+                <div className="h-10 bg-slate-100 rounded-xl w-full"></div>
+                <div className="h-28 bg-slate-50 border border-slate-200 rounded-xl w-full"></div>
+              </div>
             </div>
           }>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeView}
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.12, ease: 'easeOut' }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.1, ease: 'easeOut' }}
               >
                 {renderActiveTool()}
               </motion.div>

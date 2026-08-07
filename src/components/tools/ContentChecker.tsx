@@ -2,19 +2,14 @@ import React, { useState, useRef } from 'react';
 import { 
   Globe, 
   FileImage, 
-  Search, 
   AlertTriangle, 
-  Info, 
-  Sparkles, 
   RefreshCw, 
   Copy, 
   Check, 
   FileSearch, 
   CheckSquare, 
-  ArrowUpRight,
-  Upload,
-  Trash2,
-  Link2,
+  Link2, 
+  ShieldCheck,
   CheckCircle2,
   XCircle,
   FileText,
@@ -73,28 +68,20 @@ interface AnalysisReport {
   recommendations: string[];
 }
 
-interface WebpageData {
-  title: string;
-  description: string;
-  headingsCount: number;
-}
-
 export default function ContentChecker() {
   const [url, setUrl] = useState<string>('');
-  const [awesomeUrl, setAwesomeUrl] = useState<string>('');
   const [rawHtml, setRawHtml] = useState<string>('');
   const [showHtmlPaste, setShowHtmlPaste] = useState<boolean>(false);
 
+  // Screenshot QA states
+  const [awesomeUrl, setAwesomeUrl] = useState<string>('');
   const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
-  
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingStep, setLoadingStep] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
-  
   const [report, setReport] = useState<AnalysisReport | null>(null);
-  const [webpageData, setWebpageData] = useState<WebpageData | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
   const [isResolvingAwesome, setIsResolvingAwesome] = useState<boolean>(false);
@@ -234,9 +221,6 @@ export default function ContentChecker() {
       try {
         data = JSON.parse(responseText);
       } catch {
-        if (response.status === 404) {
-          throw new Error('Analysis service endpoint not found (404). Please verify backend server is active.');
-        }
         throw new Error(`Server returned status ${response.status}. Received non-JSON response format.`);
       }
 
@@ -261,20 +245,17 @@ export default function ContentChecker() {
     }
   };
 
-  const runAnalysis = async () => {
+  const runScreenshotAnalysis = async () => {
     if (!url.trim() && !rawHtml.trim()) {
-      setError('Please enter a Target Webpage URL.');
+      setError('Please enter a Target Webpage URL or paste HTML source code.');
       return;
     }
 
     let currentBase64 = screenshotBase64;
 
-    // If no screenshot image loaded yet, but Awesome Screenshot URL is provided, resolve it now automatically
     if (!currentBase64 && awesomeUrl.trim()) {
       currentBase64 = await resolveAwesomeLink(awesomeUrl);
-      if (!currentBase64) {
-        return; // Resolution failed, stop analysis
-      }
+      if (!currentBase64) return;
     }
 
     if (!currentBase64) {
@@ -291,14 +272,13 @@ export default function ContentChecker() {
     setIsLoading(true);
     setError(null);
     setReport(null);
-    setWebpageData(null);
 
     const steps = [
       'Connecting to target webpage & fetching HTML metadata...',
       'Resolving reference screenshot elements...',
       'Comparing expected specs with live webpage elements...',
       'Analyzing text copy and heading hierarchy...',
-      'Compiling comparison report...'
+      'Compiling visual comparison report...'
     ];
 
     let currentStep = 0;
@@ -324,17 +304,8 @@ export default function ContentChecker() {
       });
 
       clearInterval(stepInterval);
-
       const responseText = await response.text();
-      let data: any = null;
-      try {
-        data = JSON.parse(responseText);
-      } catch {
-        if (response.status === 404) {
-          throw new Error('Analysis route returned 404. Ensure backend server is active.');
-        }
-        throw new Error(`Server returned status ${response.status} with a non-JSON response.`);
-      }
+      let data: any = JSON.parse(responseText);
 
       if (!response.ok) {
         throw new Error(data?.error || `Server returned error status ${response.status}.`);
@@ -342,7 +313,6 @@ export default function ContentChecker() {
 
       if (data.success) {
         setReport(data.report);
-        setWebpageData(data.webpageData);
       } else {
         throw new Error(data?.error || 'Failed to complete analysis.');
       }
@@ -354,169 +324,100 @@ export default function ContentChecker() {
     }
   };
 
-  const handleCopyReport = () => {
-    if (!report) return;
-    const reportText = `CONTENT AUDIT REPORT
-Target Source: ${url || 'Raw HTML Source'}
-Overall Match Score: ${report.overallScore}%
-
-SUMMARY:
-${report.summary}
-
-SEO & TITLE CHECK:
-- Expected Title: ${report.seo.expectedTitle}
-- Actual Title: ${report.seo.actualTitle}
-- Result: ${report.seo.status.toUpperCase()}
-
-HEADINGS MATCH:
-- Status: ${report.headings.status.toUpperCase()}
-
-COPY DISCREPANCIES (${report.bodyContent?.mismatchesCount || 0}):
-${report.bodyContent?.mismatches.map(m => `- ${m.category}: Expected "${m.expected}" vs Actual "${m.actual}"`).join('\n') || 'None'}
-
-RECOMMENDED FIXES:
-${report.recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\n')}
-`;
-    navigator.clipboard.writeText(reportText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
     <div className="space-y-6 text-slate-900">
-      {/* Streamlined Header */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-1">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-sky-600" />
-          <h2 className="text-base font-bold text-slate-900 tracking-tight">
-            SEO & Copy Auditor (URL vs. Awesome Screenshot)
-          </h2>
-        </div>
-        <p className="text-xs text-slate-500">
-          Compare live webpage URLs directly against Awesome Screenshot share links to audit title tags, heading hierarchy, and body copy accuracy.
-        </p>
-      </div>
-
-      {/* Main 2-Input Primary Control Panel */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-5">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* INPUT 1: Target Webpage URL */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-800 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Globe className="h-4 w-4 text-sky-600" />
-                <span>1. Target Webpage URL</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowHtmlPaste(!showHtmlPaste)}
-                className="text-[11px] text-sky-600 hover:underline font-normal cursor-pointer"
-              >
-                {showHtmlPaste ? 'Hide HTML Paste' : 'Or Paste Raw HTML'}
-              </button>
-            </label>
-
-            {!showHtmlPaste ? (
-              <div className="relative">
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="e.g. https://example.com/landing-page"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  disabled={isLoading}
-                  className="w-full pl-9 pr-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:bg-white shadow-2xs"
-                />
-              </div>
-            ) : (
-              <textarea
-                rows={3}
-                placeholder="Paste webpage HTML source code here..."
-                value={rawHtml}
-                onChange={(e) => setRawHtml(e.target.value)}
-                disabled={isLoading}
-                className="w-full p-2.5 text-xs font-mono rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:bg-white shadow-2xs"
-              />
-            )}
-            <p className="text-[11px] text-slate-400">
-              The published or live webpage URL you want to audit.
+      {/* Tool Header */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 bg-purple-600 rounded-xl text-white shadow-xs">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">
+              Visual Copy & Screenshot Auditor
+            </h2>
+            <p className="text-xs text-slate-500">
+              Audit live webpage content, copy accuracy, and heading structures against design reference screenshots.
             </p>
           </div>
+        </div>
+      </div>
 
-          {/* INPUT 2: Awesome Screenshot URL or Reference Upload */}
+      {/* Main Input Card */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
+        {/* Webpage Input */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <Globe className="h-4 w-4 text-purple-600" />
+              <span>Target Webpage URL</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowHtmlPaste(!showHtmlPaste)}
+              className="text-[11px] text-purple-600 hover:underline font-semibold cursor-pointer"
+            >
+              {showHtmlPaste ? 'Switch to URL Input' : 'Or Paste Raw HTML Code'}
+            </button>
+          </div>
+
+          {!showHtmlPaste ? (
+            <div className="relative">
+              <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="e.g. https://example.com/landing-page"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="w-full pl-10 pr-3 py-2.5 text-xs font-medium rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:bg-white shadow-2xs"
+              />
+            </div>
+          ) : (
+            <textarea
+              rows={4}
+              placeholder="Paste complete HTML source code here..."
+              value={rawHtml}
+              onChange={(e) => setRawHtml(e.target.value)}
+              className="w-full p-3 text-xs font-mono rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:bg-white shadow-2xs"
+            />
+          )}
+        </div>
+
+        {/* Screenshot / Reference Input */}
+        <div className="space-y-3 pt-2 border-t border-slate-100">
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
               <Link2 className="h-4 w-4 text-sky-600" />
-              <span>2. Awesome Screenshot URL</span>
+              <span>Awesome Screenshot Share URL</span>
             </label>
-
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="e.g. https://www.awesomescreenshot.com/image/..."
-                    value={awesomeUrl}
-                    onChange={(e) => setAwesomeUrl(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        resolveAwesomeLink();
-                      }
-                    }}
-                    disabled={isResolvingAwesome || isLoading}
-                    className="w-full pl-9 pr-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:bg-white shadow-2xs"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => resolveAwesomeLink()}
-                  disabled={isResolvingAwesome || isLoading || !awesomeUrl.trim()}
-                  className="px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 disabled:opacity-40 rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 shrink-0 transition-colors"
-                >
-                  {isResolvingAwesome ? (
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <span>Fetch Screenshot</span>
-                  )}
-                </button>
-              </div>
-
-              {awesomeError && (
-                <p className="text-[11px] text-rose-600 font-medium">
-                  {awesomeError}
-                </p>
-              )}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="e.g. https://www.awesomescreenshot.com/image/..."
+                value={awesomeUrl}
+                onChange={(e) => setAwesomeUrl(e.target.value)}
+                className="flex-1 px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:bg-white shadow-2xs"
+              />
+              <button
+                type="button"
+                onClick={() => resolveAwesomeLink()}
+                disabled={isResolvingAwesome || !awesomeUrl.trim()}
+                className="px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 disabled:opacity-40 rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                {isResolvingAwesome ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <span>Fetch</span>}
+              </button>
             </div>
+            {awesomeError && <p className="text-[11px] text-rose-600 font-medium">{awesomeError}</p>}
           </div>
-        </div>
 
-        {/* Screenshot Image Status / Fallback Upload Area */}
-        <div className="pt-2 border-t border-slate-100">
+          {/* Screenshot Preview / Upload Dropzone */}
           {screenshotPreview ? (
             <div className="flex items-center justify-between p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl">
               <div className="flex items-center gap-3 min-w-0">
-                <img
-                  src={screenshotPreview}
-                  alt="Reference Preview"
-                  className="h-12 w-16 object-cover rounded-lg border border-emerald-200 shrink-0"
-                />
-                <div className="min-w-0">
-                  <span className="text-xs font-bold text-emerald-900 block flex items-center gap-1">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    Reference Screenshot Ready
-                  </span>
-                  <p className="text-[11px] text-emerald-700 truncate">
-                    Loaded and compressed for comparison
-                  </p>
-                </div>
+                <img src={screenshotPreview} alt="Reference" className="h-12 w-16 object-cover rounded-lg border border-emerald-200 shrink-0" />
+                <span className="text-xs font-bold text-emerald-900 truncate">Reference Screenshot Loaded</span>
               </div>
-              <button
-                type="button"
-                onClick={resetScreenshot}
-                className="px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100/50 rounded-lg border border-rose-200 cursor-pointer transition-colors"
-              >
+              <button type="button" onClick={resetScreenshot} className="px-2 py-1 text-xs font-medium text-rose-700 bg-white border border-rose-200 rounded-lg cursor-pointer">
                 Change
               </button>
             </div>
@@ -526,220 +427,117 @@ ${report.recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\n')}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-3 text-center cursor-pointer transition-colors flex items-center justify-center gap-3 ${
-                isDragging
-                  ? 'border-sky-500 bg-sky-50'
-                  : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100/50'
-              }`}
+              className="border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors flex items-center justify-center gap-3 border-slate-200 bg-slate-50/50 hover:bg-slate-100/50"
             >
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-                className="hidden"
-              />
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
               <FileImage className="h-5 w-5 text-slate-400" />
-              <span className="text-xs text-slate-600 font-medium">
-                Or drag & drop screenshot file / paste from clipboard (Ctrl+V)
-              </span>
+              <span className="text-xs text-slate-600 font-medium">Or drag & drop screenshot file / paste from clipboard</span>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={runScreenshotAnalysis}
+            disabled={isLoading || (!url.trim() && !rawHtml.trim()) || (!awesomeUrl.trim() && !screenshotBase64)}
+            className="w-full py-3 px-4 rounded-xl font-bold text-xs tracking-tight flex items-center justify-center gap-2 transition-all shadow-2xs bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          >
+            {isLoading ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin text-purple-200" />
+                <span>{loadingStep || 'Comparing Webpage with Screenshot...'}</span>
+              </>
+            ) : (
+              <>
+                <FileSearch className="h-4 w-4 text-purple-200" />
+                <span>Run Visual & Copy Audit</span>
+              </>
+            )}
+          </button>
+
+          {error && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+              <span>{error}</span>
             </div>
           )}
         </div>
-
-        {/* Main Compare Action Button */}
-        <button
-          type="button"
-          onClick={runAnalysis}
-          disabled={isLoading || (!url.trim() && !rawHtml.trim()) || (!awesomeUrl.trim() && !screenshotBase64)}
-          className="w-full py-3 px-4 rounded-xl font-bold text-xs tracking-tight flex items-center justify-center gap-2 transition-all shadow-2xs bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-        >
-          {isLoading ? (
-            <>
-              <RefreshCw className="h-4 w-4 animate-spin text-sky-400" />
-              <span>Comparing Webpage with Awesome Screenshot...</span>
-            </>
-          ) : (
-            <>
-              <FileSearch className="h-4 w-4 text-emerald-400" />
-              <span>Compare Webpage vs. Awesome Screenshot</span>
-            </>
-          )}
-        </button>
-
-        {error && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
       </div>
 
-      {/* Loading Bar Progress */}
-      {isLoading && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center flex flex-col items-center justify-center space-y-3">
-          <div className="h-10 w-10 rounded-full border-2 border-slate-200 border-t-sky-600 animate-spin" />
-          <p className="text-xs font-semibold text-slate-800">{loadingStep}</p>
-        </div>
-      )}
-
-      {/* Streamlined Comparison Report */}
-      {!isLoading && report && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-5">
-          {/* Score Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+      {/* SCREENSHOT REPORT RESULTS VIEW */}
+      {report && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Audit Verdict
-                </span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                  report.overallScore >= 90 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
-                }`}>
-                  {report.overallScore >= 90 ? 'High Compliance' : 'Discrepancies Found'}
-                </span>
-              </div>
-              <p className="text-xs text-slate-600 mt-1">
-                {report.summary}
-              </p>
+              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400 block mb-1">Visual Compliance Verdict</span>
+              <p className="text-xs text-slate-700 font-medium leading-relaxed max-w-xl">{report.summary}</p>
             </div>
-
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="text-center px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Match Score</span>
-                <span className={`text-2xl font-bold ${
-                  report.overallScore >= 90 ? 'text-emerald-600' : report.overallScore >= 70 ? 'text-amber-600' : 'text-rose-600'
-                }`}>
-                  {report.overallScore}%
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleCopyReport}
-                className="p-2 text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
-                title="Copy Summary"
-              >
-                {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Section 1: Page Title & Meta Tags Check */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-bold text-slate-900 flex items-center justify-between">
-              <span>1. Page Title & Meta Tags Comparison</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                report.seo.titleMatches ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+            <div className="text-center px-5 py-2.5 bg-slate-900 text-white rounded-xl shadow-xs shrink-0">
+              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wide block">Compliance Score</span>
+              <span className={`text-3xl font-extrabold font-mono ${
+                report.overallScore >= 80 ? 'text-emerald-400' : report.overallScore >= 50 ? 'text-amber-400' : 'text-rose-400'
               }`}>
-                {report.seo.titleMatches ? 'Title Match' : 'Title Discrepancy'}
+                {report.overallScore}%
               </span>
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase">Expected from Screenshot</span>
-                <p className="font-semibold text-slate-800">{report.seo.expectedTitle || '(Title in screenshot)'}</p>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase">Actual Webpage Title</span>
-                <p className="font-semibold text-slate-800">{report.seo.actualTitle || '(No title tag found)'}</p>
-              </div>
             </div>
           </div>
 
-          {/* Section 2: Heading Hierarchy Check */}
-          <div className="space-y-2 pt-2 border-t border-slate-100">
-            <h3 className="text-xs font-bold text-slate-900">
-              2. Headings Comparison (H1, H2, H3)
-            </h3>
-            <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
-              <table className="w-full text-left">
-                <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-semibold">
-                  <tr>
-                    <th className="px-3 py-2 text-[10px] uppercase">Tag</th>
-                    <th className="px-3 py-2 text-[10px] uppercase">Webpage Heading Text</th>
-                    <th className="px-3 py-2 text-[10px] uppercase">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-800">
-                  {report.headings.matches.map((heading, i) => (
-                    <tr key={i}>
-                      <td className="px-3 py-2 font-mono font-bold text-[10px] text-slate-500">
-                        {heading.level.toUpperCase()}
-                      </td>
-                      <td className="px-3 py-2 font-medium">{heading.actualText || 'Missing'}</td>
-                      <td className="px-3 py-2">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
-                          heading.status === 'match' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
-                        }`}>
-                          {heading.status.toUpperCase()}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Section 3: Body Copy Discrepancies */}
-          <div className="space-y-2 pt-2 border-t border-slate-100">
-            <h3 className="text-xs font-bold text-slate-900 flex items-center justify-between">
-              <span>3. Text Copy Discrepancies</span>
-              <span className="text-[11px] font-normal text-slate-500">
-                {report.bodyContent?.mismatchesCount || 0} issue(s) detected
-              </span>
-            </h3>
-
-            {report.bodyContent?.mismatches && report.bodyContent.mismatches.length > 0 ? (
-              <div className="space-y-2">
-                {report.bodyContent.mismatches.map((mismatch, i) => (
-                  <div key={i} className="p-3 bg-rose-50/50 border border-rose-200/80 rounded-xl text-xs space-y-2">
-                    <div className="flex items-center justify-between font-semibold text-rose-900">
-                      <span>{mismatch.category}</span>
-                      <span className="text-[10px] uppercase px-1.5 py-0.5 bg-rose-100 rounded text-rose-800">
-                        {mismatch.severity}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div className="p-2 bg-white rounded-lg border border-rose-100">
-                        <span className="text-[10px] text-slate-400 font-semibold block uppercase">Expected (Screenshot):</span>
-                        <p className="text-slate-800 font-medium">{mismatch.expected}</p>
-                      </div>
-                      <div className="p-2 bg-white rounded-lg border border-rose-100">
-                        <span className="text-[10px] text-rose-600 font-semibold block uppercase">Actual (Webpage):</span>
-                        <p className="text-slate-800 font-medium">{mismatch.actual}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-3 bg-emerald-50/50 border border-emerald-200/80 rounded-xl text-xs text-emerald-800 flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>No text copy discrepancies found! Webpage text matches screenshot reference.</span>
-              </div>
-            )}
-          </div>
-
-          {/* Section 4: Recommended Action Items */}
-          {report.recommendations && report.recommendations.length > 0 && (
-            <div className="space-y-2 pt-2 border-t border-slate-100">
-              <h3 className="text-xs font-bold text-slate-900">
-                4. Action Plan Fixes
+          {/* SEO Match Section */}
+          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-purple-600" /> Title & Description Verification
               </h3>
-              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1.5 text-xs text-slate-700">
-                {report.recommendations.map((rec, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <CheckSquare className="h-3.5 w-3.5 text-sky-600 shrink-0 mt-0.5" />
-                    <span>{rec}</span>
-                  </div>
-                ))}
-              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                report.seo.status === 'match' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+              }`}>
+                {report.seo.status.toUpperCase()}
+              </span>
             </div>
-          )}
+            <p className="text-xs text-slate-600 leading-relaxed">{report.seo.analysis}</p>
+          </div>
+
+          {/* Headings Section */}
+          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                <Layers className="h-4 w-4 text-purple-600" /> Heading Hierarchy Match
+              </h3>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                report.headings.status === 'match' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+              }`}>
+                {report.headings.status.toUpperCase()}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {report.headings.matches.map((item, idx) => (
+                <div key={idx} className="p-2.5 bg-white border border-slate-200 rounded-lg text-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-slate-900 uppercase">{item.level}</span>
+                    {item.status === 'match' ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                    ) : (
+                      <XCircle className="h-3.5 w-3.5 text-amber-600" />
+                    )}
+                  </div>
+                  <p className="text-slate-700 font-medium">{item.actualText || 'Missing in live page'}</p>
+                  <p className="text-[11px] text-slate-500 italic">{item.comment}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Recommendations */}
+          <div className="space-y-2">
+            <h4 className="font-bold text-xs uppercase tracking-wider text-slate-900">Actionable Copy Corrections:</h4>
+            <div className="p-3 bg-purple-50/60 border border-purple-200/80 rounded-xl space-y-1 text-xs">
+              {report.recommendations.map((rec, i) => (
+                <div key={i} className="flex items-start gap-2 text-purple-950 font-medium">
+                  <CheckSquare className="h-3.5 w-3.5 text-purple-600 shrink-0 mt-0.5" />
+                  <span>{rec}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileImage, Paintbrush, Key, ArrowRight, Heart, Sparkles, Terminal, Search, ShieldCheck, Zap, CheckCircle2, Activity, FileCode } from 'lucide-react';
 import { motion } from 'motion/react';
+import { prefetchTool } from '../App';
 
 interface DashboardGridProps {
   onSelectTool: (toolId: string) => void;
@@ -20,6 +21,30 @@ export default function DashboardGrid({
 
   const tools = [
     {
+      id: 'seo-checker',
+      name: 'SEO & Schema Auditor',
+      description: 'Audit webpage meta title lengths, descriptions, Google SERP snippet previews, Open Graph tags, and Schema.org structured data validity.',
+      category: 'AI & Quality Assurance',
+      icon: Search,
+      badge: 'SEO Inspector',
+      badgeStyle: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+      iconBg: 'bg-gradient-to-br from-indigo-600 to-blue-600 text-white shadow-indigo-200/50',
+      hoverBorder: 'hover:border-indigo-300 hover:shadow-indigo-100/50',
+      stats: 'SEO & Schemas'
+    },
+    {
+      id: 'content-checker',
+      name: 'Auditor',
+      description: 'AI-powered visual copy and screenshot compliance auditor. Compares live webpage copy against reference Awesome Screenshot designs.',
+      category: 'AI & Quality Assurance',
+      icon: ShieldCheck,
+      badge: 'Visual AI',
+      badgeStyle: 'bg-purple-100 text-purple-700 border-purple-200',
+      iconBg: 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-purple-200/50',
+      hoverBorder: 'hover:border-purple-300 hover:shadow-purple-100/50',
+      stats: 'Visual QA'
+    },
+    {
       id: 'html-cleaner',
       name: 'HTML Cleaner & Sanitizer',
       description: 'Strip dirty inline styles, tracking scripts, Word document bloat, and broken tags instantly with custom sanitizer rules and live previews.',
@@ -30,18 +55,6 @@ export default function DashboardGrid({
       iconBg: 'bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-sky-200/50',
       hoverBorder: 'hover:border-sky-300 hover:shadow-sky-100/50',
       stats: '100% Offline'
-    },
-    {
-      id: 'content-checker',
-      name: 'SEO & Copy Content Auditor',
-      description: 'Audit live page content, headings, copy variations, and SEO metadata against design screenshots using server-side Gemini AI.',
-      category: 'AI & Quality Assurance',
-      icon: ShieldCheck,
-      badge: 'Gemini AI',
-      badgeStyle: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-      iconBg: 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-indigo-200/50',
-      hoverBorder: 'hover:border-indigo-300 hover:shadow-indigo-100/50',
-      stats: 'Server-Side AI'
     },
     {
       id: 'image',
@@ -210,6 +223,8 @@ export default function DashboardGrid({
                 show: { opacity: 1, y: 0, transition: { duration: 0.12 } }
               }}
               whileHover={{ y: -2, transition: { duration: 0.1 } }}
+              onMouseEnter={() => prefetchTool(tool.id)}
+              onFocus={() => prefetchTool(tool.id)}
               onClick={() => onSelectTool(tool.id)}
               className={`group relative bg-white border border-slate-200/90 rounded-2xl p-6 shadow-2xs hover:shadow-md ${tool.hoverBorder} transition-all duration-150 cursor-pointer flex flex-col justify-between overflow-hidden`}
             >

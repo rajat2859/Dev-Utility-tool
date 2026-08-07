@@ -58,7 +58,122 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <style>
+        .app-initial-loader {
+          position: fixed;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background-color: #0f172a;
+          color: #f8fafc;
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          z-index: 9999;
+        }
+        .loader-logo-wrap {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 72px;
+          height: 72px;
+          margin-bottom: 24px;
+        }
+        .loader-spinner {
+          position: absolute;
+          inset: -6px;
+          border-radius: 50%;
+          border: 3px solid transparent;
+          border-top-color: #6366f1;
+          border-right-color: #a855f7;
+          animation: spin 1s linear infinite;
+        }
+        .loader-icon-box {
+          width: 60px;
+          height: 60px;
+          background: linear-gradient(135deg, #4f46e5, #7c3aed);
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.5);
+          animation: pulse-glow 2s ease-in-out infinite alternate;
+        }
+        .loader-title {
+          font-size: 18px;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          color: #ffffff;
+          margin-bottom: 6px;
+        }
+        .loader-subtitle {
+          font-size: 12px;
+          font-weight: 600;
+          color: #94a3b8;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .loader-badge {
+          background: rgba(99, 102, 241, 0.15);
+          border: 1px solid rgba(129, 140, 248, 0.3);
+          color: #818cf8;
+          padding: 2px 8px;
+          border-radius: 9999px;
+          font-size: 10px;
+          font-family: monospace;
+          font-weight: 700;
+        }
+        .loader-bar-bg {
+          width: 180px;
+          height: 4px;
+          background: #1e293b;
+          border-radius: 9999px;
+          margin-top: 20px;
+          overflow: hidden;
+          position: relative;
+        }
+        .loader-bar-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
+          border-radius: 9999px;
+          width: 40%;
+          animation: load-bar 1.2s ease-in-out infinite alternate;
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse-glow {
+          0% { transform: scale(0.98); box-shadow: 0 5px 15px -3px rgba(99, 102, 241, 0.4); }
+          100% { transform: scale(1.02); box-shadow: 0 12px 28px 0px rgba(168, 85, 247, 0.6); }
+        }
+        @keyframes load-bar {
+          0% { width: 15%; margin-left: 0%; }
+          100% { width: 75%; margin-left: 25%; }
+        }
+      </style>
+      <div class="app-initial-loader">
+        <div class="loader-logo-wrap">
+          <div class="loader-spinner"></div>
+          <div class="loader-icon-box">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #ffffff;">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="loader-title">Utility Tool Manager</div>
+        <div class="loader-subtitle">
+          <span>Initializing Workspace</span>
+          <span class="loader-badge">v2.0 PRO</span>
+        </div>
+        <div class="loader-bar-bg">
+          <div class="loader-bar-fill"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

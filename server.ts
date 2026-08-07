@@ -112,6 +112,334 @@ const responseSchema = {
   required: ["seo", "headings", "bodyContent", "overallScore", "summary", "recommendations"]
 };
 
+// Robust server-side SEO & Schema parser for Meta Title, Description, Social Cards & Schema.org JSON-LD / Microdata
+function parseFullSeoAndSchemas(html: string, pageUrl?: string) {
+  // Title extraction
+  let title = '';
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  if (titleMatch) {
+    title = titleMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  } else {
+    const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([\s\S]*?)["']/i) ||
+                         html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+property=["']og:title["']/i);
+    if (ogTitleMatch) title = ogTitleMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  // Meta Description extraction
+  let description = '';
+  const descMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([\s\S]*?)["']/i) ||
+                    html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']description["']/i);
+  if (descMatch) {
+    description = descMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  // Meta Keywords
+  let keywords = '';
+  const kwMatch = html.match(/<meta[^>]+name=["']keywords["'][^>]+content=["']([\s\S]*?)["']/i) ||
+                  html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']keywords["']/i);
+  if (kwMatch) keywords = kwMatch[1].trim();
+
+  // Canonical URL
+  let canonical = '';
+  const canMatch = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([\s\S]*?)["']/i) ||
+                   html.match(/<link[^>]+href=["']([\s\S]*?)["'][^>]+rel=["']canonical["']/i);
+  if (canMatch) canonical = canMatch[1].trim();
+
+  // Robots
+  let robots = '';
+  const robMatch = html.match(/<meta[^>]+name=["']robots["'][^>]+content=["']([\s\S]*?)["']/i) ||
+                   html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']robots["']/i);
+  if (robMatch) robots = robMatch[1].trim();
+
+  // Viewport
+  let viewport = '';
+  const vpMatch = html.match(/<meta[^>]+name=["']viewport["'][^>]+content=["']([\s\S]*?)["']/i) ||
+                  html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']viewport["']/i);
+  if (vpMatch) viewport = vpMatch[1].trim();
+
+  // Open Graph & Twitter Social Tags
+  const extractMeta = (propName: string, attrName = 'property') => {
+    const reg = new RegExp(`<meta[^>]+${attrName}=["']${propName.replace(':', '\\:')}["'][^>]+content=["']([\\s\\S]*?)["']`, 'i');
+    const reg2 = new RegExp(`<meta[^>]+content=["']([\\s\\S]*?)["'][^>]+${attrName}=["']${propName.replace(':', '\\:')}["']`, 'i');
+    const m = html.match(reg) || html.match(reg2);
+    return m ? m[1].trim() : undefined;
+  };
+
+  const ogTitle = extractMeta('og:title');
+  const ogDescription = extractMeta('og:description');
+  const ogImage = extractMeta('og:image');
+  const ogUrl = extractMeta('og:url');
+  const ogType = extractMeta('og:type');
+  const ogSiteName = extractMeta('og:site_name');
+
+  const twitterCard = extractMeta('twitter:card', 'name');
+  const twitterTitle = extractMeta('twitter:title', 'name');
+  const twitterDescription = extractMeta('twitter:description', 'name');
+  const twitterImage = extractMeta('twitter:image', 'name');
+
+  // Headings
+  const h1s: string[] = [];
+  let h2Count = 0, h3Count = 0, h4Count = 0;
+  const headingRegex = /<(h1|h2|h3|h4|h5|h6)[^>]*>([\s\S]*?)<\/\1>/gi;
+  let hMatch;
+  while ((hMatch = headingRegex.exec(html)) !== null) {
+    const lvl = hMatch[1].toLowerCase();
+    const txt = hMatch[2].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    if (lvl === 'h1' && txt) h1s.push(txt);
+    else if (lvl === 'h2') h2Count++;
+    else if (lvl === 'h3') h3Count++;
+    else if (lvl === 'h4') h4Count++;
+  }
+
+  // Image alt check
+  let totalImages = 0;
+  let missingAltCount = 0;
+  const imgRegex = /<img[^>]*>/gi;
+  let imgMatch;
+  while ((imgMatch = imgRegex.exec(html)) !== null) {
+    totalImages++;
+    const imgTag = imgMatch[0];
+    if (!/alt=["']/i.test(imgTag) || /alt=["']\s*["']/i.test(imgTag)) {
+      missingAltCount++;
+    }
+  }
+
+  // Title Audit
+  const titleLen = title.length;
+  let titleStatus: 'optimal' | 'too_short' | 'too_long' | 'missing' = 'optimal';
+  let titleMsg = 'Title length is optimal for Google SERP display (50 - 60 characters).';
+  if (titleLen === 0) {
+    titleStatus = 'missing';
+    titleMsg = 'Meta title tag is completely missing! This severely harms SEO ranking.';
+  } else if (titleLen < 30) {
+    titleStatus = 'too_short';
+    titleMsg = `Title is too short (${titleLen} chars). Expand to 50-60 characters to include target keywords and branding.`;
+  } else if (titleLen > 60) {
+    titleStatus = 'too_long';
+    titleMsg = `Title is too long (${titleLen} chars). Google will truncate titles beyond ~60 characters on desktop/mobile.`;
+  }
+
+  // Description Audit
+  const descLen = description.length;
+  let descStatus: 'optimal' | 'too_short' | 'too_long' | 'missing' = 'optimal';
+  let descMsg = 'Meta description length is optimal for search snippets (120 - 160 characters).';
+  if (descLen === 0) {
+    descStatus = 'missing';
+    descMsg = 'Meta description is missing! Search engines will auto-generate snippets from body text.';
+  } else if (descLen < 70) {
+    descStatus = 'too_short';
+    descMsg = `Description is too short (${descLen} chars). Expand to 120-160 characters to improve click-through rates.`;
+  } else if (descLen > 160) {
+    descStatus = 'too_long';
+    descMsg = `Description is too long (${descLen} chars). Snippets over 160 characters will be truncated with ellipsis.`;
+  }
+
+  // Schema extraction (JSON-LD)
+  const schemas: any[] = [];
+  const jsonLdRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let scriptMatch;
+  while ((scriptMatch = jsonLdRegex.exec(html)) !== null) {
+    const rawScriptContent = scriptMatch[1].trim();
+    if (!rawScriptContent) continue;
+    try {
+      const cleanedJson = rawScriptContent.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1').trim();
+      const parsed = JSON.parse(cleanedJson);
+      
+      const processSchemaObj = (obj: any) => {
+        if (!obj || typeof obj !== 'object') return;
+        
+        if (Array.isArray(obj['@graph'])) {
+          obj['@graph'].forEach(item => processSchemaObj(item));
+          return;
+        }
+
+        if (Array.isArray(obj)) {
+          obj.forEach(item => processSchemaObj(item));
+          return;
+        }
+
+        const schemaType = obj['@type'] || obj['type'] || 'UnknownSchema';
+        const issues: { type: 'error' | 'warning' | 'info'; message: string; field?: string }[] = [];
+
+        const typeStr = Array.isArray(schemaType) ? schemaType.join(', ') : String(schemaType);
+        
+        if (typeStr.includes('Article') || typeStr.includes('BlogPosting') || typeStr.includes('NewsArticle')) {
+          if (!obj.headline && !obj.name) issues.push({ type: 'warning', message: 'Missing "headline" property.', field: 'headline' });
+          if (!obj.image) issues.push({ type: 'warning', message: 'Missing "image" property (recommended for Rich Snippets).', field: 'image' });
+          if (!obj.datePublished) issues.push({ type: 'info', message: 'Missing "datePublished" property.', field: 'datePublished' });
+          if (!obj.author) issues.push({ type: 'info', message: 'Missing "author" property.', field: 'author' });
+        } else if (typeStr.includes('Product')) {
+          if (!obj.name) issues.push({ type: 'error', message: 'Missing required "name" property.', field: 'name' });
+          if (!obj.image) issues.push({ type: 'warning', message: 'Missing "image" property.', field: 'image' });
+          if (!obj.offers && !obj.aggregateRating && !obj.review) {
+            issues.push({ type: 'warning', message: 'Missing "offers" or "aggregateRating" for Product rich results.', field: 'offers' });
+          }
+        } else if (typeStr.includes('Organization') || typeStr.includes('LocalBusiness')) {
+          if (!obj.name) issues.push({ type: 'error', message: 'Missing required "name" property.', field: 'name' });
+          if (!obj.url) issues.push({ type: 'warning', message: 'Missing "url" property.', field: 'url' });
+          if (!obj.logo && !obj.image) issues.push({ type: 'info', message: 'Missing "logo" or "image" property.', field: 'logo' });
+        } else if (typeStr.includes('BreadcrumbList')) {
+          if (!obj.itemListElement || !Array.isArray(obj.itemListElement) || obj.itemListElement.length === 0) {
+            issues.push({ type: 'error', message: 'BreadcrumbList requires "itemListElement" array.', field: 'itemListElement' });
+          }
+        } else if (typeStr.includes('FAQPage')) {
+          if (!obj.mainEntity || !Array.isArray(obj.mainEntity)) {
+            issues.push({ type: 'error', message: 'FAQPage requires "mainEntity" array of Question/Answer items.', field: 'mainEntity' });
+          }
+        }
+
+        if (!obj['@type']) {
+          issues.push({ type: 'error', message: 'Missing @type property in JSON-LD object.' });
+        }
+
+        schemas.push({
+          schemaType: typeStr,
+          source: 'json-ld',
+          rawJson: obj,
+          issues,
+          valid: issues.filter(i => i.type === 'error').length === 0
+        });
+      };
+
+      processSchemaObj(parsed);
+    } catch (jsonErr: any) {
+      schemas.push({
+        schemaType: 'Invalid JSON-LD',
+        source: 'json-ld',
+        rawJson: { raw: rawScriptContent.slice(0, 300) },
+        issues: [{ type: 'error', message: `JSON syntax error: ${jsonErr.message}` }],
+        valid: false
+      });
+    }
+  }
+
+  // Microdata Check
+  const microdataRegex = /<[^>]+itemscope[^>]*>/gi;
+  let mdMatch;
+  while ((mdMatch = microdataRegex.exec(html)) !== null) {
+    const tag = mdMatch[0];
+    const typeMatch = tag.match(/itemtype=["']([^"']+)["']/i);
+    const itemType = typeMatch ? typeMatch[1].split('/').pop() || typeMatch[1] : 'MicrodataItem';
+    schemas.push({
+      schemaType: itemType,
+      source: 'microdata',
+      rawJson: { htmlTag: tag },
+      issues: [],
+      valid: true
+    });
+  }
+
+  // Calculate Health Score (0 - 100)
+  let titleScore = titleStatus === 'optimal' ? 20 : titleStatus === 'too_short' || titleStatus === 'too_long' ? 12 : 0;
+  let descriptionScore = descStatus === 'optimal' ? 20 : descStatus === 'too_short' || descStatus === 'too_long' ? 12 : 0;
+  let headingsScore = h1s.length === 1 ? 15 : h1s.length > 1 ? 8 : 0;
+  let socialScore = (ogTitle && ogDescription && ogImage ? 10 : ogTitle || ogDescription ? 5 : 0) + (twitterCard ? 5 : 0);
+  let technicalScore = (canonical ? 8 : 0) + (viewport ? 7 : 0);
+  let schemaScore = schemas.length > 0 && schemas.some(s => s.valid) ? 15 : schemas.length > 0 ? 8 : 0;
+
+  const totalScore = titleScore + descriptionScore + headingsScore + socialScore + technicalScore + schemaScore;
+
+  return {
+    title: {
+      text: title,
+      length: titleLen,
+      status: titleStatus,
+      message: titleMsg,
+      pixelWidthEst: Math.round(titleLen * 8.2)
+    },
+    description: {
+      text: description,
+      length: descLen,
+      status: descStatus,
+      message: descMsg
+    },
+    keywords,
+    canonical,
+    robots,
+    viewport,
+    openGraph: {
+      title: ogTitle,
+      description: ogDescription,
+      image: ogImage,
+      url: ogUrl,
+      type: ogType,
+      siteName: ogSiteName,
+      hasOgTags: !!(ogTitle || ogDescription || ogImage)
+    },
+    twitterCard: {
+      card: twitterCard,
+      title: twitterTitle,
+      description: twitterDescription,
+      image: twitterImage,
+      hasTwitterTags: !!(twitterCard || twitterTitle || twitterImage)
+    },
+    headings: {
+      h1Count: h1s.length,
+      h1Texts: h1s,
+      h2Count,
+      h3Count,
+      h4Count,
+      status: h1s.length === 1 ? 'good' : h1s.length === 0 ? 'missing_h1' : 'multiple_h1',
+      message: h1s.length === 1 ? 'Perfect! Exactly 1 H1 heading tag found.' : h1s.length === 0 ? 'Missing H1 tag. Every SEO-friendly page should have exactly one main H1 tag.' : `Found ${h1s.length} H1 tags. It is recommended to have exactly one H1 tag per page.`
+    },
+    images: {
+      total: totalImages,
+      missingAltCount,
+      imagesWithoutAlt: []
+    },
+    schemas,
+    overallHealthScore: totalScore,
+    scoreBreakdown: {
+      titleScore,
+      descriptionScore,
+      headingsScore,
+      socialScore,
+      technicalScore,
+      schemaScore
+    }
+  };
+}
+
+// Endpoint to audit SEO meta tags, Title, Description, and Schema.org structured data
+app.post("/api/seo-checker/analyze", async (req, res) => {
+  try {
+    const { url, rawHtml } = req.body;
+    let htmlContent = "";
+    let pageUrlStr = url || "";
+
+    if (rawHtml && rawHtml.trim()) {
+      htmlContent = rawHtml.trim();
+    } else if (url && url.trim()) {
+      let sanitizedUrl = url.trim();
+      if (!/^https?:\/\//i.test(sanitizedUrl)) {
+        sanitizedUrl = 'https://' + sanitizedUrl;
+      }
+      pageUrlStr = sanitizedUrl;
+
+      const response = await fetch(sanitizedUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AuditorSeoBot/2.0",
+          "Cache-Control": "no-cache"
+        },
+        signal: AbortSignal.timeout(12000),
+      });
+
+      if (!response.ok) {
+        return res.status(400).json({ error: `Could not fetch page. Server status: ${response.status} ${response.statusText}` });
+      }
+
+      htmlContent = await response.text();
+    } else {
+      return res.status(400).json({ error: "Please provide a Webpage URL or paste raw HTML code." });
+    }
+
+    const auditResult = parseFullSeoAndSchemas(htmlContent, pageUrlStr);
+    return res.json({ success: true, data: auditResult, pageUrl: pageUrlStr });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Failed to audit SEO and Schemas." });
+  }
+});
+
 // Robust server-side parser for metadata, headings, paragraphs, lists, and tables
 function parseHtml(html: string) {
   // Extract title (standard <title>, og:title, twitter:title)
