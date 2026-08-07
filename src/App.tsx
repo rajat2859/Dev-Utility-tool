@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import DashboardGrid from './components/DashboardGrid';
-import ImageConverter from './components/tools/ImageConverter';
-import GradientGenerator from './components/tools/GradientGenerator';
-import PasswordGenerator from './components/tools/PasswordGenerator';
-import ContentChecker from './components/tools/ContentChecker';
-import HtmlCleaner from './components/tools/HtmlCleaner';
-import { ArrowLeft, Zap } from 'lucide-react';
+import { ArrowLeft, Zap, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+
+// Lazy load tool components for optimal code-splitting and instant initial page loading
+const ImageConverter = lazy(() => import('./components/tools/ImageConverter'));
+const GradientGenerator = lazy(() => import('./components/tools/GradientGenerator'));
+const PasswordGenerator = lazy(() => import('./components/tools/PasswordGenerator'));
+const ContentChecker = lazy(() => import('./components/tools/ContentChecker'));
+const HtmlCleaner = lazy(() => import('./components/tools/HtmlCleaner'));
 
 export default function App() {
   const [activeView, setActiveView] = useState<string>('dashboard');
@@ -92,7 +94,6 @@ export default function App() {
       <Sidebar
         currentView={activeView}
         onSelectView={setActiveView}
-        favorites={favorites}
         isOpen={sidebarOpen}
         onToggleOpen={() => setSidebarOpen(!sidebarOpen)}
       />
@@ -132,17 +133,24 @@ export default function App() {
         </header>
 
         <main className="flex-1 p-3.5 sm:p-6 md:p-8 max-w-7xl w-full mx-auto min-w-0">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeView}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.12, ease: 'easeOut' }}
-            >
-              {renderActiveTool()}
-            </motion.div>
-          </AnimatePresence>
+          <Suspense fallback={
+            <div className="flex flex-col items-center justify-center min-h-[300px] gap-3 text-slate-500">
+              <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+              <span className="text-xs font-semibold tracking-wide uppercase font-mono">Loading Tool...</span>
+            </div>
+          }>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeView}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.12, ease: 'easeOut' }}
+              >
+                {renderActiveTool()}
+              </motion.div>
+            </AnimatePresence>
+          </Suspense>
         </main>
       </div>
     </div>

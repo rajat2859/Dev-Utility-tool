@@ -26,7 +26,7 @@ function getGeminiClient(): GoogleGenAI | null {
     apiKey: currentKey,
     httpOptions: {
       headers: {
-        'User-Agent': 'aistudio-build',
+        'User-Agent': 'utility-tool-manager',
       }
     }
   });
@@ -233,10 +233,16 @@ function parseHtml(html: string) {
 
 // Local OCR helper for server-side text extraction from reference screenshots
 async function performLocalOcr(imageBase64: string): Promise<string> {
+  if (!imageBase64) return '';
   try {
     const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
     const imageBuffer = Buffer.from(cleanBase64, 'base64');
-    const result = await Tesseract.recognize(imageBuffer, 'eng');
+    
+    // Run OCR with a 3.5s timeout limit so local fallback remains ultra-responsive
+    const ocrPromise = Tesseract.recognize(imageBuffer, 'eng');
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
+    
+    const result: any = await Promise.race([ocrPromise, timeoutPromise]);
     return result?.data?.text || '';
   } catch (err: any) {
     console.log("Local OCR extraction note:", err?.message || err);
@@ -620,7 +626,7 @@ async function analyzeWithOpenRouter(openRouterKey: string, textPrompt: string, 
       headers: {
         "Authorization": `Bearer ${openRouterKey.trim()}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.APP_URL || "https://ai.studio",
+        "HTTP-Referer": process.env.APP_URL || "https://utility-tool-manager.app",
         "X-Title": "SEO Copy Auditor"
       },
       body: JSON.stringify({
@@ -762,23 +768,25 @@ ${JSON.stringify(responseSchema, null, 2)}
 
         try {
           const geminiRes = await client.models.generateContent({
-            model: "gemini-3.6-flash",
+            model: "gemini-2.5-flash",
             contents: { parts: [imagePart, { text: textPrompt }] },
             config: {
               responseMimeType: "application/json",
-              responseSchema: responseSchema
+              responseSchema: responseSchema,
+              temperature: 0.1
             }
           });
           reportText = geminiRes.text || "";
         } catch (modelErr: any) {
-          console.log("Gemini 3.6 Flash unavailable, trying fallback model...");
+          console.log("Gemini 2.5 Flash unavailable, trying 3.6 Flash fallback...");
           try {
             const fallbackRes = await client.models.generateContent({
-              model: "gemini-flash-latest",
+              model: "gemini-3.6-flash",
               contents: { parts: [imagePart, { text: textPrompt }] },
               config: {
                 responseMimeType: "application/json",
-                responseSchema: responseSchema
+                responseSchema: responseSchema,
+                temperature: 0.1
               }
             });
             reportText = fallbackRes.text || "";
@@ -857,73 +865,115 @@ app.post("/api/content-checker/resolve-awesome-screenshot", async (req, res) => 
     if (/\.(png|jpe?g|webp|gif)(?:\?.*)?$/i.test(url)) {
       imageUrl = url;
     } else {
-      const response = await fetch(url, {
+      const pageResponse = await fetch(url, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
         },
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(12000),
       });
 
-      if (!response.ok) {
-        return res.status(400).json({ error: `Could not fetch shared link. Status: ${response.status} ${response.statusText}` });
+      if (!pageResponse.ok) {
+        return res.status(400).json({ error: `Could not fetch shared link. Status: ${pageResponse.status} ${pageResponse.statusText}` });
       }
 
-      const html = await response.text();
+      const rawHtml = await pageResponse.text();
+      // Unescape slashes commonly present in JSON payloads within script tags
+      const unescapedHtml = rawHtml.replace(/\\\/|\\u002F/g, '/');
 
-      // Look for standard open graph or twitter image meta tags first
-      const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
-                      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-      const twMatch = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
-                      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i) ||
-                      html.match(/<meta[^>]+name=["']twitter:image:src["'][^>]+content=["']([^"']+)["']/i) ||
-                      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image:src["']/i);
+      const candidates: string[] = [];
 
-      if (ogMatch) {
-        imageUrl = ogMatch[1];
-      } else if (twMatch) {
-        imageUrl = twMatch[1];
-      } else {
-        const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
-        let match;
-        while ((match = imgRegex.exec(html)) !== null) {
-          const src = match[1];
-          if (src.includes("awesomescreenshot") || src.includes("screenshot") || src.includes("cdn") || src.includes("storage") || src.includes("amazonaws")) {
-            imageUrl = src;
-            break;
-          }
+      // 1. Check meta tags (og:image, twitter:image)
+      const metaMatches = unescapedHtml.matchAll(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image|twitter:image:src)["'][^>]+content=["']([^"']+)["']/gi);
+      for (const m of metaMatches) {
+        if (m[1]) candidates.push(m[1]);
+      }
+      const metaMatchesReverse = unescapedHtml.matchAll(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image|twitter:image:src)["']/gi);
+      for (const m of metaMatchesReverse) {
+        if (m[1]) candidates.push(m[1]);
+      }
+
+      // 2. Look for JSON keys in script blocks or window state (e.g. Next.js data, React state)
+      const jsonUrlRegex = /"(?:image_url|imageUrl|file_url|fileUrl|original_url|download_url|downloadUrl|preview_url|previewUrl|share_url|src|url)":\s*"([^"]+)"/gi;
+      let jsonMatch;
+      while ((jsonMatch = jsonUrlRegex.exec(unescapedHtml)) !== null) {
+        const val = jsonMatch[1];
+        if (val.startsWith('http') || val.startsWith('//')) {
+          candidates.push(val);
         }
+      }
 
-        if (!imageUrl) {
-          const fallbackMatch = html.match(/<img[^>]+src=["']([^"']+)["']/i);
-          if (fallbackMatch) {
-            imageUrl = fallbackMatch[1];
+      // 3. Look for explicit AWS S3 / CloudFront / AwesomeScreenshot CDN image URLs in full HTML
+      const cdnRegex = /(https?:\/\/[^"'\s<>]+?\.(?:png|jpe?g|webp|gif)(?:\?[^"'\s<>]*)?)/gi;
+      let cdnMatch;
+      while ((cdnMatch = cdnRegex.exec(unescapedHtml)) !== null) {
+        candidates.push(cdnMatch[1]);
+      }
+
+      // 4. Look for <img> tag src
+      const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
+      let imgMatch;
+      while ((imgMatch = imgRegex.exec(unescapedHtml)) !== null) {
+        candidates.push(imgMatch[1]);
+      }
+
+      // Score and select the best candidate image URL
+      const scored = candidates
+        .map(c => {
+          let href = c.replace(/&amp;/g, '&');
+          if (href.startsWith('//')) href = 'https:' + href;
+          try {
+            href = new URL(href, url).href;
+          } catch {
+            // keep as is
           }
-        }
+
+          let score = 0;
+          const lower = href.toLowerCase();
+
+          // Reject non-image / logo / icon / avatar noise
+          if (lower.includes('favicon') || lower.includes('logo') || lower.includes('avatar') || lower.includes('icon') || lower.includes('pixel') || lower.endsWith('.svg')) {
+            return { href, score: -100 };
+          }
+
+          if (lower.includes('awesomescreenshot') || lower.includes('cloudfront') || lower.includes('s3.amazonaws.com') || lower.includes('user_upload') || lower.includes('screenshot')) {
+            score += 50;
+          }
+          if (lower.includes('.png') || lower.includes('.jpg') || lower.includes('.jpeg') || lower.includes('.webp')) {
+            score += 30;
+          }
+          if (lower.includes('original') || lower.includes('full') || lower.includes('download') || lower.includes('storage')) {
+            score += 20;
+          }
+
+          return { href, score };
+        })
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score);
+
+      if (scored.length > 0) {
+        imageUrl = scored[0].href;
       }
     }
 
     if (!imageUrl) {
-      return res.status(400).json({ error: "Could not locate a high-fidelity image on the shared screenshot link page. Make sure the link is public." });
+      return res.status(400).json({ error: "Could not locate a screenshot image on the shared link page. Please ensure the link is public or upload the screenshot image file directly." });
     }
 
     imageUrl = imageUrl.replace(/&amp;/g, '&');
-    
-    // Resolve relative URL if needed
-    try {
-      imageUrl = new URL(imageUrl, url).href;
-    } catch (e) {
-      // Keep as is
-    }
 
     const imgResponse = await fetch(imageUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        "Referer": url,
       },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(12000),
     });
 
     if (!imgResponse.ok) {
-      return res.status(400).json({ error: `Failed to download screenshot image from resolved URL: ${imageUrl}` });
+      return res.status(400).json({ error: `Failed to download screenshot image asset from resolved URL: ${imageUrl}` });
     }
 
     const arrayBuffer = await imgResponse.arrayBuffer();

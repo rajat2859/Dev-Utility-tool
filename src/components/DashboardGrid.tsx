@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileImage, Paintbrush, Key, ArrowRight, Heart, Sparkles, Terminal, Search, ShieldCheck, Zap, CheckCircle2, Cpu, Activity, FileCode } from 'lucide-react';
+import { FileImage, Paintbrush, Key, ArrowRight, Heart, Sparkles, Terminal, Search, ShieldCheck, Zap, CheckCircle2, Activity, FileCode } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface DashboardGridProps {

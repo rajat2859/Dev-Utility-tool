@@ -1,53 +1,157 @@
-import React, { useState, useRef } from 'react';
-import { Copy, Check, RefreshCw, Plus, Trash2, ArrowRightLeft, LayoutGrid, FileDown, Layers, MoveRight, Paintbrush } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  Copy, 
+  Check, 
+  RefreshCw, 
+  Plus, 
+  Trash2, 
+  ArrowRightLeft, 
+  LayoutGrid, 
+  FileDown, 
+  Layers, 
+  MoveRight, 
+  Paintbrush, 
+  Sparkles, 
+  Code, 
+  Sun, 
+  Palette, 
+  Bookmark, 
+  BookmarkCheck, 
+  Smartphone, 
+  Type, 
+  Square, 
+  Eye, 
+  ShieldCheck, 
+  ShieldAlert, 
+  Wand2, 
+  Share2, 
+  CopyCheck, 
+  RotateCw,
+  Search,
+  CheckCircle2,
+  Sliders,
+  Play
+} from 'lucide-react';
 
 interface ColorStop {
   id: string;
   color: string;
   stop: number;
+  opacity: number; // 0 to 100
+}
+
+interface MeshPoint {
+  id: string;
+  color: string;
+  x: number; // 0 to 100%
+  y: number; // 0 to 100%
+  radius: number; // 20 to 100%
+}
+
+interface SavedGradient {
+  id: string;
+  name: string;
+  type: 'linear' | 'radial' | 'conic' | 'mesh';
+  angle: number;
+  stops: ColorStop[];
+  createdAt: number;
 }
 
 const PRESETS = [
-  { name: 'Hyper Light', colors: ['#ec4899', '#8b5cf6', '#3b82f6'], stops: [0, 50, 100], type: 'linear' as const },
-  { name: 'Warm Sunset', colors: ['#f97316', '#ec4899', '#ef4444'], stops: [0, 50, 100], type: 'linear' as const },
-  { name: 'Oceanic Breeze', colors: ['#06b6d4', '#3b82f6', '#1d4ed8'], stops: [0, 45, 100], type: 'linear' as const },
-  { name: 'Emerald Forest', colors: ['#34d399', '#10b981', '#059669'], stops: [0, 60, 100], type: 'linear' as const },
-  { name: 'Deep Space', colors: ['#0f172a', '#1e293b', '#475569'], stops: [0, 50, 100], type: 'linear' as const },
-  { name: 'Neon Dream', colors: ['#ff007f', '#7f00ff', '#00f0ff'], stops: [0, 50, 100], type: 'linear' as const },
-  { name: 'Aura Teal', colors: ['#4ade80', '#06b6d4', '#6366f1'], stops: [10, 55, 95], type: 'linear' as const },
-  { name: 'Retro Sunset', colors: ['#facc15', '#f97316', '#dc2626'], stops: [0, 50, 100], type: 'linear' as const }
+  { name: 'Hyper Light', colors: ['#ec4899', '#8b5cf6', '#3b82f6'], stops: [0, 50, 100], type: 'linear' as const, category: 'Vibrant' },
+  { name: 'Warm Sunset', colors: ['#f97316', '#ec4899', '#ef4444'], stops: [0, 50, 100], type: 'linear' as const, category: 'Sunset & Nature' },
+  { name: 'Oceanic Breeze', colors: ['#06b6d4', '#3b82f6', '#1d4ed8'], stops: [0, 45, 100], type: 'linear' as const, category: 'Sunset & Nature' },
+  { name: 'Emerald Forest', colors: ['#34d399', '#10b981', '#059669'], stops: [0, 60, 100], type: 'linear' as const, category: 'Sunset & Nature' },
+  { name: 'Cyberpunk Neon', colors: ['#0f172a', '#3b0764', '#0284c7'], stops: [0, 50, 100], type: 'linear' as const, category: 'Dark & Cyber' },
+  { name: 'Deep Space', colors: ['#0f172a', '#1e293b', '#475569'], stops: [0, 50, 100], type: 'linear' as const, category: 'Dark & Cyber' },
+  { name: 'Instagram Glow', colors: ['#833ab4', '#fd1d1d', '#fcb045'], stops: [0, 50, 100], type: 'linear' as const, category: 'Brand Icons' },
+  { name: 'Stripe Silk', colors: ['#6366f1', '#a855f7', '#ec4899'], stops: [0, 50, 100], type: 'linear' as const, category: 'Brand Icons' },
+  { name: 'Spotify Wave', colors: ['#1ed760', '#121212'], stops: [0, 100], type: 'linear' as const, category: 'Brand Icons' },
+  { name: 'Vercel Dusk', colors: ['#000000', '#434343'], stops: [0, 100], type: 'linear' as const, category: 'Dark & Cyber' },
+  { name: 'Pastel Dream', colors: ['#fbcfe8', '#e0e7ff', '#bae6fd'], stops: [0, 50, 100], type: 'linear' as const, category: 'Pastels' },
+  { name: 'Cotton Candy', colors: ['#fda4af', '#f0abfc', '#93c5fd'], stops: [0, 50, 100], type: 'linear' as const, category: 'Pastels' },
+  { name: 'Aura Teal', colors: ['#4ade80', '#06b6d4', '#6366f1'], stops: [10, 55, 95], type: 'radial' as const, category: 'Aura Mesh' },
+  { name: 'Retro Sunrise', colors: ['#facc15', '#f97316', '#dc2626'], stops: [0, 50, 100], type: 'conic' as const, category: 'Vibrant' }
 ];
 
 export default function GradientGenerator() {
   const [stops, setStops] = useState<ColorStop[]>([
-    { id: '1', color: '#6366f1', stop: 0 },
-    { id: '2', color: '#ec4899', stop: 100 }
+    { id: '1', color: '#6366f1', stop: 0, opacity: 100 },
+    { id: '2', color: '#ec4899', stop: 100, opacity: 100 }
   ]);
-  const [gradientType, setGradientType] = useState<'linear' | 'radial' | 'conic'>('linear');
+  const [gradientType, setGradientType] = useState<'linear' | 'radial' | 'conic' | 'mesh'>('linear');
   const [angle, setAngle] = useState<number>(135);
   const [radialShape, setRadialShape] = useState<'circle' | 'ellipse'>('circle');
   const [radialPosition, setRadialPosition] = useState<string>('center');
-  const [copiedType, setCopiedType] = useState<'css' | 'tailwind' | null>(null);
-  const [previewTemplate, setPreviewTemplate] = useState<'full' | 'card' | 'text' | 'button'>('full');
-  const previewRef = useRef<HTMLDivElement>(null);
+  const [radialX, setRadialX] = useState<number>(50);
+  const [radialY, setRadialY] = useState<number>(50);
+  
+  // Mesh points state
+  const [meshPoints, setMeshPoints] = useState<MeshPoint[]>([
+    { id: 'm1', color: '#6366f1', x: 20, y: 30, radius: 60 },
+    { id: 'm2', color: '#ec4899', x: 80, y: 20, radius: 70 },
+    { id: 'm3', color: '#3b82f6', x: 30, y: 80, radius: 65 },
+    { id: 'm4', color: '#10b981', x: 85, y: 85, radius: 55 },
+  ]);
+
+  const [copiedType, setCopiedType] = useState<string | null>(null);
+  const [previewTemplate, setPreviewTemplate] = useState<'full' | 'card' | 'text' | 'button' | 'phone' | 'badge'>('full');
+  const [exportFormat, setExportFormat] = useState<'css' | 'tailwind' | 'svg' | 'react' | 'animated'>('css');
+  const [presetCategory, setPresetCategory] = useState<string>('All');
+  const [presetSearch, setPresetSearch] = useState<string>('');
+  const [savedGradients, setSavedGradients] = useState<SavedGradient[]>([]);
+  const [gradientName, setGradientName] = useState<string>('Custom Gradient');
+  const [isSaved, setIsSaved] = useState(false);
 
   const activeStopId = stops[0]?.id || '';
   const [selectedStopId, setSelectedStopId] = useState<string>(activeStopId);
 
+  useEffect(() => {
+    const localSaved = localStorage.getItem('util_hub_saved_gradients');
+    if (localSaved) {
+      try {
+        setSavedGradients(JSON.parse(localSaved));
+      } catch {
+        // Fallback
+      }
+    }
+  }, []);
+
   const sortedStops = [...stops].sort((a, b) => a.stop - b.stop);
 
+  const hexToRgba = (hex: string, opacityPercent: number) => {
+    let cleanHex = hex.replace('#', '');
+    if (cleanHex.length === 3) {
+      cleanHex = cleanHex.split('').map(c => c + c).join('');
+    }
+    const r = parseInt(cleanHex.substring(0, 2), 16) || 0;
+    const g = parseInt(cleanHex.substring(2, 4), 16) || 0;
+    const b = parseInt(cleanHex.substring(4, 6), 16) || 0;
+    const alpha = (opacityPercent / 100).toFixed(2);
+    return opacityPercent < 100 ? `rgba(${r}, ${g}, ${b}, ${alpha})` : hex;
+  };
+
   const getGradientString = () => {
-    const stopsStr = sortedStops.map(s => `${s.color} ${s.stop}%`).join(', ');
+    if (gradientType === 'mesh') {
+      return meshPoints.map(p => `radial-gradient(circle at ${p.x}% ${p.y}%, ${p.color} 0%, transparent ${p.radius}%)`).join(', ');
+    }
+
+    const stopsStr = sortedStops.map(s => `${hexToRgba(s.color, s.opacity)} ${s.stop}%`).join(', ');
     if (gradientType === 'linear') {
       return `linear-gradient(${angle}deg, ${stopsStr})`;
     } else if (gradientType === 'radial') {
-      return `radial-gradient(${radialShape} at ${radialPosition}, ${stopsStr})`;
+      const pos = radialPosition === 'custom' ? `${radialX}% ${radialY}%` : radialPosition;
+      return `radial-gradient(${radialShape} at ${pos}, ${stopsStr})`;
     } else {
-      return `conic-gradient(from ${angle}deg at ${radialPosition}, ${stopsStr})`;
+      const pos = radialPosition === 'custom' ? `${radialX}% ${radialY}%` : radialPosition;
+      return `conic-gradient(from ${angle}deg at ${pos}, ${stopsStr})`;
     }
   };
 
   const getTailwindArbitraryValue = () => {
+    if (gradientType === 'mesh') {
+      return `/* Mesh gradient inline style recommended */`;
+    }
     const stopsStr = sortedStops.map(s => `${s.color}_${s.stop}%`).join(',');
     if (gradientType === 'linear') {
       return `bg-[linear-gradient(${angle}deg,${stopsStr})]`;
@@ -58,6 +162,39 @@ export default function GradientGenerator() {
     }
   };
 
+  const getSvgCode = () => {
+    const stopsXml = sortedStops.map(s => 
+      `<stop offset="${s.stop}%" stop-color="${s.color}" stop-opacity="${s.opacity / 100}" />`
+    ).join('\n    ');
+
+    return `<svg width="100%" height="100%" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+    ${stopsXml}
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#gradient)" />
+</svg>`;
+  };
+
+  const getReactStyleCode = () => {
+    return `const style = {\n  background: "${getGradientString()}"\n};`;
+  };
+
+  const getAnimatedCssCode = () => {
+    return `@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animated-gradient {
+  background: ${getGradientString()};
+  background-size: 200% 200%;
+  animation: gradientFlow 8s ease infinite;
+}`;
+  };
+
   const handleUpdateColor = (id: string, color: string) => {
     setStops(stops.map(s => s.id === id ? { ...s, color } : s));
   };
@@ -66,15 +203,17 @@ export default function GradientGenerator() {
     setStops(stops.map(s => s.id === id ? { ...s, stop: Math.min(Math.max(stop, 0), 100) } : s));
   };
 
+  const handleUpdateOpacity = (id: string, opacity: number) => {
+    setStops(stops.map(s => s.id === id ? { ...s, opacity: Math.min(Math.max(opacity, 0), 100) } : s));
+  };
+
   const handleAddStop = () => {
     const defaultPosition = sortedStops.length > 0 
       ? Math.round(sortedStops.reduce((acc, current, index) => {
           if (index === sortedStops.length - 1) return acc;
           const next = sortedStops[index + 1];
           const diff = next.stop - current.stop;
-          if (diff > 10) {
-            return (current.stop + next.stop) / 2;
-          }
+          if (diff > 10) return (current.stop + next.stop) / 2;
           return acc;
         }, 50))
       : 50;
@@ -82,10 +221,11 @@ export default function GradientGenerator() {
     const rgbColors = [Math.floor(Math.random() * 256), Math.floor(Math.random() * 256), Math.floor(Math.random() * 256)];
     const hexColor = '#' + rgbColors.map(x => x.toString(16).padStart(2, '0')).join('');
     
-    const newStop = {
+    const newStop: ColorStop = {
       id: Math.random().toString(36).substring(2, 9),
       color: hexColor,
-      stop: Math.min(Math.max(defaultPosition, 0), 100)
+      stop: Math.min(Math.max(defaultPosition, 0), 100),
+      opacity: 100
     };
     setStops([...stops, newStop]);
     setSelectedStopId(newStop.id);
@@ -130,100 +270,258 @@ export default function GradientGenerator() {
     setStops(randomizedColors);
   };
 
-  const handleLoadPreset = (preset: typeof PRESETS[0]) => {
-    const mapped = preset.colors.map((c, i) => ({
+  // Color Harmony Generator
+  const generateHarmony = (type: 'analogous' | 'complementary' | 'triadic' | 'pastel') => {
+    const baseColor = stops[0]?.color || '#6366f1';
+    let cleanHex = baseColor.replace('#', '');
+    if (cleanHex.length === 3) cleanHex = cleanHex.split('').map(c => c + c).join('');
+    
+    const r = parseInt(cleanHex.substring(0, 2), 16) || 0;
+    const g = parseInt(cleanHex.substring(2, 4), 16) || 0;
+    const b = parseInt(cleanHex.substring(4, 6), 16) || 0;
+
+    // Convert RGB to HSL
+    const rNorm = r / 255, gNorm = g / 255, bNorm = b / 255;
+    const max = Math.max(rNorm, gNorm, bNorm), min = Math.min(rNorm, gNorm, bNorm);
+    let h = 0, s = 0, l = (max + min) / 2;
+
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case rNorm: h = (gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0); break;
+        case gNorm: h = (bNorm - rNorm) / d + 2; break;
+        case bNorm: h = (rNorm - gNorm) / d + 4; break;
+      }
+      h /= 6;
+    }
+
+    const hslToHex = (hVal: number, sVal: number, lVal: number) => {
+      let hNormalized = (hVal % 360 + 360) % 360 / 360;
+      let rOut: number, gOut: number, bOut: number;
+
+      if (sVal === 0) {
+        rOut = gOut = bOut = lVal;
+      } else {
+        const q = lVal < 0.5 ? lVal * (1 + sVal) : lVal + sVal - lVal * sVal;
+        const p = 2 * lVal - q;
+        const hue2rgb = (pIn: number, qIn: number, tIn: number) => {
+          let t = tIn;
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1/6) return pIn + (qIn - pIn) * 6 * t;
+          if (t < 1/2) return qIn;
+          if (t < 2/3) return pIn + (qIn - pIn) * (2/3 - t) * 6;
+          return pIn;
+        };
+        rOut = hue2rgb(p, q, hNormalized + 1/3);
+        gOut = hue2rgb(p, q, hNormalized);
+        bOut = hue2rgb(p, q, hNormalized - 1/3);
+      }
+
+      const toHex = (x: number) => Math.round(x * 255).toString(16).padStart(2, '0');
+      return `#${toHex(rOut)}${toHex(gOut)}${toHex(bOut)}`;
+    };
+
+    let hDegrees = h * 360;
+    let newColors: string[] = [];
+
+    if (type === 'analogous') {
+      newColors = [
+        hslToHex(hDegrees - 30, s, l),
+        hslToHex(hDegrees, s, l),
+        hslToHex(hDegrees + 30, s, l)
+      ];
+    } else if (type === 'complementary') {
+      newColors = [
+        hslToHex(hDegrees, s, l),
+        hslToHex(hDegrees + 180, s, l)
+      ];
+    } else if (type === 'triadic') {
+      newColors = [
+        hslToHex(hDegrees, s, l),
+        hslToHex(hDegrees + 120, s, l),
+        hslToHex(hDegrees + 240, s, l)
+      ];
+    } else if (type === 'pastel') {
+      newColors = [
+        hslToHex(hDegrees, 0.65, 0.85),
+        hslToHex(hDegrees + 45, 0.65, 0.85),
+        hslToHex(hDegrees + 90, 0.65, 0.85)
+      ];
+    }
+
+    const generatedStops = newColors.map((c, i) => ({
       id: Math.random().toString(36).substring(2, 9),
       color: c,
-      stop: preset.stops[i]
+      stop: Math.round((i / (newColors.length - 1)) * 100),
+      opacity: 100
+    }));
+
+    setStops(generatedStops);
+    setSelectedStopId(generatedStops[0].id);
+  };
+
+  const handleLoadPreset = (preset: typeof PRESETS[0]) => {
+    const mapped: ColorStop[] = preset.colors.map((c, i) => ({
+      id: Math.random().toString(36).substring(2, 9),
+      color: c,
+      stop: preset.stops[i],
+      opacity: 100
     }));
     setStops(mapped);
     setSelectedStopId(mapped[0].id);
     setGradientType(preset.type);
+    setGradientName(preset.name);
   };
 
-  const copyToClipboard = (text: string, type: 'css' | 'tailwind') => {
+  const handleSaveGradient = () => {
+    const newSave: SavedGradient = {
+      id: Math.random().toString(36).substring(2, 9),
+      name: gradientName || 'Custom Gradient',
+      type: gradientType,
+      angle,
+      stops: [...stops],
+      createdAt: Date.now()
+    };
+    const updated = [newSave, ...savedGradients];
+    setSavedGradients(updated);
+    localStorage.setItem('util_hub_saved_gradients', JSON.stringify(updated));
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 2000);
+  };
+
+  const handleDeleteSaved = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const filtered = savedGradients.filter(g => g.id !== id);
+    setSavedGradients(filtered);
+    localStorage.setItem('util_hub_saved_gradients', JSON.stringify(filtered));
+  };
+
+  const copyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
     setCopiedType(type);
     setTimeout(() => setCopiedType(null), 2000);
   };
 
-  const downloadAsPng = () => {
+  const downloadAsPng = (width: number = 1920, height: number = 1080) => {
     const canvas = document.createElement('canvas');
-    canvas.width = 1920;
-    canvas.height = 1080;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let fillStyle: CanvasGradient;
+    if (gradientType === 'mesh') {
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, width, height);
 
-    if (gradientType === 'linear') {
-      const angleRad = (angle * Math.PI) / 180;
-      const r = Math.sqrt(Math.pow(1920, 2) + Math.pow(1080, 2)) / 2;
-      const x1 = 1920 / 2 - r * Math.cos(angleRad);
-      const y1 = 1080 / 2 - r * Math.sin(angleRad);
-      const x2 = 1920 / 2 + r * Math.cos(angleRad);
-      const y2 = 1080 / 2 + r * Math.sin(angleRad);
-      fillStyle = ctx.createLinearGradient(x1, y1, x2, y2);
+      meshPoints.forEach(p => {
+        const px = (p.x / 100) * width;
+        const py = (p.y / 100) * height;
+        const rad = (p.radius / 100) * Math.max(width, height);
+        const grad = ctx.createRadialGradient(px, py, 0, px, py, rad);
+        grad.addColorStop(0, p.color);
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+      });
     } else {
-      let px = 1920 / 2;
-      let py = 1080 / 2;
-      if (radialPosition.includes('top')) py = 0;
-      if (radialPosition.includes('bottom')) py = 1080;
-      if (radialPosition.includes('left')) px = 0;
-      if (radialPosition.includes('right')) px = 1920;
-      fillStyle = ctx.createRadialGradient(px, py, 10, px, py, 1920);
+      let fillStyle: CanvasGradient;
+
+      if (gradientType === 'linear') {
+        const angleRad = (angle * Math.PI) / 180;
+        const r = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2)) / 2;
+        const x1 = width / 2 - r * Math.cos(angleRad);
+        const y1 = height / 2 - r * Math.sin(angleRad);
+        const x2 = width / 2 + r * Math.cos(angleRad);
+        const y2 = height / 2 + r * Math.sin(angleRad);
+        fillStyle = ctx.createLinearGradient(x1, y1, x2, y2);
+      } else {
+        let px = width / 2;
+        let py = height / 2;
+        if (radialPosition.includes('top')) py = 0;
+        if (radialPosition.includes('bottom')) py = height;
+        if (radialPosition.includes('left')) px = 0;
+        if (radialPosition.includes('right')) px = width;
+        fillStyle = ctx.createRadialGradient(px, py, 10, px, py, Math.max(width, height));
+      }
+
+      sortedStops.forEach(s => {
+        fillStyle.addColorStop(s.stop / 100, hexToRgba(s.color, s.opacity));
+      });
+
+      ctx.fillStyle = fillStyle;
+      ctx.fillRect(0, 0, width, height);
     }
 
-    sortedStops.forEach(s => {
-      fillStyle.addColorStop(s.stop / 100, s.color);
-    });
-
-    ctx.fillStyle = fillStyle;
-    ctx.fillRect(0, 0, 1920, 1080);
-
     const link = document.createElement('a');
-    link.download = 'gradient-custom.png';
+    link.download = `gradient-${gradientName.toLowerCase().replace(/\s+/g, '-')}-${width}x${height}.png`;
     link.href = canvas.toDataURL('image/png');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
+  const filteredPresets = PRESETS.filter(p => {
+    const matchesCategory = presetCategory === 'All' || p.category === presetCategory;
+    const matchesSearch = p.name.toLowerCase().includes(presetSearch.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const categories = ['All', 'Vibrant', 'Pastels', 'Dark & Cyber', 'Brand Icons', 'Sunset & Nature', 'Aura Mesh'];
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start text-zinc-900">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start text-slate-900">
       
       {/* Control Pane */}
-      <div className="lg:col-span-7 bg-white border border-zinc-200 rounded-xl p-6 shadow-xs space-y-6">
+      <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-6">
         
-        <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-4 gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-zinc-100 text-zinc-900 rounded-md">
-              <Paintbrush className="h-4 w-4" />
+            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100 shadow-2xs">
+              <Paintbrush className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-semibold tracking-tight">Gradient Studio</h2>
-              <p className="text-xs text-zinc-500 font-medium">Dynamic CSS Color Synthesizer</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={gradientName}
+                  onChange={(e) => setGradientName(e.target.value)}
+                  className="font-bold text-base text-slate-900 bg-transparent hover:bg-slate-50 focus:bg-white border border-transparent focus:border-slate-200 rounded px-1.5 py-0.5 outline-none tracking-tight transition-colors"
+                  placeholder="Gradient Name"
+                />
+              </div>
+              <p className="text-xs text-slate-500 font-medium px-1">Dynamic CSS & Tailwind Color Studio</p>
             </div>
           </div>
           
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleSaveGradient}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-lg cursor-pointer transition-colors shadow-2xs"
+            >
+              {isSaved ? <BookmarkCheck className="h-3.5 w-3.5 text-emerald-600" /> : <Bookmark className="h-3.5 w-3.5" />}
+              <span>{isSaved ? 'Saved!' : 'Save Gradient'}</span>
+            </button>
+            
             <button
               onClick={handleRandomize}
-              className="p-1.5 text-zinc-500 hover:text-zinc-900 rounded-md hover:bg-zinc-100 cursor-pointer transition-colors"
+              className="p-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
               title="Randomize Swatches"
             >
               <RefreshCw className="h-4 w-4" />
             </button>
             <button
               onClick={handleReverse}
-              className="p-1.5 text-zinc-500 hover:text-zinc-900 rounded-md hover:bg-zinc-100 cursor-pointer transition-colors"
+              className="p-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
               title="Reverse Order"
             >
               <ArrowRightLeft className="h-4 w-4" />
             </button>
             <button
               onClick={handleDistributeEvenly}
-              className="p-1.5 text-zinc-500 hover:text-zinc-900 rounded-md hover:bg-zinc-100 cursor-pointer transition-colors"
+              className="p-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
               title="Distribute Evenly"
             >
               <LayoutGrid className="h-4 w-4" />
@@ -231,111 +529,187 @@ export default function GradientGenerator() {
           </div>
         </div>
 
-        {/* Configuration sliders */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-zinc-500 block">Gradient Direction</label>
-            <div className="grid grid-cols-3 gap-1 bg-zinc-100 p-1 rounded-md border border-zinc-200">
-              {(['linear', 'radial', 'conic'] as const).map(type => (
+        {/* Gradient Mode selector */}
+        <div className="space-y-3">
+          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block">Gradient Type & Geometry</label>
+          <div className="grid grid-cols-4 gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            {(['linear', 'radial', 'conic', 'mesh'] as const).map(type => (
+              <button
+                key={type}
+                onClick={() => setGradientType(type)}
+                className={`py-2 text-xs font-semibold rounded-lg capitalize cursor-pointer transition-all ${
+                  gradientType === type
+                    ? 'bg-white shadow-2xs text-indigo-600 font-bold border border-slate-200'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Dynamic Controls per Type */}
+        {gradientType === 'linear' && (
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-700">Rotation Angle</label>
+              <span className="text-xs font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                {angle}°
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={360}
+              value={angle}
+              onChange={(e) => setAngle(Number(e.target.value))}
+              className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+            />
+            <div className="flex items-center gap-1 pt-1 justify-between text-[11px] font-semibold text-slate-600">
+              {[0, 45, 90, 135, 180, 225, 270, 315].map(a => (
                 <button
-                  key={type}
-                  onClick={() => setGradientType(type)}
-                  className={`py-1 text-xs font-medium rounded capitalize cursor-pointer transition-all ${
-                    gradientType === type
-                      ? 'bg-white shadow-xs text-zinc-900 font-semibold'
-                      : 'text-zinc-500 hover:text-zinc-900'
+                  key={a}
+                  onClick={() => setAngle(a)}
+                  className={`px-2 py-1 rounded border cursor-pointer transition-all ${
+                    angle === a ? 'bg-indigo-600 text-white border-indigo-600 font-bold' : 'bg-white border-slate-200 hover:bg-slate-100'
                   }`}
                 >
-                  {type}
+                  {a}°
                 </button>
               ))}
             </div>
           </div>
+        )}
 
-          <div className="space-y-1.5">
-            {gradientType === 'linear' || gradientType === 'conic' ? (
-              <>
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-zinc-500 block">Rotation Angle</label>
-                  <span className="text-xs font-mono font-semibold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200">
-                    {angle}°
-                  </span>
-                </div>
-                <div className="flex gap-4 items-center pt-1">
+        {gradientType === 'radial' && (
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Shape</label>
+                <select
+                  value={radialShape}
+                  onChange={(e) => setRadialShape(e.target.value as any)}
+                  className="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-2xs focus:ring-2 focus:ring-indigo-600 outline-none"
+                >
+                  <option value="circle">Circle</option>
+                  <option value="ellipse">Ellipse</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Center Position</label>
+                <select
+                  value={radialPosition}
+                  onChange={(e) => setRadialPosition(e.target.value)}
+                  className="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-2xs focus:ring-2 focus:ring-indigo-600 outline-none"
+                >
+                  <option value="center">Center</option>
+                  <option value="top">Top Center</option>
+                  <option value="top left">Top Left</option>
+                  <option value="top right">Top Right</option>
+                  <option value="bottom">Bottom Center</option>
+                  <option value="bottom left">Bottom Left</option>
+                  <option value="bottom right">Bottom Right</option>
+                  <option value="custom">Custom (X% / Y%)</option>
+                </select>
+              </div>
+            </div>
+
+            {radialPosition === 'custom' && (
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div>
+                  <span className="text-[11px] font-semibold text-slate-600 block">X Origin: {radialX}%</span>
                   <input
                     type="range"
                     min={0}
-                    max={360}
-                    value={angle}
-                    onChange={(e) => setAngle(Number(e.target.value))}
-                    className="w-full accent-zinc-900 h-1.5 bg-zinc-100 rounded-lg cursor-pointer"
+                    max={100}
+                    value={radialX}
+                    onChange={(e) => setRadialX(Number(e.target.value))}
+                    className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                   />
                 </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-zinc-500 block">Position Origin</label>
-                  <span className="text-xs font-mono font-semibold text-zinc-900 capitalize bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200">
-                    {radialShape}
-                  </span>
+                <div>
+                  <span className="text-[11px] font-semibold text-slate-600 block">Y Origin: {radialY}%</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={radialY}
+                    onChange={(e) => setRadialY(Number(e.target.value))}
+                    className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <select
-                    value={radialShape}
-                    onChange={(e) => setRadialShape(e.target.value as any)}
-                    className="text-xs font-medium rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-zinc-900 focus:ring-1 focus:ring-zinc-950 shadow-xs"
-                  >
-                    <option value="circle">Circle</option>
-                    <option value="ellipse">Ellipse</option>
-                  </select>
-                  <select
-                    value={radialPosition}
-                    onChange={(e) => setRadialPosition(e.target.value)}
-                    className="text-xs font-medium rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-zinc-900 focus:ring-1 focus:ring-zinc-950 shadow-xs"
-                  >
-                    <option value="center">Center</option>
-                    <option value="top">Top</option>
-                    <option value="top left">Top Left</option>
-                    <option value="top right">Top Right</option>
-                    <option value="bottom">Bottom</option>
-                    <option value="bottom left">Bottom Left</option>
-                    <option value="bottom right">Bottom Right</option>
-                  </select>
-                </div>
-              </>
+              </div>
             )}
+          </div>
+        )}
+
+        {/* Color Harmony Synthesizer */}
+        <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+              <Wand2 className="h-4 w-4 text-indigo-600" />
+              <span>Color Harmony Synthesizer</span>
+            </span>
+            <span className="text-[10px] text-indigo-600 font-mono font-medium">1-Click Palettes</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+            <button
+              onClick={() => generateHarmony('analogous')}
+              className="py-1.5 px-2 bg-white hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-900 shadow-2xs cursor-pointer transition-colors"
+            >
+              Analogous
+            </button>
+            <button
+              onClick={() => generateHarmony('complementary')}
+              className="py-1.5 px-2 bg-white hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-900 shadow-2xs cursor-pointer transition-colors"
+            >
+              Complementary
+            </button>
+            <button
+              onClick={() => generateHarmony('triadic')}
+              className="py-1.5 px-2 bg-white hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-900 shadow-2xs cursor-pointer transition-colors"
+            >
+              Triadic
+            </button>
+            <button
+              onClick={() => generateHarmony('pastel')}
+              className="py-1.5 px-2 bg-white hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-900 shadow-2xs cursor-pointer transition-colors"
+            >
+              Soft Pastel
+            </button>
           </div>
         </div>
 
-        {/* Unified timeline stops visualizer & active slider */}
+        {/* Timeline Stops Visualizer */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-500">
-              Color Stops Timeline
+            <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+              Color Stops & Timeline
             </span>
             <button
               onClick={handleAddStop}
-              className="inline-flex items-center gap-1 text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-50 font-medium px-2.5 py-1 rounded-md shadow-xs transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 text-xs bg-slate-900 hover:bg-slate-800 text-white font-semibold px-3 py-1.5 rounded-lg shadow-2xs transition-colors cursor-pointer"
             >
-              <Plus className="h-3 w-3" />
-              <span>Add Stop</span>
+              <Plus className="h-3.5 w-3.5" />
+              <span>Add Color Stop</span>
             </button>
           </div>
 
-          <div className="relative h-10 flex items-center bg-zinc-50 rounded-lg px-4 border border-zinc-200">
+          <div className="relative h-12 flex items-center bg-slate-100 rounded-xl px-4 border border-slate-200">
             <div 
-              className="absolute left-4 right-4 h-3.5 rounded-md border border-zinc-200"
+              className="absolute left-4 right-4 h-4 rounded-lg border border-slate-300 shadow-inner"
               style={{
-                backgroundImage: `linear-gradient(90deg, ${sortedStops.map(s => `${s.color} ${s.stop}%`).join(', ')})`
+                backgroundImage: `linear-gradient(90deg, ${sortedStops.map(s => `${hexToRgba(s.color, s.opacity)} ${s.stop}%`).join(', ')})`
               }}
             />
             {stops.map(s => (
               <button
                 key={s.id}
                 onClick={() => setSelectedStopId(s.id)}
-                className={`absolute w-5 h-5 rounded-full border-2 transform -translate-x-1/2 shadow-xs cursor-pointer active:scale-110 transition-transform ${
-                  selectedStopId === s.id ? 'border-zinc-900 scale-125 z-10' : 'border-white'
+                className={`absolute w-6 h-6 rounded-full border-2 transform -translate-x-1/2 shadow-md cursor-pointer active:scale-110 transition-transform ${
+                  selectedStopId === s.id ? 'border-slate-900 scale-125 z-10 ring-2 ring-indigo-500' : 'border-white'
                 }`}
                 style={{
                   left: `calc(1rem + ${s.stop}% * (100% - 2rem) / 100)`,
@@ -346,198 +720,164 @@ export default function GradientGenerator() {
           </div>
         </div>
 
-        {/* Selected stop granular modifier card */}
+        {/* Selected Stop Modifier */}
         {stops.find(s => s.id === selectedStopId) && (() => {
           const activeStop = stops.find(s => s.id === selectedStopId)!;
-          const miniSwatches = [
-            '#6366f1', '#ec4899', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', 
-            '#f97316', '#ef4444', '#f43f5e', '#8b5cf6', '#d946ef', '#475569',
-            '#ffffff', '#000000'
-          ];
-          
-          return (
-            <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-lg space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200/60 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-5 w-5 bg-zinc-200 text-zinc-900 rounded flex items-center justify-center">
-                    <Paintbrush className="h-3 w-3" />
-                  </div>
-                  <h3 className="text-xs font-semibold text-zinc-900">Stop Modifier</h3>
-                </div>
+          const swatches = ['#6366f1', '#ec4899', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#f97316', '#ef4444', '#8b5cf6', '#d946ef', '#ffffff', '#000000'];
 
+          return (
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs bg-white px-2 py-0.5 rounded text-zinc-600 font-mono border border-zinc-200">
-                    Active Stop ({activeStop.stop}%)
-                  </span>
-                  
-                  <button
-                    onClick={() => handleRemoveStop(activeStop.id)}
-                    disabled={stops.length <= 2}
-                    className="p-1 px-2 border border-zinc-200 hover:border-rose-500 text-zinc-600 hover:text-rose-600 rounded bg-white hover:bg-rose-50 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all text-xs font-medium flex items-center gap-1"
-                    title="Remove Selected Stop"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    <span>Delete</span>
-                  </button>
+                  <div className="h-6 w-6 rounded-md border border-slate-300 shadow-2xs" style={{ backgroundColor: activeStop.color }} />
+                  <span className="text-xs font-bold text-slate-900">Stop Controls ({activeStop.stop}%)</span>
                 </div>
+                <button
+                  onClick={() => handleRemoveStop(activeStop.id)}
+                  disabled={stops.length <= 2}
+                  className="px-2.5 py-1 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors disabled:opacity-40 cursor-pointer flex items-center gap-1"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Remove</span>
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-                
-                {/* Palette Selector & Manual Input */}
-                <div className="md:col-span-7 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="relative shrink-0">
-                      <div className="w-10 h-10 rounded-md border border-zinc-200 flex items-center justify-center overflow-hidden shadow-xs cursor-pointer bg-white">
-                        <input
-                          type="color"
-                          value={activeStop.color}
-                          onChange={(e) => handleUpdateColor(activeStop.id, e.target.value)}
-                          className="absolute inset-0 w-[200%] h-[200%] -translate-x-1/4 -translate-y-1/4 cursor-pointer opacity-0"
-                        />
-                        <div className="w-7 h-7 rounded shadow-xs pointer-events-none" style={{ backgroundColor: activeStop.color }} />
-                      </div>
-                    </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-semibold text-slate-600 block">Color Value (Hex)</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={activeStop.color}
+                      onChange={(e) => handleUpdateColor(activeStop.id, e.target.value)}
+                      className="w-9 h-9 rounded-lg border border-slate-200 cursor-pointer bg-white p-0.5 shrink-0"
+                    />
+                    <input
+                      type="text"
+                      value={activeStop.color.toUpperCase()}
+                      onChange={(e) => handleUpdateColor(activeStop.id, e.target.value)}
+                      className="w-full px-3 py-1.5 text-xs font-mono font-bold text-slate-900 bg-white border border-slate-200 rounded-lg outline-none uppercase shadow-2xs"
+                    />
+                  </div>
+                  <div className="grid grid-cols-6 gap-1 pt-1">
+                    {swatches.map(c => (
+                      <button
+                        key={c}
+                        onClick={() => handleUpdateColor(activeStop.id, c)}
+                        className="h-5 rounded border border-slate-200 hover:scale-105 cursor-pointer"
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                </div>
 
-                    <div className="flex-1 min-w-0">
-                      <label className="text-[11px] font-medium text-zinc-500 block mb-1">Color Value (Hex)</label>
-                      <div className="relative flex items-center">
-                        <span className="absolute left-2.5 text-xs font-mono font-medium text-zinc-400">#</span>
-                        <input
-                          type="text"
-                          value={activeStop.color.replace('#', '').toUpperCase()}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            const cleanHex = val.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6);
-                            const updatedColor = '#' + cleanHex;
-                            handleUpdateColor(activeStop.id, updatedColor.length >= 4 ? updatedColor : activeStop.color);
-                          }}
-                          className="w-full pl-6 pr-3 py-1 text-xs font-mono font-semibold text-zinc-900 bg-white border border-zinc-200 rounded-md focus:ring-1 focus:ring-zinc-950 outline-none uppercase shadow-xs"
-                          placeholder="HEX"
-                        />
-                      </div>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold text-slate-600 mb-1">
+                      <span>Node Position</span>
+                      <span>{activeStop.stop}%</span>
                     </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={activeStop.stop}
+                      onChange={(e) => handleUpdateStopValue(activeStop.id, Number(e.target.value))}
+                      className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                    />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-zinc-500 block mb-1">Preset Swatches</label>
-                    <div className="grid grid-cols-7 gap-1.5 p-1 bg-white border border-zinc-200 rounded-md">
-                      {miniSwatches.map((color) => (
-                        <button
-                          key={color}
-                          onClick={() => handleUpdateColor(activeStop.id, color)}
-                          className={`h-5 rounded hover:scale-105 active:scale-95 transition-all cursor-pointer border relative flex items-center justify-center ${
-                            activeStop.color.toLowerCase() === color.toLowerCase()
-                              ? 'border-zinc-900 ring-1 ring-zinc-950 z-10'
-                              : 'border-zinc-200'
-                          }`}
-                          style={{ backgroundColor: color }}
-                          title={color}
-                        />
-                      ))}
+                    <div className="flex justify-between text-xs font-semibold text-slate-600 mb-1">
+                      <span>Alpha Opacity</span>
+                      <span>{activeStop.opacity}%</span>
                     </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={activeStop.opacity}
+                      onChange={(e) => handleUpdateOpacity(activeStop.id, Number(e.target.value))}
+                      className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                    />
                   </div>
                 </div>
-
-                {/* Placement Node Positioning */}
-                <div className="md:col-span-5 space-y-2.5">
-                  <div className="flex justify-between text-xs font-medium text-zinc-600">
-                    <span>Node Position</span>
-                    <span className="font-mono bg-white px-2 py-0.5 rounded text-zinc-900 border border-zinc-200">{activeStop.stop}%</span>
-                  </div>
-                  
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={activeStop.stop}
-                    onChange={(e) => handleUpdateStopValue(activeStop.id, Number(e.target.value))}
-                    className="w-full accent-zinc-900 h-1.5 bg-zinc-200 rounded-lg cursor-pointer"
-                  />
-
-                  <div className="space-y-1">
-                    <span className="text-[11px] font-medium text-zinc-500 block">Snap Position</span>
-                    <div className="grid grid-cols-5 gap-1">
-                      {[0, 25, 50, 75, 100].map(pos => (
-                        <button
-                          key={pos}
-                          onClick={() => handleUpdateStopValue(activeStop.id, pos)}
-                          className={`py-0.5 text-xs font-medium rounded border cursor-pointer transition-all ${
-                            activeStop.stop === pos
-                              ? 'bg-zinc-900 border-zinc-900 text-zinc-50 shadow-xs'
-                              : 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-100'
-                          }`}
-                        >
-                          {pos}%
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
               </div>
             </div>
           );
         })()}
 
-        {/* CSS Code Outputs card */}
-        <div className="space-y-2 pt-1">
-          <label className="text-xs font-medium text-zinc-500 block">
-            Code Output Exporters
-          </label>
-          <div className="space-y-2">
-            <div className="bg-zinc-50 rounded-lg border border-zinc-200 px-3 py-2 flex items-center justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <span className="text-[10px] font-medium text-zinc-500 block uppercase">CSS Rule Format</span>
-                <code className="text-xs font-mono text-zinc-900 select-all truncate block">
-                  background: {getGradientString()};
-                </code>
-              </div>
+        {/* Export Formats */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+              Code & Asset Exporter
+            </label>
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+              {(['css', 'tailwind', 'svg', 'react', 'animated'] as const).map(fmt => (
+                <button
+                  key={fmt}
+                  onClick={() => setExportFormat(fmt)}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-md uppercase cursor-pointer transition-all ${
+                    exportFormat === fmt ? 'bg-white text-indigo-600 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  {fmt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-slate-950 text-slate-100 rounded-xl p-4 font-mono text-xs border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between text-slate-400 pb-2 border-b border-slate-800 text-[11px]">
+              <span className="uppercase font-semibold text-indigo-400">{exportFormat} Output Snippet</span>
               <button
-                onClick={() => copyToClipboard(`background: ${getGradientString()};`, 'css')}
-                className="p-1.5 bg-white border border-zinc-200 text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 rounded-md shadow-xs shrink-0 cursor-pointer transition-colors"
+                onClick={() => {
+                  const text = exportFormat === 'css' ? `background: ${getGradientString()};` :
+                               exportFormat === 'tailwind' ? getTailwindArbitraryValue() :
+                               exportFormat === 'svg' ? getSvgCode() :
+                               exportFormat === 'react' ? getReactStyleCode() :
+                               getAnimatedCssCode();
+                  copyToClipboard(text, exportFormat);
+                }}
+                className="inline-flex items-center gap-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded border border-slate-700 cursor-pointer transition-colors"
               >
-                {copiedType === 'css' ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                {copiedType === exportFormat ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                <span>{copiedType === exportFormat ? 'Copied' : 'Copy Code'}</span>
               </button>
             </div>
 
-            <div className="bg-zinc-50 rounded-lg border border-zinc-200 px-3 py-2 flex items-center justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <span className="text-[10px] font-medium text-zinc-500 block uppercase">Tailwind CSS Format</span>
-                <code className="text-xs font-mono text-zinc-900 select-all truncate block">
-                  {getTailwindArbitraryValue()}
-                </code>
-              </div>
-              <button
-                onClick={() => copyToClipboard(getTailwindArbitraryValue(), 'tailwind')}
-                className="p-1.5 bg-white border border-zinc-200 text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 rounded-md shadow-xs shrink-0 cursor-pointer transition-colors"
-              >
-                {copiedType === 'tailwind' ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
-              </button>
-            </div>
+            <pre className="overflow-x-auto whitespace-pre-wrap text-emerald-300 leading-relaxed font-mono">
+              {exportFormat === 'css' && `background: ${getGradientString()};`}
+              {exportFormat === 'tailwind' && getTailwindArbitraryValue()}
+              {exportFormat === 'svg' && getSvgCode()}
+              {exportFormat === 'react' && getReactStyleCode()}
+              {exportFormat === 'animated' && getAnimatedCssCode()}
+            </pre>
           </div>
         </div>
 
       </div>
 
-      {/* Visual Previews and Presets Pane */}
+      {/* Visual Previews, Accessibility, and Presets Pane */}
       <div className="lg:col-span-5 space-y-6">
         
         {/* Interactive Sandbox card */}
-        <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs space-y-4">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-900 uppercase tracking-wider">
-              Live Preview Board
+            <span className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <Eye className="h-4 w-4 text-indigo-600" />
+              <span>Live Mockup Sandbox</span>
             </span>
-            <div className="flex items-center gap-1 bg-zinc-100 p-0.5 rounded-md border border-zinc-200">
-              {(['full', 'card', 'text', 'button'] as const).map(style => (
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+              {(['full', 'card', 'text', 'button', 'phone'] as const).map(style => (
                 <button
                   key={style}
                   onClick={() => setPreviewTemplate(style)}
-                  className={`px-2 py-0.5 text-xs font-medium rounded capitalize cursor-pointer transition-all ${
+                  className={`px-2 py-0.5 text-xs font-semibold rounded capitalize cursor-pointer transition-all ${
                     previewTemplate === style
-                      ? 'bg-white shadow-xs text-zinc-900 font-semibold'
-                      : 'text-zinc-500 hover:text-zinc-900'
+                      ? 'bg-white shadow-2xs text-indigo-600 font-bold'
+                      : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
                   {style}
@@ -546,38 +886,37 @@ export default function GradientGenerator() {
             </div>
           </div>
 
-          <div className="relative h-60 w-full rounded-lg overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-100">
+          <div className="relative h-64 w-full rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center bg-slate-100">
             {previewTemplate === 'full' && (
               <div 
-                ref={previewRef}
-                className="absolute inset-0 h-full w-full"
+                className="absolute inset-0 h-full w-full transition-all duration-300"
                 style={{ background: getGradientString() }}
               />
             )}
 
             {previewTemplate === 'card' && (
-              <div className="w-4/5 shadow-md bg-zinc-900 overflow-hidden border border-zinc-800 rounded-xl flex flex-col justify-between">
+              <div className="w-4/5 shadow-xl bg-slate-950 overflow-hidden border border-slate-800 rounded-2xl flex flex-col justify-between">
                 <div 
-                  className="h-24 w-full relative"
+                  className="h-28 w-full relative"
                   style={{ background: getGradientString() }}
                 />
-                <div className="p-3 space-y-1 flex flex-col justify-end">
-                  <div className="h-2.5 w-16 bg-zinc-800 rounded" />
-                  <div className="h-2 w-full bg-zinc-800/60 rounded" />
+                <div className="p-4 space-y-2 flex flex-col justify-end">
+                  <div className="h-3 w-20 bg-indigo-500/80 rounded" />
+                  <div className="h-2.5 w-full bg-slate-800 rounded" />
                 </div>
               </div>
             )}
 
             {previewTemplate === 'text' && (
-              <div className="text-center p-6 select-none bg-zinc-900 border border-zinc-800 rounded-xl w-full h-full flex flex-col items-center justify-center">
+              <div className="text-center p-6 select-none bg-slate-950 border border-slate-800 rounded-2xl w-full h-full flex flex-col items-center justify-center">
                 <h1 
                   className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent transform duration-150 hover:scale-105"
                   style={{ backgroundImage: getGradientString() }}
                 >
-                  Spectacular Typography
+                  Gradient Typography
                 </h1>
-                <p className="text-[11px] text-zinc-500 font-mono font-medium uppercase tracking-wider mt-2">
-                  Gradient text clip
+                <p className="text-[11px] text-slate-400 font-mono font-medium uppercase tracking-wider mt-2">
+                  CSS Background-Clip Text
                 </p>
               </div>
             )}
@@ -585,53 +924,155 @@ export default function GradientGenerator() {
             {previewTemplate === 'button' && (
               <div className="p-6 text-center">
                 <button 
-                  className="px-5 py-2.5 text-white font-semibold text-xs rounded-md shadow-sm transition-transform active:scale-95 duration-100 hover:shadow flex items-center gap-2 cursor-pointer"
+                  className="px-6 py-3 text-white font-bold text-sm rounded-xl shadow-lg transition-transform active:scale-95 hover:shadow-indigo-500/25 flex items-center gap-2 cursor-pointer"
                   style={{ background: getGradientString() }}
                 >
                   <span>Action Button</span>
-                  <MoveRight className="h-3.5 w-3.5" />
+                  <MoveRight className="h-4 w-4" />
                 </button>
+              </div>
+            )}
+
+            {previewTemplate === 'phone' && (
+              <div className="w-44 h-56 bg-slate-950 rounded-3xl p-2 shadow-2xl border-2 border-slate-800 flex flex-col justify-between">
+                <div className="w-12 h-2.5 bg-slate-800 rounded-full mx-auto" />
+                <div 
+                  className="h-40 w-full rounded-2xl flex items-center justify-center p-2 text-center text-white text-xs font-bold shadow-inner"
+                  style={{ background: getGradientString() }}
+                >
+                  Mobile Screen
+                </div>
+                <div className="w-8 h-1 bg-slate-800 rounded-full mx-auto" />
               </div>
             )}
           </div>
 
-          <button
-            onClick={downloadAsPng}
-            className="w-full flex items-center justify-center gap-2 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-50 rounded-md text-xs font-medium shadow-xs transition-colors cursor-pointer"
-          >
-            <FileDown className="h-3.5 w-3.5 text-zinc-300" />
-            <span>Export High-Res PNG (1080p)</span>
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => downloadAsPng(1920, 1080)}
+              className="flex items-center justify-center gap-1.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+            >
+              <FileDown className="h-3.5 w-3.5 text-indigo-400" />
+              <span>Download PNG (1080p)</span>
+            </button>
+            <button
+              onClick={() => downloadAsPng(3840, 2160)}
+              className="flex items-center justify-center gap-1.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+              <span>4K Wallpaper</span>
+            </button>
+          </div>
         </div>
 
-        {/* Color Palette Presets Catalog Card */}
-        <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs space-y-3">
-          <div className="flex items-center gap-1.5">
-            <Layers className="h-4 w-4 text-zinc-700" />
-            <span className="text-xs font-semibold text-zinc-900 uppercase tracking-wider">
-              Presets Gallery
-            </span>
+        {/* Saved Collection */}
+        {savedGradients.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <Bookmark className="h-4 w-4 text-indigo-600" />
+                <span>My Saved Gradients ({savedGradients.length})</span>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 max-h-48 overflow-y-auto p-1">
+              {savedGradients.map((saved) => (
+                <div
+                  key={saved.id}
+                  onClick={() => {
+                    setStops(saved.stops);
+                    setSelectedStopId(saved.stops[0].id);
+                    setGradientType(saved.type);
+                    setAngle(saved.angle);
+                    setGradientName(saved.name);
+                  }}
+                  className="group relative p-2.5 border border-slate-200 rounded-xl hover:border-indigo-400 bg-white cursor-pointer transition-all flex items-center justify-between shadow-2xs"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div 
+                      className="w-7 h-7 rounded-lg shrink-0 border border-slate-200 shadow-2xs"
+                      style={{
+                        backgroundImage: `linear-gradient(135deg, ${saved.stops.map(s => s.color).join(', ')})`
+                      }}
+                    />
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-slate-900 truncate">
+                        {saved.name}
+                      </h4>
+                      <span className="text-[10px] uppercase font-semibold text-slate-400 font-mono">
+                        {saved.stops.length} Stops
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={(e) => handleDeleteSaved(saved.id, e)}
+                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Color Palette Presets Catalog */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Layers className="h-4 w-4 text-indigo-600" />
+              <span className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
+                Presets Gallery
+              </span>
+            </div>
+            
+            <div className="relative w-36">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+              <input
+                type="text"
+                value={presetSearch}
+                onChange={(e) => setPresetSearch(e.target.value)}
+                placeholder="Filter..."
+                className="w-full pl-6 pr-2 py-1 text-[11px] font-semibold rounded-lg border border-slate-200 bg-slate-50 outline-none focus:bg-white focus:border-indigo-500"
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5">
-            {PRESETS.map((preset) => (
+          {/* Category Pills */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[11px] font-semibold text-slate-600">
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setPresetCategory(cat)}
+                className={`px-2.5 py-1 rounded-md transition-all whitespace-nowrap cursor-pointer ${
+                  presetCategory === cat ? 'bg-indigo-600 text-white font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5 max-h-72 overflow-y-auto">
+            {filteredPresets.map((preset) => (
               <button
                 key={preset.name}
                 onClick={() => handleLoadPreset(preset)}
-                className="group relative p-2.5 border border-zinc-200 rounded-lg hover:border-zinc-400 bg-white cursor-pointer transition-all flex items-center gap-2.5 text-left shadow-xs"
+                className="group relative p-2.5 border border-slate-200 rounded-xl hover:border-indigo-400 bg-white cursor-pointer transition-all flex items-center gap-2.5 text-left shadow-2xs"
               >
                 <div 
-                  className="w-7 h-7 rounded shrink-0 border border-zinc-200"
+                  className="w-8 h-8 rounded-lg shrink-0 border border-slate-200 shadow-2xs group-hover:scale-105 transition-transform"
                   style={{
                     backgroundImage: `linear-gradient(135deg, ${preset.colors.join(', ')})`
                   }}
                 />
                 <div className="min-w-0">
-                  <h4 className="text-xs font-medium text-zinc-900 truncate group-hover:text-zinc-900">
+                  <h4 className="text-xs font-bold text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
                     {preset.name}
                   </h4>
-                  <span className="text-[10px] uppercase font-medium text-zinc-400 font-mono">
-                    {preset.colors.length} Colors
+                  <span className="text-[10px] uppercase font-semibold text-slate-400 font-mono">
+                    {preset.category}
                   </span>
                 </div>
               </button>
