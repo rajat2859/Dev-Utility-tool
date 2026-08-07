@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileImage, Paintbrush, Key, X, Menu, ShieldCheck, Wrench, Zap, FileCode, Search } from 'lucide-react';
+import { LayoutDashboard, FileImage, Paintbrush, Key, X, Menu, ShieldCheck, Wrench, Zap, FileCode, Search, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { prefetchTool } from '../App';
 
@@ -28,6 +28,7 @@ export default function Sidebar({
     { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
     { id: 'seo-checker', name: 'SEO & Schema Auditor', icon: Search },
     { id: 'content-checker', name: 'Auditor', icon: ShieldCheck },
+    { id: 'url-opener', name: 'Multi URL Opener', icon: ExternalLink },
     { id: 'html-cleaner', name: 'HTML Cleaner', icon: FileCode },
     { id: 'image', name: 'Image Converter', icon: FileImage },
     { id: 'gradient', name: 'Gradient Studio', icon: Paintbrush },

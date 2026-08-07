@@ -133,7 +133,17 @@ export default function SeoChecker() {
         })
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get('content-type') || '';
+      let data: any;
+      if (contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const textResponse = await response.text();
+        throw new Error(
+          `Server returned an invalid response (HTTP ${response.status}). If the server is restarting, please wait a moment and try again.`
+        );
+      }
+
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Failed to analyze SEO & Schemas.');
       }

@@ -416,19 +416,31 @@ app.post("/api/seo-checker/analyze", async (req, res) => {
       }
       pageUrlStr = sanitizedUrl;
 
-      const response = await fetch(sanitizedUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AuditorSeoBot/2.0",
-          "Cache-Control": "no-cache"
-        },
-        signal: AbortSignal.timeout(12000),
-      });
+      try {
+        const response = await fetch(sanitizedUrl, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Cache-Control": "no-cache"
+          },
+          redirect: "follow",
+          signal: AbortSignal.timeout(15000),
+        });
 
-      if (!response.ok) {
-        return res.status(400).json({ error: `Could not fetch page. Server status: ${response.status} ${response.statusText}` });
+        if (!response.ok) {
+          return res.status(400).json({
+            error: `Could not fetch target webpage (${sanitizedUrl}). Server status: ${response.status} ${response.statusText}. Please verify the URL or try pasting raw HTML code.`
+          });
+        }
+
+        htmlContent = await response.text();
+      } catch (fetchErr: any) {
+        console.error("SEO Audit fetch error:", fetchErr);
+        return res.status(400).json({
+          error: `Could not connect to target URL (${sanitizedUrl}). Details: ${fetchErr.message || fetchErr}. Make sure the URL is accessible or use "Paste Raw HTML" mode.`
+        });
       }
-
-      htmlContent = await response.text();
     } else {
       return res.status(400).json({ error: "Please provide a Webpage URL or paste raw HTML code." });
     }
