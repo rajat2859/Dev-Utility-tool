@@ -293,7 +293,7 @@ export default function ContentChecker() {
     try {
       const finalImagePayload = await compressImage(currentBase64);
 
-      const response = await fetch('/api/content-checker/analyze', {
+      let response = await fetch('/api/content-checker/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -303,11 +303,69 @@ export default function ContentChecker() {
         })
       });
 
-      clearInterval(stepInterval);
-      const responseText = await response.text();
-      let data: any = JSON.parse(responseText);
+      let responseText = await response.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        // ignore JSON parse error for initial try
+      }
 
-      if (!response.ok) {
+      // If server fetch failed for URL, attempt client-side proxy fetch fallback
+      if ((!response.ok || !data?.success) && sanitizedUrl && !rawHtml.trim()) {
+        console.warn("Backend URL fetch failed in Content Checker. Attempting client-side proxy fetch...");
+        let fallbackHtml = "";
+
+        try {
+          const proxy1 = `https://api.allorigins.win/raw?url=${encodeURIComponent(sanitizedUrl)}`;
+          const pRes1 = await fetch(proxy1);
+          if (pRes1.ok) {
+            const pText1 = await pRes1.text();
+            if (pText1 && pText1.trim().length > 30) {
+              fallbackHtml = pText1;
+            }
+          }
+        } catch (e) {
+          console.warn("Client proxy 1 failed:", e);
+        }
+
+        if (!fallbackHtml) {
+          try {
+            const proxy2 = `https://corsproxy.io/?${encodeURIComponent(sanitizedUrl)}`;
+            const pRes2 = await fetch(proxy2);
+            if (pRes2.ok) {
+              const pText2 = await pRes2.text();
+              if (pText2 && pText2.trim().length > 30) {
+                fallbackHtml = pText2;
+              }
+            }
+          } catch (e) {
+            console.warn("Client proxy 2 failed:", e);
+          }
+        }
+
+        if (fallbackHtml) {
+          response = await fetch('/api/content-checker/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: sanitizedUrl,
+              rawHtml: fallbackHtml,
+              image: finalImagePayload
+            })
+          });
+          responseText = await response.text();
+          try {
+            data = JSON.parse(responseText);
+          } catch {
+            data = null;
+          }
+        }
+      }
+
+      clearInterval(stepInterval);
+
+      if (!response.ok || !data) {
         throw new Error(data?.error || `Server returned error status ${response.status}.`);
       }
 

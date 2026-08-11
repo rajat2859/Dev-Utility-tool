@@ -26,7 +26,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const menuItems: MenuItem[] = [
     { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
-    { id: 'seo-checker', name: 'SEO & Schema Auditor', icon: Search },
+    { id: 'seo-checker', name: 'SEO & Schema', icon: Search },
     { id: 'content-checker', name: 'Auditor', icon: ShieldCheck },
     { id: 'url-opener', name: 'Multi URL Opener', icon: ExternalLink },
     { id: 'html-cleaner', name: 'HTML Cleaner', icon: FileCode },

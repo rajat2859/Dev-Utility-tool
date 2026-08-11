@@ -400,12 +400,106 @@ function parseFullSeoAndSchemas(html: string, pageUrl?: string) {
   };
 }
 
+// Helper to fetch webpage HTML with multi-tier proxies & browser headers
+async function fetchWebpageHtml(targetUrl: string): Promise<{ html: string; notice?: string }> {
+  let sanitizedUrl = targetUrl.trim();
+  if (!/^https?:\/\//i.test(sanitizedUrl)) {
+    sanitizedUrl = 'https://' + sanitizedUrl;
+  }
+
+  const browserHeaders = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Upgrade-Insecure-Requests": "1"
+  };
+
+  // 1. Direct fetch with real browser headers
+  try {
+    const res = await fetch(sanitizedUrl, {
+      headers: browserHeaders,
+      redirect: "follow",
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const text = await res.text();
+    if (text && text.trim().length > 30) {
+      return { html: text };
+    }
+  } catch (err: any) {
+    console.warn(`Direct fetch failed for ${sanitizedUrl}:`, err.message || err);
+  }
+
+  // 2. Gateway Proxy 1: AllOrigins
+  try {
+    const proxy1 = `https://api.allorigins.win/raw?url=${encodeURIComponent(sanitizedUrl)}`;
+    const res1 = await fetch(proxy1, {
+      headers: { "User-Agent": browserHeaders["User-Agent"] },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (res1.ok) {
+      const text1 = await res1.text();
+      if (text1 && text1.trim().length > 30) {
+        return { html: text1, notice: "Fetched webpage via web proxy gateway." };
+      }
+    }
+  } catch (err1: any) {
+    console.warn(`Proxy 1 failed for ${sanitizedUrl}:`, err1.message || err1);
+  }
+
+  // 3. Gateway Proxy 2: CorsProxy.io
+  try {
+    const proxy2 = `https://corsproxy.io/?${encodeURIComponent(sanitizedUrl)}`;
+    const res2 = await fetch(proxy2, {
+      headers: { "User-Agent": browserHeaders["User-Agent"] },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (res2.ok) {
+      const text2 = await res2.text();
+      if (text2 && text2.trim().length > 30) {
+        return { html: text2, notice: "Fetched webpage via CORS fallback gateway." };
+      }
+    }
+  } catch (err2: any) {
+    console.warn(`Proxy 2 failed for ${sanitizedUrl}:`, err2.message || err2);
+  }
+
+  // 4. Gateway Proxy 3: ThingProxy
+  try {
+    const proxy3 = `https://thingproxy.freeboard.io/fetch/${sanitizedUrl}`;
+    const res3 = await fetch(proxy3, {
+      headers: { "User-Agent": browserHeaders["User-Agent"] },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (res3.ok) {
+      const text3 = await res3.text();
+      if (text3 && text3.trim().length > 30) {
+        return { html: text3, notice: "Fetched webpage via secure proxy gateway." };
+      }
+    }
+  } catch (err3: any) {
+    console.warn(`Proxy 3 failed for ${sanitizedUrl}:`, err3.message || err3);
+  }
+
+  throw new Error(`Could not retrieve HTML from target URL (${sanitizedUrl}). The target site may be blocking automated crawlers. Try using "Paste Raw HTML" mode.`);
+}
+
 // Endpoint to audit SEO meta tags, Title, Description, and Schema.org structured data
 app.post("/api/seo-checker/analyze", async (req, res) => {
   try {
     const { url, rawHtml } = req.body;
     let htmlContent = "";
     let pageUrlStr = url || "";
+    let fetchNotice: string | undefined = undefined;
 
     if (rawHtml && rawHtml.trim()) {
       htmlContent = rawHtml.trim();
@@ -417,36 +511,23 @@ app.post("/api/seo-checker/analyze", async (req, res) => {
       pageUrlStr = sanitizedUrl;
 
       try {
-        const response = await fetch(sanitizedUrl, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Cache-Control": "no-cache"
-          },
-          redirect: "follow",
-          signal: AbortSignal.timeout(15000),
-        });
-
-        if (!response.ok) {
-          return res.status(400).json({
-            error: `Could not fetch target webpage (${sanitizedUrl}). Server status: ${response.status} ${response.statusText}. Please verify the URL or try pasting raw HTML code.`
-          });
-        }
-
-        htmlContent = await response.text();
+        const fetched = await fetchWebpageHtml(sanitizedUrl);
+        htmlContent = fetched.html;
+        fetchNotice = fetched.notice;
       } catch (fetchErr: any) {
-        console.error("SEO Audit fetch error:", fetchErr);
-        return res.status(400).json({
-          error: `Could not connect to target URL (${sanitizedUrl}). Details: ${fetchErr.message || fetchErr}. Make sure the URL is accessible or use "Paste Raw HTML" mode.`
-        });
+        return res.status(400).json({ error: fetchErr.message || `Could not connect to target URL (${sanitizedUrl}).` });
       }
     } else {
       return res.status(400).json({ error: "Please provide a Webpage URL or paste raw HTML code." });
     }
 
     const auditResult = parseFullSeoAndSchemas(htmlContent, pageUrlStr);
-    return res.json({ success: true, data: auditResult, pageUrl: pageUrlStr });
+    return res.json({
+      success: true,
+      data: auditResult,
+      pageUrl: pageUrlStr,
+      fetchNotice
+    });
   } catch (err: any) {
     return res.status(500).json({ error: err.message || "Failed to audit SEO and Schemas." });
   }
@@ -1018,27 +1099,12 @@ app.post("/api/content-checker/analyze", async (req, res) => {
       targetUrlName = sanitizedUrl;
 
       try {
-        const response = await fetch(sanitizedUrl, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ContentChecker/1.0",
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache"
-          },
-          cache: "no-store",
-          signal: AbortSignal.timeout(12000), // 12 second timeout
-        });
-
-        if (!response.ok) {
-          return res.status(400).json({ 
-            error: `Failed to fetch target URL. Website returned status: ${response.status} ${response.statusText}` 
-          });
-        }
-
-        htmlContent = await response.text();
+        const fetched = await fetchWebpageHtml(sanitizedUrl);
+        htmlContent = fetched.html;
       } catch (fetchErr: any) {
         console.error("Error fetching URL:", fetchErr);
         return res.status(400).json({ 
-          error: `Could not connect to target URL (${sanitizedUrl}). Details: ${fetchErr.message || fetchErr}. Make sure the URL is public or use "Paste HTML/Copy" mode.` 
+          error: fetchErr.message || `Could not connect to target URL (${sanitizedUrl}). Make sure the URL is public or use "Paste HTML/Copy" mode.` 
         });
       }
     } else {

@@ -34,7 +34,7 @@ export default function DashboardGrid({
     },
     {
       id: 'seo-checker',
-      name: 'SEO & Schema Auditor',
+      name: 'SEO & Schema',
       description: 'Audit webpage meta title lengths, descriptions, Google SERP snippet previews, Open Graph tags, and Schema.org structured data validity.',
       category: 'AI & Quality Assurance',
       icon: Search,

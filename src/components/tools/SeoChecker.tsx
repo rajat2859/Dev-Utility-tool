@@ -95,6 +95,203 @@ interface SeoAuditData {
   };
 }
 
+function clientParseSeoAndSchemas(html: string, pageUrlStr?: string): SeoAuditData {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  // Title
+  let titleText = doc.querySelector('title')?.textContent?.trim() || '';
+  if (!titleText) {
+    titleText = doc.querySelector('meta[property="og:title"]')?.getAttribute('content')?.trim() || '';
+  }
+
+  // Description
+  let descText = doc.querySelector('meta[name="description"]')?.getAttribute('content')?.trim() || '';
+  if (!descText) {
+    descText = doc.querySelector('meta[property="og:description"]')?.getAttribute('content')?.trim() || '';
+  }
+
+  const keywords = doc.querySelector('meta[name="keywords"]')?.getAttribute('content')?.trim() || undefined;
+  const canonical = doc.querySelector('link[rel="canonical"]')?.getAttribute('href')?.trim() || undefined;
+  const robots = doc.querySelector('meta[name="robots"]')?.getAttribute('content')?.trim() || undefined;
+  const viewport = doc.querySelector('meta[name="viewport"]')?.getAttribute('content')?.trim() || undefined;
+
+  const ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute('content')?.trim();
+  const ogDescription = doc.querySelector('meta[property="og:description"]')?.getAttribute('content')?.trim();
+  const ogImage = doc.querySelector('meta[property="og:image"]')?.getAttribute('content')?.trim();
+  const ogUrl = doc.querySelector('meta[property="og:url"]')?.getAttribute('content')?.trim();
+  const ogType = doc.querySelector('meta[property="og:type"]')?.getAttribute('content')?.trim();
+  const ogSiteName = doc.querySelector('meta[property="og:site_name"]')?.getAttribute('content')?.trim();
+
+  const twitterCard = doc.querySelector('meta[name="twitter:card"]')?.getAttribute('content')?.trim();
+  const twitterTitle = doc.querySelector('meta[name="twitter:title"]')?.getAttribute('content')?.trim();
+  const twitterDescription = doc.querySelector('meta[name="twitter:description"]')?.getAttribute('content')?.trim();
+  const twitterImage = doc.querySelector('meta[name="twitter:image"]')?.getAttribute('content')?.trim();
+
+  const h1Els = Array.from(doc.querySelectorAll('h1'));
+  const h1Texts = h1Els.map(el => el.textContent?.trim() || '').filter(Boolean);
+  const h2Count = doc.querySelectorAll('h2').length;
+  const h3Count = doc.querySelectorAll('h3').length;
+  const h4Count = doc.querySelectorAll('h4').length;
+
+  const imgEls = Array.from(doc.querySelectorAll('img'));
+  const totalImages = imgEls.length;
+  const imagesWithoutAlt = imgEls.filter(img => !img.hasAttribute('alt') || !img.getAttribute('alt')?.trim()).map(img => img.src || 'Image without alt');
+
+  const schemas: DetectedSchema[] = [];
+  const scriptEls = Array.from(doc.querySelectorAll('script[type="application/ld+json"]'));
+  scriptEls.forEach(script => {
+    const rawContent = script.textContent?.trim();
+    if (!rawContent) return;
+    try {
+      const parsed = JSON.parse(rawContent);
+      const processObj = (obj: any) => {
+        if (!obj || typeof obj !== 'object') return;
+        if (Array.isArray(obj['@graph'])) {
+          obj['@graph'].forEach(item => processObj(item));
+          return;
+        }
+        if (Array.isArray(obj)) {
+          obj.forEach(item => processObj(item));
+          return;
+        }
+        const schemaType = obj['@type'] || obj['type'] || 'UnknownSchema';
+        const typeStr = Array.isArray(schemaType) ? schemaType.join(', ') : String(schemaType);
+        const issues: SchemaIssue[] = [];
+        if (!obj['@type']) {
+          issues.push({ type: 'error', message: 'Missing @type property in JSON-LD object.' });
+        }
+        schemas.push({
+          schemaType: typeStr,
+          source: 'json-ld',
+          rawJson: obj,
+          issues,
+          valid: issues.filter(i => i.type === 'error').length === 0
+        });
+      };
+      processObj(parsed);
+    } catch (e: any) {
+      schemas.push({
+        schemaType: 'Invalid JSON-LD',
+        source: 'json-ld',
+        rawJson: { raw: rawContent.slice(0, 300) },
+        issues: [{ type: 'error', message: `JSON syntax error: ${e.message}` }],
+        valid: false
+      });
+    }
+  });
+
+  const itemScopes = Array.from(doc.querySelectorAll('[itemscope]'));
+  itemScopes.forEach(el => {
+    const itemType = el.getAttribute('itemtype') || 'MicrodataItem';
+    const typeName = itemType.split('/').pop() || itemType;
+    schemas.push({
+      schemaType: typeName,
+      source: 'microdata',
+      rawJson: { htmlTag: el.outerHTML.slice(0, 150) },
+      issues: [],
+      valid: true
+    });
+  });
+
+  const titleLen = titleText.length;
+  let titleStatus: 'optimal' | 'too_short' | 'too_long' | 'missing' = 'optimal';
+  let titleMsg = 'Title length is optimal for search snippets (50 - 60 characters).';
+  if (titleLen === 0) {
+    titleStatus = 'missing';
+    titleMsg = 'Meta title tag is completely missing!';
+  } else if (titleLen < 30) {
+    titleStatus = 'too_short';
+    titleMsg = `Title is too short (${titleLen} chars). Expand to 50-60 characters.`;
+  } else if (titleLen > 60) {
+    titleStatus = 'too_long';
+    titleMsg = `Title is too long (${titleLen} chars). Snippets may truncate.`;
+  }
+
+  const descLen = descText.length;
+  let descStatus: 'optimal' | 'too_short' | 'too_long' | 'missing' = 'optimal';
+  let descMsg = 'Meta description length is optimal for search snippets (120 - 160 characters).';
+  if (descLen === 0) {
+    descStatus = 'missing';
+    descMsg = 'Meta description is missing!';
+  } else if (descLen < 70) {
+    descStatus = 'too_short';
+    descMsg = `Description is too short (${descLen} chars). Expand to 120-160 characters.`;
+  } else if (descLen > 160) {
+    descStatus = 'too_long';
+    descMsg = `Description is too long (${descLen} chars). May truncate in search results.`;
+  }
+
+  const titleScore = titleStatus === 'optimal' ? 20 : titleStatus === 'too_short' || titleStatus === 'too_long' ? 12 : 0;
+  const descriptionScore = descStatus === 'optimal' ? 20 : descStatus === 'too_short' || descStatus === 'too_long' ? 12 : 0;
+  const headingsScore = h1Texts.length === 1 ? 15 : h1Texts.length > 1 ? 8 : 0;
+  const socialScore = (ogTitle && ogDescription && ogImage ? 10 : ogTitle || ogDescription ? 5 : 0) + (twitterCard ? 5 : 0);
+  const technicalScore = (canonical ? 8 : 0) + (viewport ? 7 : 0);
+  const schemaScore = schemas.length > 0 && schemas.some(s => s.valid) ? 15 : schemas.length > 0 ? 8 : 0;
+
+  const totalScore = titleScore + descriptionScore + headingsScore + socialScore + technicalScore + schemaScore;
+
+  return {
+    title: {
+      text: titleText,
+      length: titleLen,
+      status: titleStatus,
+      message: titleMsg,
+      pixelWidthEst: Math.round(titleLen * 8.2)
+    },
+    description: {
+      text: descText,
+      length: descLen,
+      status: descStatus,
+      message: descMsg
+    },
+    keywords,
+    canonical,
+    robots,
+    viewport,
+    openGraph: {
+      title: ogTitle,
+      description: ogDescription,
+      image: ogImage,
+      url: ogUrl,
+      type: ogType,
+      siteName: ogSiteName,
+      hasOgTags: !!(ogTitle || ogDescription || ogImage)
+    },
+    twitterCard: {
+      card: twitterCard,
+      title: twitterTitle,
+      description: twitterDescription,
+      image: twitterImage,
+      hasTwitterTags: !!(twitterCard || twitterTitle || twitterImage)
+    },
+    headings: {
+      h1Count: h1Texts.length,
+      h1Texts,
+      h2Count,
+      h3Count,
+      h4Count,
+      status: h1Texts.length === 1 ? 'good' : h1Texts.length === 0 ? 'missing_h1' : 'multiple_h1',
+      message: h1Texts.length === 1 ? 'Perfect! Exactly 1 H1 heading tag found.' : h1Texts.length === 0 ? 'Missing H1 tag.' : `Found ${h1Texts.length} H1 tags.`
+    },
+    images: {
+      total: totalImages,
+      missingAltCount: imagesWithoutAlt.length,
+      imagesWithoutAlt
+    },
+    schemas,
+    overallHealthScore: totalScore,
+    scoreBreakdown: {
+      titleScore,
+      descriptionScore,
+      headingsScore,
+      socialScore,
+      technicalScore,
+      schemaScore
+    }
+  };
+}
+
 export default function SeoChecker() {
   const [activeTab, setActiveTab] = useState<'seo' | 'schema'>('seo');
   const [url, setUrl] = useState<string>('');
@@ -123,6 +320,7 @@ export default function SeoChecker() {
       setUrl(sanitizedUrl);
     }
 
+    // 1. Try server API endpoint first
     try {
       const response = await fetch('/api/seo-checker/analyze', {
         method: 'POST',
@@ -137,22 +335,65 @@ export default function SeoChecker() {
       let data: any;
       if (contentType.includes('application/json')) {
         data = await response.json();
-      } else {
-        const textResponse = await response.text();
-        throw new Error(
-          `Server returned an invalid response (HTTP ${response.status}). If the server is restarting, please wait a moment and try again.`
-        );
       }
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to analyze SEO & Schemas.');
+      if (response.ok && data?.success && data?.data) {
+        setSeoAuditData(data.data);
+        return;
+      }
+    } catch (serverErr) {
+      console.warn("Server SEO audit failed, attempting client-side fallback parsing...", serverErr);
+    }
+
+    // 2. Client-side fallback if raw HTML was provided
+    if (rawHtml.trim()) {
+      try {
+        const clientParsed = clientParseSeoAndSchemas(rawHtml.trim(), sanitizedUrl);
+        setSeoAuditData(clientParsed);
+        return;
+      } catch (clientErr: any) {
+        setSeoError(`Failed to parse HTML: ${clientErr.message || clientErr}`);
+        return;
+      }
+    }
+
+    // 3. Client-side fetch fallback if URL was provided
+    if (sanitizedUrl) {
+      // Proxy Attempt 1: AllOrigins
+      try {
+        const proxyUrl1 = `https://api.allorigins.win/raw?url=${encodeURIComponent(sanitizedUrl)}`;
+        const res1 = await fetch(proxyUrl1);
+        if (res1.ok) {
+          const htmlText1 = await res1.text();
+          if (htmlText1 && htmlText1.trim().length > 10) {
+            const clientParsed = clientParseSeoAndSchemas(htmlText1, sanitizedUrl);
+            setSeoAuditData(clientParsed);
+            return;
+          }
+        }
+      } catch (proxyErr1) {
+        console.warn("Client proxy 1 fetch error:", proxyErr1);
       }
 
-      setSeoAuditData(data.data);
-    } catch (err: any) {
-      setSeoError(err.message || 'Error conducting SEO audit.');
-    } finally {
-      setIsAuditing(false);
+      // Proxy Attempt 2: CorsProxy
+      try {
+        const proxyUrl2 = `https://corsproxy.io/?${encodeURIComponent(sanitizedUrl)}`;
+        const res2 = await fetch(proxyUrl2);
+        if (res2.ok) {
+          const htmlText2 = await res2.text();
+          if (htmlText2 && htmlText2.trim().length > 10) {
+            const clientParsed = clientParseSeoAndSchemas(htmlText2, sanitizedUrl);
+            setSeoAuditData(clientParsed);
+            return;
+          }
+        }
+      } catch (proxyErr2) {
+        console.warn("Client proxy 2 fetch error:", proxyErr2);
+      }
+
+      setSeoError(
+        `Could not fetch target webpage (${sanitizedUrl}). The target site may be blocking automated requests. Please try clicking "Paste Raw HTML" and pasting the page HTML source code directly.`
+      );
     }
   };
 
@@ -196,7 +437,7 @@ HEADINGS & IMAGES:
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 tracking-tight">
-                SEO & Schema Auditor
+                SEO & Schema
               </h2>
               <p className="text-xs text-slate-500">
                 Audit meta titles, descriptions, Google SERP snippets, and Schema.org structured data.

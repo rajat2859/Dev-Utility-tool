@@ -107,7 +107,7 @@ export default function App() {
   const getToolTitle = () => {
     switch (activeView) {
       case 'seo-checker':
-        return 'SEO & Schema Auditor';
+        return 'SEO & Schema';
       case 'html-cleaner':
         return 'HTML Cleaner & Sanitizer';
       case 'url-opener':
