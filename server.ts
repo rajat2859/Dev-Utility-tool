@@ -4,11 +4,23 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import Tesseract from "tesseract.js";
+import compression from "compression";
 
 dotenv.config();
 
+// Tesseract's Node worker can emit an 'error' outside any promise chain (bypassing
+// every try/catch around performLocalOcr), which Node treats as a fatal uncaught
+// exception. That one OCR failure would otherwise kill the whole server for every
+// user, so keep the process alive and just log it.
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception (server kept alive):', err);
+});
+
 const app = express();
 const PORT = 3000;
+
+// Compress all responses (static JS/CSS bundles & JSON API payloads)
+app.use(compression());
 
 // Increase body-parser limits for the base64 screenshot upload
 app.use(express.json({ limit: "50mb" }));
@@ -112,26 +124,46 @@ const responseSchema = {
   required: ["seo", "headings", "bodyContent", "overallScore", "summary", "recommendations"]
 };
 
-// Robust server-side SEO & Schema parser for Meta Title, Description, Social Cards & Schema.org JSON-LD / Microdata
-function parseFullSeoAndSchemas(html: string, pageUrl?: string) {
-  // Title extraction
-  let title = '';
-  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  if (titleMatch) {
-    title = titleMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-  } else {
-    const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([\s\S]*?)["']/i) ||
-                         html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+property=["']og:title["']/i);
-    if (ogTitleMatch) title = ogTitleMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-  }
+// Shared HTML micro-parsing helpers (used by both parseFullSeoAndSchemas and parseHtml)
+const DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-  // Meta Description extraction
-  let description = '';
+function stripTags(fragment: string): string {
+  return fragment.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeUrl(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : 'https://' + trimmed;
+}
+
+function extractPageTitle(html: string): string {
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  if (titleMatch) return stripTags(titleMatch[1]);
+  const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([\s\S]*?)["']/i) ||
+                       html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+property=["']og:title["']/i);
+  return ogTitleMatch ? stripTags(ogTitleMatch[1]) : '';
+}
+
+function extractMetaDescriptionTag(html: string): string {
   const descMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([\s\S]*?)["']/i) ||
                     html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']description["']/i);
-  if (descMatch) {
-    description = descMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  return descMatch ? stripTags(descMatch[1]) : '';
+}
+
+function extractAllHeadings(html: string): { level: string; text: string }[] {
+  const results: { level: string; text: string }[] = [];
+  const headingRegex = /<(h1|h2|h3|h4|h5|h6)[^>]*>([\s\S]*?)<\/\1>/gi;
+  let m;
+  while ((m = headingRegex.exec(html)) !== null) {
+    results.push({ level: m[1].toLowerCase(), text: stripTags(m[2]) });
   }
+  return results;
+}
+
+// Robust server-side SEO & Schema parser for Meta Title, Description, Social Cards & Schema.org JSON-LD / Microdata
+function parseFullSeoAndSchemas(html: string, pageUrl?: string) {
+  const title = extractPageTitle(html);
+  const description = extractMetaDescriptionTag(html);
 
   // Meta Keywords
   let keywords = '';
@@ -178,18 +210,11 @@ function parseFullSeoAndSchemas(html: string, pageUrl?: string) {
   const twitterImage = extractMeta('twitter:image', 'name');
 
   // Headings
-  const h1s: string[] = [];
-  let h2Count = 0, h3Count = 0, h4Count = 0;
-  const headingRegex = /<(h1|h2|h3|h4|h5|h6)[^>]*>([\s\S]*?)<\/\1>/gi;
-  let hMatch;
-  while ((hMatch = headingRegex.exec(html)) !== null) {
-    const lvl = hMatch[1].toLowerCase();
-    const txt = hMatch[2].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-    if (lvl === 'h1' && txt) h1s.push(txt);
-    else if (lvl === 'h2') h2Count++;
-    else if (lvl === 'h3') h3Count++;
-    else if (lvl === 'h4') h4Count++;
-  }
+  const allHeadings = extractAllHeadings(html);
+  const h1s = allHeadings.filter(h => h.level === 'h1' && h.text).map(h => h.text);
+  const h2Count = allHeadings.filter(h => h.level === 'h2').length;
+  const h3Count = allHeadings.filter(h => h.level === 'h3').length;
+  const h4Count = allHeadings.filter(h => h.level === 'h4').length;
 
   // Image alt check
   let totalImages = 0;
@@ -402,13 +427,10 @@ function parseFullSeoAndSchemas(html: string, pageUrl?: string) {
 
 // Helper to fetch webpage HTML with multi-tier proxies & browser headers
 async function fetchWebpageHtml(targetUrl: string): Promise<{ html: string; notice?: string }> {
-  let sanitizedUrl = targetUrl.trim();
-  if (!/^https?:\/\//i.test(sanitizedUrl)) {
-    sanitizedUrl = 'https://' + sanitizedUrl;
-  }
+  const sanitizedUrl = normalizeUrl(targetUrl);
 
   const browserHeaders = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "User-Agent": DESKTOP_USER_AGENT,
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
     "Cache-Control": "no-cache",
@@ -493,6 +515,45 @@ async function fetchWebpageHtml(targetUrl: string): Promise<{ html: string; noti
   throw new Error(`Could not retrieve HTML from target URL (${sanitizedUrl}). The target site may be blocking automated crawlers. Try using "Paste Raw HTML" mode.`);
 }
 
+// Extracts the plain text of a publicly-viewable Google Doc via its export endpoint
+async function fetchGoogleDocText(docUrl: string): Promise<string> {
+  const idMatch = docUrl.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+  if (!idMatch) {
+    throw new Error('That does not look like a Google Docs URL (expected .../document/d/<id>/...).');
+  }
+  const docId = idMatch[1];
+  const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=txt`;
+
+  const res = await fetch(exportUrl, { redirect: 'follow', signal: AbortSignal.timeout(10000) });
+  if (!res.ok) {
+    throw new Error(
+      res.status === 401 || res.status === 403
+        ? 'This Google Doc is not public. Set sharing to "Anyone with the link" and try again.'
+        : `Could not fetch Google Doc (status ${res.status}).`
+    );
+  }
+
+  const text = (await res.text()).trim();
+  if (!text || text.length < 5) {
+    throw new Error('Google Doc appears to be empty.');
+  }
+  return text;
+}
+
+// Endpoint to resolve a Google Doc share link to its plain text, used as the Auditor's reference copy
+app.post("/api/content-checker/resolve-google-doc", async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url || !url.trim()) {
+      return res.status(400).json({ error: "Missing Google Doc URL." });
+    }
+    const text = await fetchGoogleDocText(url.trim());
+    return res.json({ success: true, text });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || "Failed to fetch Google Doc content." });
+  }
+});
+
 // Endpoint to audit SEO meta tags, Title, Description, and Schema.org structured data
 app.post("/api/seo-checker/analyze", async (req, res) => {
   try {
@@ -504,10 +565,7 @@ app.post("/api/seo-checker/analyze", async (req, res) => {
     if (rawHtml && rawHtml.trim()) {
       htmlContent = rawHtml.trim();
     } else if (url && url.trim()) {
-      let sanitizedUrl = url.trim();
-      if (!/^https?:\/\//i.test(sanitizedUrl)) {
-        sanitizedUrl = 'https://' + sanitizedUrl;
-      }
+      const sanitizedUrl = normalizeUrl(url);
       pageUrlStr = sanitizedUrl;
 
       try {
@@ -535,48 +593,26 @@ app.post("/api/seo-checker/analyze", async (req, res) => {
 
 // Robust server-side parser for metadata, headings, paragraphs, lists, and tables
 function parseHtml(html: string) {
-  // Extract title (standard <title>, og:title, twitter:title)
-  let title = '';
-  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  if (titleMatch) {
-    title = titleMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-  } else {
-    const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([\s\S]*?)["']/i) ||
-                         html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+property=["']og:title["']/i);
-    if (ogTitleMatch) {
-      title = ogTitleMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-    }
-  }
+  const title = extractPageTitle(html);
 
-  // Extract meta description
-  let description = '';
-  const descMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([\s\S]*?)["']/i) ||
-                    html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']description["']/i) ||
-                    html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([\s\S]*?)["']/i) ||
-                    html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+property=["']og:description["']/i) ||
-                    html.match(/<meta[^>]+name=["']twitter:description["'][^>]+content=["']([\s\S]*?)["']/i);
-  if (descMatch) {
-    description = descMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  // Meta description, falling back to og:description / twitter:description
+  let description = extractMetaDescriptionTag(html);
+  if (!description) {
+    const descMatch = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([\s\S]*?)["']/i) ||
+                      html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+property=["']og:description["']/i) ||
+                      html.match(/<meta[^>]+name=["']twitter:description["'][^>]+content=["']([\s\S]*?)["']/i);
+    if (descMatch) description = stripTags(descMatch[1]);
   }
 
   // Extract headers: h1 through h6
-  const headings: { level: string; text: string }[] = [];
-  const headingRegex = /<(h1|h2|h3|h4|h5|h6)[^>]*>([\s\S]*?)<\/\1>/gi;
-  let match;
-  while ((match = headingRegex.exec(html)) !== null) {
-    const level = match[1].toLowerCase();
-    const text = match[2].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-    if (text) {
-      headings.push({ level, text });
-    }
-  }
+  const headings = extractAllHeadings(html).filter(h => h.text);
 
   // Extract explicit <p> paragraph tags
   const paragraphs: string[] = [];
   const pRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
   let pMatch;
   while ((pMatch = pRegex.exec(html)) !== null) {
-    const pText = pMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    const pText = stripTags(pMatch[1]);
     if (pText) {
       paragraphs.push(pText);
     }
@@ -587,7 +623,7 @@ function parseHtml(html: string) {
   const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
   let liMatch;
   while ((liMatch = liRegex.exec(html)) !== null) {
-    const liText = liMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    const liText = stripTags(liMatch[1]);
     if (liText) {
       listItems.push(liText);
     }
@@ -605,7 +641,7 @@ function parseHtml(html: string) {
     const thRegex = /<th[^>]*>([\s\S]*?)<\/th>/gi;
     let thMatch;
     while ((thMatch = thRegex.exec(tableHtml)) !== null) {
-      const thText = thMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+      const thText = stripTags(thMatch[1]);
       if (thText) headers.push(thText);
     }
 
@@ -617,7 +653,7 @@ function parseHtml(html: string) {
       const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
       let tdMatch;
       while ((tdMatch = tdRegex.exec(trHtml)) !== null) {
-        const tdText = tdMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+        const tdText = stripTags(tdMatch[1]);
         if (tdText) rowCells.push(tdText);
       }
       if (rowCells.length > 0) {
@@ -659,8 +695,13 @@ async function performLocalOcr(imageBase64: string): Promise<string> {
     const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
     const imageBuffer = Buffer.from(cleanBase64, 'base64');
     
-    // Run OCR with a 3.5s timeout limit so local fallback remains ultra-responsive
-    const ocrPromise = Tesseract.recognize(imageBuffer, 'eng');
+    // Pin to the bundled eng.traineddata and forbid network re-downloads: tesseract.js
+    // defaults to fetching/overwriting this file over the network, and an interrupted
+    // download leaves it corrupted, crashing every OCR call afterward.
+    const ocrPromise = Tesseract.recognize(imageBuffer, 'eng', {
+      langPath: process.cwd(),
+      cacheMethod: 'readOnly',
+    });
     const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
     
     const result: any = await Promise.race([ocrPromise, timeoutPromise]);
@@ -709,321 +750,268 @@ function stringSimilarity(s1: string, s2: string): number {
   return 1 - distance / maxLen;
 }
 
-function findBestOcrMatch(targetText: string, ocrLines: string[], fullOcrText: string): { bestText: string; similarity: number } {
-  const normTarget = normalizeText(targetText);
-  if (!normTarget) return { bestText: '', similarity: 1.0 };
-
-  const normFullOcr = normalizeText(fullOcrText);
-  if (normFullOcr.includes(normTarget)) {
-    return { bestText: targetText, similarity: 1.0 };
-  }
-
-  let bestText = '';
-  let highestSim = 0;
-
-  for (const line of ocrLines) {
-    const normLine = normalizeText(line);
-    if (!normLine) continue;
-    const sim = stringSimilarity(targetText, line);
-    if (sim > highestSim) {
-      highestSim = sim;
-      bestText = line;
-    }
-  }
-
-  if (normTarget.length > 25 && ocrLines.length > 1) {
-    for (let i = 0; i < ocrLines.length - 1; i++) {
-      const combined = ocrLines[i] + ' ' + ocrLines[i + 1];
-      const sim = stringSimilarity(targetText, combined);
-      if (sim > highestSim) {
-        highestSim = sim;
-        bestText = combined;
-      }
-    }
-  }
-
-  return { bestText: bestText || 'Reference document text', similarity: highestSim };
+// Splits a reference (Google Doc export, or OCR output) into ordered text blocks, one per line.
+// Google Docs' plain-text export doesn't word-wrap — every paragraph, heading, and list item is
+// exported as exactly one line, with blank lines appearing only at occasional author-inserted
+// visual gaps rather than at every paragraph boundary. So a block boundary has to be "one line",
+// not "one blank-line-delimited chunk" — the latter would merge genuinely separate blocks (e.g. a
+// heading and the very next paragraph) whenever the author didn't happen to leave a blank line
+// between them, which is the normal case. Table cells (Docs exports each as its own tab-indented
+// continuation line) are dropped since the page's own table cells aren't part of this alignment.
+function splitReferenceBlocks(text: string): string[] {
+  if (!text) return [];
+  return text
+    .split('\n')
+    .filter((l) => !l.startsWith('\t'))
+    .map((l) => l.replace(/^[*\-•]\s*/, '').trim())
+    .filter((l) => l.length > 0);
 }
 
-// Intelligent OCR-powered local compliance report generator
+// Real pages surround the article with nav menus, sidebars, related-post lists, author bios, and
+// footer links — all built from the same h1-h6/p/li tags parseOrderedContentBlocks looks for. Left
+// unscoped, that chrome pollutes the sequence and throws off every position after it. Scope to from
+// the first <h1> (the real title usually sits just outside <article>, in a header/hero section)
+// through </article> or <footer>, whichever comes first.
+function scopeToMainContent(html: string): string {
+  const h1Idx = html.search(/<h1[\s>]/i);
+  const articleIdx = html.search(/<article[\s>]/i);
+  const starts = [h1Idx, articleIdx].filter((i) => i >= 0);
+  const start = starts.length > 0 ? Math.min(...starts) : 0;
+
+  const articleCloseIdx = html.toLowerCase().lastIndexOf('</article>');
+  const footerIdx = html.search(/<footer[\s>]/i);
+  const ends = [
+    articleCloseIdx >= 0 ? articleCloseIdx + '</article>'.length : -1,
+    footerIdx >= 0 ? footerIdx : -1
+  ].filter((i) => i >= 0);
+  const end = ends.length > 0 ? Math.min(...ends) : html.length;
+
+  return start < end ? html.slice(start, end) : html;
+}
+
+// Finds an explicitly-labeled line like "Meta title: ..." or "Meta description: ..." anywhere in
+// the reference (a common content-brief convention), stripping any trailing "(53 chars)" annotation.
+function extractLabeledLine(text: string, label: string): string {
+  const re = new RegExp(`^\\s*${label}\\s*:?\\s*(.+)$`, 'im');
+  const m = text.match(re);
+  if (!m) return '';
+  return m[1].replace(/\(\d+\s*chars?\)\s*$/i, '').trim();
+}
+
+// Content briefs often prefix the real body copy with metadata (URL, meta title/description,
+// keywords) and a flat "H1 ... / H2 ... / H3 ..." heading outline before repeating that structure
+// as actual prose. Skip past the last outline line so body alignment starts at the real content.
+function skipReferencePreamble(text: string): string {
+  const headingLineRegex = /^h[1-6]\s+.+$/gim;
+  let lastEnd = -1;
+  let m;
+  while ((m = headingLineRegex.exec(text)) !== null) {
+    lastEnd = m.index + m[0].length;
+  }
+  return lastEnd >= 0 ? text.slice(lastEnd) : text;
+}
+
+// Walks the HTML once so headings, paragraphs, and list items come back in true document
+// order (interleaved), which is required to align them positionally against a reference
+// document written in the same reading order — heading-to-heading, paragraph-to-paragraph.
+function parseOrderedContentBlocks(html: string): { type: 'heading' | 'paragraph' | 'listItem'; level?: string; text: string }[] {
+  const body = html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ');
+
+  const blocks: { type: 'heading' | 'paragraph' | 'listItem'; level?: string; text: string }[] = [];
+  const blockRegex = /<(h1|h2|h3|h4|h5|h6|p|li)[^>]*>([\s\S]*?)<\/\1>/gi;
+  let m;
+  while ((m = blockRegex.exec(body)) !== null) {
+    const tag = m[1].toLowerCase();
+    const text = stripTags(m[2]);
+    if (!text) continue;
+    if (tag === 'p') blocks.push({ type: 'paragraph', text });
+    else if (tag === 'li') blocks.push({ type: 'listItem', text });
+    else blocks.push({ type: 'heading', level: tag, text });
+  }
+  return blocks;
+}
+
+// Compares two pieces of text ignoring case, whitespace, and punctuation — i.e. ignoring
+// styling/formatting differences and judging only the words themselves.
+function textsRoughlyMatch(a: string, b: string): boolean {
+  const na = normalizeText(a);
+  const nb = normalizeText(b);
+  if (!na && !nb) return true;
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  return stringSimilarity(a, b) >= 0.9;
+}
+
+// Deterministic compliance report: aligns the reference (Google Doc text or OCR output) against
+// the webpage's own content. Title/description come from explicit "Meta title:"/"Meta description:"
+// labels if the reference uses that content-brief convention, otherwise from its first two lines.
+// The body (heading-to-heading, paragraph-to-paragraph) is aligned by position, skipping past any
+// metadata/heading-outline preamble so alignment starts at the reference's actual prose.
 async function buildLocalReport(
   parsedWebData: ReturnType<typeof parseHtml>,
   url: string,
-  imageBase64?: string
+  referenceText: string | undefined,
+  orderedBlocks: { type: 'heading' | 'paragraph' | 'listItem'; level?: string; text: string }[]
 ) {
-  let ocrText = '';
-  if (imageBase64) {
-    ocrText = await performLocalOcr(imageBase64);
-  }
+  const rawReference = referenceText || '';
+  const hasReference = rawReference.trim().length > 0;
 
-  const cleanOcr = normalizeText(ocrText);
-  const ocrLines = ocrText.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+  const labeledTitle = extractLabeledLine(rawReference, 'meta title');
+  const labeledDescription = extractLabeledLine(rawReference, 'meta description');
+
+  let refTitle: string;
+  let refDescription: string;
+  let refBodyBlocks: string[];
+
+  if (labeledTitle || labeledDescription) {
+    refTitle = labeledTitle;
+    refDescription = labeledDescription;
+    refBodyBlocks = splitReferenceBlocks(skipReferencePreamble(rawReference))
+      // Safety net if no heading outline was found to skip past: drop any leftover metadata lines.
+      .filter(b => !/^(url|meta title|meta description|primary keyword|secondary keywords?|required schema|internal links?|heading structure)\s*:?/i.test(b));
+  } else {
+    const referenceBlocks = splitReferenceBlocks(rawReference);
+    refTitle = referenceBlocks[0] || '';
+    refDescription = referenceBlocks[1] || '';
+    refBodyBlocks = referenceBlocks.slice(2);
+  }
 
   const hasTitle = !!parsedWebData.title;
   const hasDescription = !!parsedWebData.description;
-  const hasH1 = parsedWebData.headings.some(h => h.level === 'h1');
 
-  const mismatches: Array<{
+  // Title & meta description, compared directly against the reference's first two lines
+  const titleMatches = hasReference ? textsRoughlyMatch(parsedWebData.title, refTitle) : hasTitle;
+  const descriptionMatches = hasReference ? textsRoughlyMatch(parsedWebData.description, refDescription) : hasDescription;
+
+  // Heading-to-heading, paragraph-to-paragraph — aligned in reading order, but NOT by rigid index:
+  // a single extra/missing heading, callout box, or table on either side would otherwise permanently
+  // shift every comparison after it out of sync. Instead this walks both sequences together and, on
+  // a mismatch, looks a short distance ahead in each side for the next real match, skipping over
+  // whichever side has the extra content so the rest of the document realigns (like a text diff).
+  const LOOKAHEAD = 30;
+  const categoryFor = (pageBlock: typeof orderedBlocks[number] | undefined) =>
+    !pageBlock
+      ? 'Extra Reference Content'
+      : pageBlock.type === 'heading'
+        ? `Heading (${(pageBlock.level || 'h').toUpperCase()})`
+        : pageBlock.type === 'listItem'
+          ? 'List Item'
+          : 'Paragraph';
+
+  const comparisons: Array<{
     category: string;
     expected: string;
     actual: string;
     severity: 'high' | 'medium' | 'low';
     comment: string;
+    status: 'match' | 'mismatch';
   }> = [];
 
-  let score = 100;
   let matchesCount = 0;
-
-  // 1. Title verification against screenshot OCR
-  let titleMatches = hasTitle;
-  let titleDifference = hasTitle ? 'Title tag present.' : 'Missing <title> tag in HTML head.';
-  if (hasTitle && imageBase64) {
-    if (cleanOcr.length > 10) {
-      const { bestText, similarity } = findBestOcrMatch(parsedWebData.title, ocrLines, ocrText);
-      if (similarity < 0.85) {
-        titleMatches = false;
-        titleDifference = `Webpage title ("${parsedWebData.title}") was not found verbatim in reference screenshot.`;
-        mismatches.push({
-          category: 'Page Title Mismatch',
-          expected: bestText,
-          actual: parsedWebData.title,
-          severity: 'medium',
-          comment: `Webpage <title> ("${parsedWebData.title}") differs from reference document screenshot.`
-        });
-        score -= 15;
-      } else {
-        matchesCount++;
-      }
-    } else {
-      mismatches.push({
-        category: 'Page Title Verification',
-        expected: 'Title as shown in screenshot',
-        actual: parsedWebData.title,
-        severity: 'low',
-        comment: 'Reference screenshot contained no legible title text matching the webpage.'
-      });
-      score -= 10;
-    }
-  }
-
-  // 2. Explicit Paragraph (<p>) Verification against Reference Document Screenshot OCR
-  if (parsedWebData.paragraphs.length > 0 && imageBase64) {
-    if (cleanOcr.length > 10) {
-      parsedWebData.paragraphs.forEach((pText, idx) => {
-        if (pText.length > 8) {
-          const { bestText, similarity } = findBestOcrMatch(pText, ocrLines, ocrText);
-          if (similarity < 0.85) {
-            mismatches.push({
-              category: 'Paragraph Copy Mismatch',
-              expected: bestText,
-              actual: pText,
-              severity: 'high',
-              comment: `Paragraph #${idx + 1} (<p>) on target webpage ("${pText.substring(0, 90)}...") differs from reference document screenshot.`
-            });
-            score -= 20;
-          } else {
-            matchesCount++;
-          }
-        }
-      });
-    } else {
-      parsedWebData.paragraphs.slice(0, 3).forEach((pText, idx) => {
-        mismatches.push({
-          category: 'Paragraph Copy Mismatch',
-          expected: 'Text from document screenshot',
-          actual: pText,
-          severity: 'high',
-          comment: `Paragraph #${idx + 1} on webpage ("${pText.substring(0, 80)}...") was not found in the reference document screenshot.`
-        });
-        score -= 20;
-      });
-    }
-  }
-
-  // 3. Bullet & List Item (<li>) Verification
-  if (parsedWebData.listItems.length > 0 && imageBase64) {
-    if (cleanOcr.length > 10) {
-      parsedWebData.listItems.forEach((liText, idx) => {
-        if (liText.length > 5) {
-          const { bestText, similarity } = findBestOcrMatch(liText, ocrLines, ocrText);
-          if (similarity < 0.85) {
-            mismatches.push({
-              category: 'List Item Mismatch',
-              expected: bestText,
-              actual: liText,
-              severity: 'medium',
-              comment: `List item #${idx + 1} (<li>) on webpage ("${liText}") differs from reference document screenshot.`
-            });
-            score -= 15;
-          } else {
-            matchesCount++;
-          }
-        }
-      });
-    } else {
-      parsedWebData.listItems.slice(0, 3).forEach((liText, idx) => {
-        mismatches.push({
-          category: 'List Item Mismatch',
-          expected: 'List item from document screenshot',
-          actual: liText,
-          severity: 'medium',
-          comment: `List item #${idx + 1} (<li>) on webpage was not found in reference document screenshot.`
-        });
-        score -= 15;
-      });
-    }
-  }
-
-  // 4. Table Header & Row Cells Verification
-  if (parsedWebData.tables.length > 0 && imageBase64) {
-    if (cleanOcr.length > 10) {
-      parsedWebData.tables.forEach((table, tIdx) => {
-        table.headers.forEach((hdr) => {
-          const { bestText, similarity } = findBestOcrMatch(hdr, ocrLines, ocrText);
-          if (similarity < 0.85) {
-            mismatches.push({
-              category: 'Table Header Mismatch',
-              expected: bestText,
-              actual: hdr,
-              severity: 'medium',
-              comment: `Table #${tIdx + 1} header ("${hdr}") differs from reference screenshot.`
-            });
-            score -= 15;
-          } else {
-            matchesCount++;
-          }
-        });
-
-        table.rows.forEach((row, rIdx) => {
-          row.forEach((cell, cIdx) => {
-            if (cell.length > 2) {
-              const { bestText, similarity } = findBestOcrMatch(cell, ocrLines, ocrText);
-              if (similarity < 0.85) {
-                mismatches.push({
-                  category: 'Table Cell Mismatch',
-                  expected: bestText,
-                  actual: cell,
-                  severity: 'medium',
-                  comment: `Table #${tIdx + 1} row ${rIdx + 1}, cell ${cIdx + 1} ("${cell}") differs from reference screenshot.`
-                });
-                score -= 10;
-              } else {
-                matchesCount++;
-              }
-            }
-          });
-        });
-      });
-    }
-  }
-
-  // 5. Heading Verification
-  const headingMatches = parsedWebData.headings.slice(0, 10).map((h) => {
-    let status: 'match' | 'mismatch' | 'partial' = 'match';
-    let comment = `<${h.level}> present on target page with exact text.`;
-
-    if (imageBase64) {
-      if (cleanOcr.length > 10) {
-        const { bestText, similarity } = findBestOcrMatch(h.text, ocrLines, ocrText);
-        if (similarity < 0.85) {
-          status = 'mismatch';
-          comment = `<${h.level}> text ("${h.text}") does not match reference document screenshot.`;
-          mismatches.push({
-            category: 'Heading Mismatch',
-            expected: bestText,
-            actual: `<${h.level}>: "${h.text}"`,
-            severity: 'medium',
-            comment: `<${h.level}> heading on target webpage differs from reference screenshot.`
-          });
-          score -= 15;
-        } else {
-          matchesCount++;
-        }
-      } else {
-        status = 'mismatch';
-        comment = `<${h.level}> heading on webpage was not found in reference screenshot.`;
-        mismatches.push({
-          category: 'Heading Mismatch',
-          expected: 'Heading in screenshot',
-          actual: `<${h.level}>: "${h.text}"`,
-          severity: 'medium',
-          comment: `<${h.level}> heading on webpage was not found in reference screenshot.`
-        });
-        score -= 15;
-      }
-    }
-
-    return {
-      level: h.level as 'h1' | 'h2' | 'h3',
-      expectedText: h.text,
-      actualText: h.text,
-      status,
-      comment
-    };
-  });
-
-  if (!hasH1) {
-    headingMatches.unshift({
-      level: 'h1',
-      expectedText: 'Main Page H1 Heading',
-      actualText: 'None',
-      status: 'mismatch',
-      comment: 'Missing primary <h1> heading tag on target webpage.'
+  const pushComparison = (pageBlock: typeof orderedBlocks[number] | undefined, refLine: string | undefined, isMatch: boolean) => {
+    if (isMatch) matchesCount++;
+    comparisons.push({
+      category: categoryFor(pageBlock),
+      expected: refLine || '(not present in the reference)',
+      actual: pageBlock ? pageBlock.text : '(missing on the webpage)',
+      severity: 'medium',
+      comment: isMatch
+        ? 'Matches the reference (styling ignored, text only).'
+        : 'Differs from the reference at this position (styling ignored, text only).',
+      status: isMatch ? 'match' : 'mismatch'
     });
-    score -= 20;
+  };
+
+  let pi = 0;
+  let ri = 0;
+  while (hasReference ? (pi < orderedBlocks.length || ri < refBodyBlocks.length) : pi < orderedBlocks.length) {
+    if (pi >= orderedBlocks.length) {
+      pushComparison(undefined, refBodyBlocks[ri], false);
+      ri++;
+      continue;
+    }
+    if (!hasReference || ri >= refBodyBlocks.length) {
+      pushComparison(orderedBlocks[pi], undefined, false);
+      pi++;
+      continue;
+    }
+
+    const pageText = orderedBlocks[pi].text;
+    const refText = refBodyBlocks[ri];
+    if (textsRoughlyMatch(pageText, refText)) {
+      pushComparison(orderedBlocks[pi], refText, true);
+      pi++; ri++;
+      continue;
+    }
+
+    let pageAhead = -1;
+    for (let k = 1; k <= LOOKAHEAD && pi + k < orderedBlocks.length; k++) {
+      if (textsRoughlyMatch(orderedBlocks[pi + k].text, refText)) { pageAhead = k; break; }
+    }
+    let refAhead = -1;
+    for (let k = 1; k <= LOOKAHEAD && ri + k < refBodyBlocks.length; k++) {
+      if (textsRoughlyMatch(pageText, refBodyBlocks[ri + k])) { refAhead = k; break; }
+    }
+
+    if (pageAhead === -1 && refAhead === -1) {
+      // No resync point nearby — report this one pair as a genuine mismatch and move on together.
+      pushComparison(orderedBlocks[pi], refText, false);
+      pi++; ri++;
+    } else if (pageAhead !== -1 && (refAhead === -1 || pageAhead <= refAhead)) {
+      // The page has extra content the reference doesn't — skip it, then the next pair matches.
+      for (let k = 0; k < pageAhead; k++) pushComparison(orderedBlocks[pi + k], undefined, false);
+      pi += pageAhead;
+      pushComparison(orderedBlocks[pi], refBodyBlocks[ri], true);
+      pi++; ri++;
+    } else {
+      // The reference has extra content the page doesn't — skip it, then the next pair matches.
+      for (let k = 0; k < refAhead; k++) pushComparison(undefined, refBodyBlocks[ri + k], false);
+      ri += refAhead;
+      pushComparison(orderedBlocks[pi], refBodyBlocks[ri], true);
+      pi++; ri++;
+    }
   }
 
-  if (!hasTitle) score -= 25;
-  if (!hasDescription) score -= 20;
-  score = Math.max(0, Math.min(100, score));
+  const mismatchesOnly = comparisons.filter(c => c.status === 'mismatch');
+  const bodyStatus = comparisons.length === 0 ? 'partial' : mismatchesOnly.length > 0 ? 'mismatch' : 'match';
 
   const recommendations: string[] = [];
-  if (mismatches.length > 0) {
-    recommendations.push('Align modified paragraph copy, headings, list items, and table cells on webpage with the reference document screenshot.');
+  if (mismatchesOnly.length > 0) {
+    recommendations.push('Align mismatched headings, paragraphs, and list items with the reference, in the same order.');
   }
   if (!hasTitle) recommendations.push('Add a descriptive <title> tag to the webpage <head>.');
   if (!hasDescription) recommendations.push('Add a meta description tag (<meta name="description" content="...">).');
-  if (!hasH1) recommendations.push('Add a clear primary <h1> heading to establish page topic hierarchy.');
-  if (parsedWebData.headings.length < 3) recommendations.push('Incorporate additional <h2> and <h3> subheadings to structure page sections.');
-
-  if (recommendations.length === 0) {
-    recommendations.push('Verify visually that font family, weights, and component padding match reference design specifications.');
-    recommendations.push('Check image alt text attributes across all landing page assets.');
-  }
-
-  const bodyStatus = mismatches.length > 0 ? 'mismatch' : (parsedWebData.bodyText.length > 100 ? 'match' : 'partial');
 
   return {
     seo: {
       titleMatches,
-      expectedTitle: parsedWebData.title || 'Page Title Expected',
+      expectedTitle: refTitle || (hasReference ? '(reference has no first line to use as a title)' : 'No reference provided'),
       actualTitle: parsedWebData.title || '(No title tag found)',
-      titleDifference,
-      descriptionMatches: hasDescription,
-      expectedDescription: parsedWebData.description || 'Meta Description Expected',
+      titleDifference: titleMatches ? 'Title matches the reference.' : 'Title differs from the reference.',
+      descriptionMatches,
+      expectedDescription: refDescription || (hasReference ? '(reference has no second line to use as a description)' : 'No reference provided'),
       actualDescription: parsedWebData.description || '(No meta description found)',
-      descriptionDifference: hasDescription ? 'Meta description present.' : 'Missing meta description tag.',
-      status: (titleMatches && hasDescription) ? 'match' : (titleMatches || hasDescription) ? 'partial' : 'mismatch',
-      analysis: (titleMatches && hasDescription)
-        ? 'Target page contains active title and meta description tags.'
-        : 'SEO tags or title content discrepancies detected.'
+      descriptionDifference: descriptionMatches ? 'Description matches the reference.' : 'Description differs from the reference.',
+      status: (titleMatches && descriptionMatches) ? 'match' : (titleMatches || descriptionMatches) ? 'partial' : 'mismatch',
+      analysis: ''
     },
     headings: {
-      status: hasH1 && headingMatches.every(m => m.status === 'match') ? 'match' : 'mismatch',
-      matches: headingMatches,
-      analysis: `Extracted ${parsedWebData.headings.length} heading tag(s) from target HTML.`
+      status: 'match',
+      matches: [],
+      analysis: ''
     },
     bodyContent: {
       status: bodyStatus,
-      mismatches,
+      mismatches: comparisons,
       matchesCount,
-      mismatchesCount: mismatches.length,
-      analysis: mismatches.length > 0
-        ? `Found ${mismatches.length} content discrepancy(ies) across paragraphs, headings, lists, or tables.`
-        : `Extracted ${parsedWebData.bodyText.length} characters of copy text; all elements matched reference screenshot.`
+      mismatchesCount: mismatchesOnly.length,
+      analysis: ''
     },
-    overallScore: score,
-    summary: `Analyzed ${url}. OCR Extracted ${ocrLines.length} text line(s) from screenshot. Found ${mismatches.length} copy discrepancy(ies). Overall score: ${score}%.`,
+    overallScore: 0,
+    summary: '',
     recommendations
   };
 }
@@ -1080,10 +1068,10 @@ async function analyzeWithOpenRouter(openRouterKey: string, textPrompt: string, 
 
 app.post("/api/content-checker/analyze", async (req, res) => {
   try {
-    const { url, rawHtml, image } = req.body;
+    const { url, rawHtml, image, referenceText } = req.body;
 
-    if (!image) {
-      return res.status(400).json({ error: "Missing reference document screenshot image." });
+    if (!image && !(referenceText && referenceText.trim())) {
+      return res.status(400).json({ error: "Missing reference document screenshot image or Google Doc reference text." });
     }
 
     let htmlContent = "";
@@ -1092,10 +1080,7 @@ app.post("/api/content-checker/analyze", async (req, res) => {
     if (rawHtml && rawHtml.trim()) {
       htmlContent = rawHtml.trim();
     } else if (url && url.trim()) {
-      let sanitizedUrl = url.trim();
-      if (!/^https?:\/\//i.test(sanitizedUrl)) {
-        sanitizedUrl = 'https://' + sanitizedUrl;
-      }
+      const sanitizedUrl = normalizeUrl(url);
       targetUrlName = sanitizedUrl;
 
       try {
@@ -1154,9 +1139,12 @@ Calculate the Overall Compliance Score (0 to 100) based on strict copy alignment
 ${JSON.stringify(responseSchema, null, 2)}
 `;
 
-    // 1. Try Gemini API if client available
+    // 1. Try Gemini API if client available (vision comparison needs an actual screenshot;
+    // a Google Doc reference is plain text, so it skips AI vision and goes straight to the
+    // deterministic local text comparator below, which is actually a better fit for exact-text
+    // spec compliance than an LLM's vision reasoning).
     const client = getGeminiClient();
-    if (client) {
+    if (client && image) {
       try {
         const base64Data = image.split(',')[1] || image;
         let mimeType = "image/png";
@@ -1206,7 +1194,7 @@ ${JSON.stringify(responseSchema, null, 2)}
     }
 
     // 2. Try OpenRouter API if GEMINI failed or was missing, and OPENROUTER_API_KEY is available
-    if (!reportText && process.env.OPENROUTER_API_KEY) {
+    if (!reportText && image && process.env.OPENROUTER_API_KEY) {
       console.log("Attempting OpenRouter AI analysis...");
       const openRouterResult = await analyzeWithOpenRouter(process.env.OPENROUTER_API_KEY, textPrompt, image);
       if (openRouterResult) {
@@ -1232,8 +1220,12 @@ ${JSON.stringify(responseSchema, null, 2)}
       }
     }
 
-    // Fallback: Generate high-fidelity OCR rule-based report
-    const localReport = await buildLocalReport(parsedWebData, targetUrlName, image);
+    // Fallback: compare against the Google Doc text directly, or OCR the screenshot
+    const localReferenceText = referenceText && referenceText.trim()
+      ? referenceText.trim()
+      : (image ? await performLocalOcr(image) : undefined);
+    const orderedBlocks = parseOrderedContentBlocks(scopeToMainContent(htmlContent));
+    const localReport = await buildLocalReport(parsedWebData, targetUrlName, localReferenceText, orderedBlocks);
     return res.json({
       success: true,
       report: localReport,
@@ -1260,10 +1252,7 @@ app.post("/api/content-checker/resolve-awesome-screenshot", async (req, res) => 
       return res.status(400).json({ error: "Missing share link URL." });
     }
 
-    url = url.trim();
-    if (!/^https?:\/\//i.test(url)) {
-      url = 'https://' + url;
-    }
+    url = normalizeUrl(url);
 
     let imageUrl = "";
 
@@ -1273,7 +1262,7 @@ app.post("/api/content-checker/resolve-awesome-screenshot", async (req, res) => 
     } else {
       const pageResponse = await fetch(url, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "User-Agent": DESKTOP_USER_AGENT,
           "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
           "Accept-Language": "en-US,en;q=0.9",
         },
@@ -1428,7 +1417,17 @@ async function setupFrontend() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, {
+      // Vite content-hashes everything under /assets, so those files can be
+      // cached forever; index.html (and anything else) must always revalidate.
+      setHeaders: (res, filePath) => {
+        if (filePath.startsWith(path.join(distPath, 'assets') + path.sep)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } else {
+          res.setHeader('Cache-Control', 'no-cache');
+        }
+      }
+    }));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
