@@ -1,20 +1,40 @@
 import React, { useState, useRef } from 'react';
-import { 
-  Globe, 
-  FileImage, 
-  AlertTriangle, 
-  RefreshCw, 
-  Copy, 
-  Check, 
-  FileSearch, 
-  CheckSquare, 
-  Link2, 
+import {
+  Globe,
+  FileImage,
+  AlertTriangle,
+  RefreshCw,
+  Copy,
+  Check,
+  FileSearch,
+  Link2,
   ShieldCheck,
   CheckCircle2,
   XCircle,
   FileText,
   Layers
 } from 'lucide-react';
+import { normalizeUrl } from '../../lib/utils';
+
+const CHECK_CATEGORIES = [
+  { id: 'title', label: 'Title & Meta Description' },
+  { id: 'headings', label: 'Headings' },
+  { id: 'paragraphs', label: 'Paragraphs' },
+  { id: 'lists', label: 'List Items' },
+  { id: 'tables', label: 'Tables' },
+] as const;
+
+// Maps a mismatch's free-text category (from either the local comparator or the AI prompt)
+// to one of the checkable groups above, so the UI can filter to only what the user asked for.
+function categoryGroup(category: string): string {
+  const c = category.toLowerCase();
+  if (c.includes('title')) return 'title';
+  if (c.includes('heading')) return 'headings';
+  if (c.includes('paragraph')) return 'paragraphs';
+  if (c.includes('list')) return 'lists';
+  if (c.includes('table')) return 'tables';
+  return 'other';
+}
 
 interface SEOSection {
   titleMatches: boolean;
@@ -49,6 +69,7 @@ interface BodyMismatch {
   actual: string;
   severity: 'high' | 'medium' | 'low';
   comment: string;
+  status?: 'match' | 'mismatch';
 }
 
 interface BodyContentSection {
@@ -86,6 +107,23 @@ export default function ContentChecker() {
 
   const [isResolvingAwesome, setIsResolvingAwesome] = useState<boolean>(false);
   const [awesomeError, setAwesomeError] = useState<string | null>(null);
+
+  // Google Doc reference-copy state (text-only alternative to a screenshot)
+  const [googleDocUrl, setGoogleDocUrl] = useState<string>('');
+  const [referenceDocText, setReferenceDocText] = useState<string | null>(null);
+  const [isResolvingDoc, setIsResolvingDoc] = useState<boolean>(false);
+  const [docError, setDocError] = useState<string | null>(null);
+
+  const [selectedChecks, setSelectedChecks] = useState<Set<string>>(
+    new Set(CHECK_CATEGORIES.map((c) => c.id))
+  );
+  const toggleCheck = (id: string) => {
+    setSelectedChecks((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -245,6 +283,48 @@ export default function ContentChecker() {
     }
   };
 
+  const resolveGoogleDoc = async (targetDocUrl?: string): Promise<string | null> => {
+    const linkToResolve = targetDocUrl || googleDocUrl;
+    if (!linkToResolve.trim()) {
+      setDocError('Please enter a valid Google Doc share URL.');
+      return null;
+    }
+
+    setIsResolvingDoc(true);
+    setDocError(null);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/content-checker/resolve-google-doc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: linkToResolve.trim() })
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data) {
+        throw new Error(data?.error || `Server error (${response.status}) while resolving Google Doc link.`);
+      }
+
+      if (data.success && data.text) {
+        setReferenceDocText(data.text);
+        return data.text;
+      } else {
+        throw new Error(data?.error || 'Failed to extract text from Google Doc link.');
+      }
+    } catch (err: any) {
+      setDocError(err.message || 'Could not resolve Google Doc reference text.');
+      return null;
+    } finally {
+      setIsResolvingDoc(false);
+    }
+  };
+
+  const resetGoogleDoc = () => {
+    setReferenceDocText(null);
+    setDocError(null);
+  };
+
   const runScreenshotAnalysis = async () => {
     if (!url.trim() && !rawHtml.trim()) {
       setError('Please enter a Target Webpage URL or paste HTML source code.');
@@ -252,22 +332,25 @@ export default function ContentChecker() {
     }
 
     let currentBase64 = screenshotBase64;
+    let currentDocText = referenceDocText;
 
-    if (!currentBase64 && awesomeUrl.trim()) {
+    if (!currentBase64 && !currentDocText && awesomeUrl.trim()) {
       currentBase64 = await resolveAwesomeLink(awesomeUrl);
       if (!currentBase64) return;
     }
 
-    if (!currentBase64) {
-      setError('Please provide an Awesome Screenshot URL or upload a reference screenshot image.');
+    if (!currentBase64 && !currentDocText && googleDocUrl.trim()) {
+      currentDocText = await resolveGoogleDoc(googleDocUrl);
+      if (!currentDocText) return;
+    }
+
+    if (!currentBase64 && !currentDocText) {
+      setError('Please provide a reference: an Awesome Screenshot URL, a Google Doc link, or an uploaded screenshot image.');
       return;
     }
 
-    let sanitizedUrl = url.trim();
-    if (sanitizedUrl && !/^https?:\/\//i.test(sanitizedUrl)) {
-      sanitizedUrl = 'https://' + sanitizedUrl;
-      setUrl(sanitizedUrl);
-    }
+    const sanitizedUrl = normalizeUrl(url);
+    if (sanitizedUrl !== url.trim()) setUrl(sanitizedUrl);
 
     setIsLoading(true);
     setError(null);
@@ -291,7 +374,7 @@ export default function ContentChecker() {
     }, 1800);
 
     try {
-      const finalImagePayload = await compressImage(currentBase64);
+      const finalImagePayload = currentBase64 ? await compressImage(currentBase64) : undefined;
 
       let response = await fetch('/api/content-checker/analyze', {
         method: 'POST',
@@ -299,7 +382,8 @@ export default function ContentChecker() {
         body: JSON.stringify({
           url: sanitizedUrl || undefined,
           rawHtml: rawHtml.trim() || undefined,
-          image: finalImagePayload
+          image: finalImagePayload,
+          referenceText: currentDocText || undefined
         })
       });
 
@@ -351,7 +435,8 @@ export default function ContentChecker() {
             body: JSON.stringify({
               url: sanitizedUrl,
               rawHtml: fallbackHtml,
-              image: finalImagePayload
+              image: finalImagePayload,
+              referenceText: currentDocText || undefined
             })
           });
           responseText = await response.text();
@@ -381,6 +466,17 @@ export default function ContentChecker() {
       setIsLoading(false);
     }
   };
+
+  const hasReference = !!(screenshotBase64 || referenceDocText || awesomeUrl.trim() || googleDocUrl.trim());
+  const readyToSelectChecks = !!(url.trim() || rawHtml.trim()) && hasReference;
+
+  const filteredComparisons = report
+    ? report.bodyContent.mismatches.filter((m) => selectedChecks.has(categoryGroup(m.category)))
+    : [];
+  const filteredMismatchCount = filteredComparisons.filter((m) => m.status !== 'match').length;
+  const titleOrDescriptionMismatch = !!report && (
+    (selectedChecks.has('title') && (!report.seo.titleMatches || !report.seo.descriptionMatches))
+  );
 
   return (
     <div className="space-y-6 text-slate-900">
@@ -468,6 +564,43 @@ export default function ContentChecker() {
             {awesomeError && <p className="text-[11px] text-rose-600 font-medium">{awesomeError}</p>}
           </div>
 
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <FileText className="h-4 w-4 text-purple-600" />
+              <span>Or Google Doc Reference Link</span>
+            </label>
+            {referenceDocText ? (
+              <div className="flex items-center justify-between p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl">
+                <span className="text-xs font-bold text-emerald-900 truncate">
+                  Reference Doc Loaded ({referenceDocText.length.toLocaleString()} chars)
+                </span>
+                <button type="button" onClick={resetGoogleDoc} className="px-2 py-1 text-xs font-medium text-rose-700 bg-white border border-rose-200 rounded-lg cursor-pointer shrink-0">
+                  Change
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. https://docs.google.com/document/d/.../edit"
+                  value={googleDocUrl}
+                  onChange={(e) => setGoogleDocUrl(e.target.value)}
+                  className="flex-1 px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:bg-white shadow-2xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => resolveGoogleDoc()}
+                  disabled={isResolvingDoc || !googleDocUrl.trim()}
+                  className="px-3.5 py-2 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-500 disabled:opacity-40 rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 shrink-0"
+                >
+                  {isResolvingDoc ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <span>Fetch</span>}
+                </button>
+              </div>
+            )}
+            {docError && <p className="text-[11px] text-rose-600 font-medium">{docError}</p>}
+            <p className="text-[11px] text-slate-500">Doc must be shared as "Anyone with the link can view".</p>
+          </div>
+
           {/* Screenshot Preview / Upload Dropzone */}
           {screenshotPreview ? (
             <div className="flex items-center justify-between p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl">
@@ -493,10 +626,35 @@ export default function ContentChecker() {
             </div>
           )}
 
+          {readyToSelectChecks && (
+            <div className="p-3.5 bg-purple-50/60 border border-purple-200/80 rounded-xl space-y-2.5">
+              <span className="text-xs font-bold text-purple-950">What do you want to check?</span>
+              <div className="flex flex-wrap gap-2">
+                {CHECK_CATEGORIES.map((cat) => {
+                  const active = selectedChecks.has(cat.id);
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => toggleCheck(cat.id)}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors cursor-pointer ${
+                        active
+                          ? 'bg-purple-600 text-white border-purple-600'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-purple-300'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <button
             type="button"
             onClick={runScreenshotAnalysis}
-            disabled={isLoading || (!url.trim() && !rawHtml.trim()) || (!awesomeUrl.trim() && !screenshotBase64)}
+            disabled={isLoading || !readyToSelectChecks || selectedChecks.size === 0}
             className="w-full py-3 px-4 rounded-xl font-bold text-xs tracking-tight flex items-center justify-center gap-2 transition-all shadow-2xs bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             {isLoading ? (
@@ -524,77 +682,89 @@ export default function ContentChecker() {
       {/* SCREENSHOT REPORT RESULTS VIEW */}
       {report && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-            <div>
-              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400 block mb-1">Visual Compliance Verdict</span>
-              <p className="text-xs text-slate-700 font-medium leading-relaxed max-w-xl">{report.summary}</p>
-            </div>
-            <div className="text-center px-5 py-2.5 bg-slate-900 text-white rounded-xl shadow-xs shrink-0">
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wide block">Compliance Score</span>
-              <span className={`text-3xl font-extrabold font-mono ${
-                report.overallScore >= 80 ? 'text-emerald-400' : report.overallScore >= 50 ? 'text-amber-400' : 'text-rose-400'
-              }`}>
-                {report.overallScore}%
-              </span>
-            </div>
+          <div className="flex items-center gap-2.5 border-b border-slate-100 pb-5">
+            {filteredMismatchCount === 0 && !titleOrDescriptionMismatch ? (
+              <>
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                <span className="text-sm font-bold text-emerald-800">Everything you checked matches the reference.</span>
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                <span className="text-sm font-bold text-amber-900">Differences found — see the comparison below.</span>
+              </>
+            )}
           </div>
 
-          {/* SEO Match Section */}
-          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2">
-                <FileText className="h-4 w-4 text-purple-600" /> Title & Description Verification
+          {/* Title & Description — side by side against the reference's first two lines */}
+          {selectedChecks.has('title') && (
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2 border-b border-slate-200/80 pb-2">
+                <FileText className="h-4 w-4 text-purple-600" /> Title & Description
               </h3>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                report.seo.status === 'match' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
-              }`}>
-                {report.seo.status.toUpperCase()}
-              </span>
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed">{report.seo.analysis}</p>
-          </div>
-
-          {/* Headings Section */}
-          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
-              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2">
-                <Layers className="h-4 w-4 text-purple-600" /> Heading Hierarchy Match
-              </h3>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                report.headings.status === 'match' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
-              }`}>
-                {report.headings.status.toUpperCase()}
-              </span>
-            </div>
-            <div className="space-y-2">
-              {report.headings.matches.map((item, idx) => (
-                <div key={idx} className="p-2.5 bg-white border border-slate-200 rounded-lg text-xs space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-slate-900 uppercase">{item.level}</span>
-                    {item.status === 'match' ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    ) : (
-                      <XCircle className="h-3.5 w-3.5 text-amber-600" />
-                    )}
+              <div className="space-y-2">
+                {[
+                  { label: 'Title', expected: report.seo.expectedTitle, actual: report.seo.actualTitle, matches: report.seo.titleMatches },
+                  { label: 'Meta Description', expected: report.seo.expectedDescription, actual: report.seo.actualDescription, matches: report.seo.descriptionMatches }
+                ].map((row) => (
+                  <div key={row.label} className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="px-2.5 py-1.5 bg-slate-100 text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                      <span>{row.label}</span>
+                      {row.matches ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      ) : (
+                        <XCircle className="h-3.5 w-3.5 text-amber-600" />
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
+                      <div className="p-2.5 bg-white text-xs">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Expected (Reference)</span>
+                        <p className="text-slate-700">{row.expected}</p>
+                      </div>
+                      <div className="p-2.5 bg-white text-xs">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Actual (Webpage)</span>
+                        <p className="text-slate-700">{row.actual}</p>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-slate-700 font-medium">{item.actualText || 'Missing in live page'}</p>
-                  <p className="text-[11px] text-slate-500 italic">{item.comment}</p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Recommendations */}
-          <div className="space-y-2">
-            <h4 className="font-bold text-xs uppercase tracking-wider text-slate-900">Actionable Copy Corrections:</h4>
-            <div className="p-3 bg-purple-50/60 border border-purple-200/80 rounded-xl space-y-1 text-xs">
-              {report.recommendations.map((rec, i) => (
-                <div key={i} className="flex items-start gap-2 text-purple-950 font-medium">
-                  <CheckSquare className="h-3.5 w-3.5 text-purple-600 shrink-0 mt-0.5" />
-                  <span>{rec}</span>
-                </div>
-              ))}
-            </div>
+          {/* Heading-to-heading, paragraph-to-paragraph, side by side */}
+          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2 border-b border-slate-200/80 pb-2">
+              <Layers className="h-4 w-4 text-purple-600" /> Content Comparison
+            </h3>
+            {filteredComparisons.length === 0 ? (
+              <p className="text-xs text-slate-600 leading-relaxed">No content in the categories you checked.</p>
+            ) : (
+              <div className="space-y-3">
+                {filteredComparisons.map((item, idx) => (
+                  <div key={idx} className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="px-2.5 py-1.5 bg-slate-100 text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                      <span>{item.category}</span>
+                      {item.status === 'match' ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      ) : (
+                        <XCircle className="h-3.5 w-3.5 text-amber-600" />
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
+                      <div className="p-2.5 bg-white text-xs">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Expected (Reference)</span>
+                        <p className="text-slate-700">{item.expected}</p>
+                      </div>
+                      <div className="p-2.5 bg-white text-xs">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Actual (Webpage)</span>
+                        <p className="text-slate-700">{item.actual}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
