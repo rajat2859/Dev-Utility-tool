@@ -8,7 +8,6 @@ import { motion, AnimatePresence } from 'motion/react';
 const toolsMap: Record<string, () => Promise<any>> = {
   'seo-checker': () => import('./components/tools/SeoChecker'),
   'html-cleaner': () => import('./components/tools/HtmlCleaner'),
-  'url-opener': () => import('./components/tools/UrlOpener'),
   'image': () => import('./components/tools/ImageConverter'),
   'gradient': () => import('./components/tools/GradientGenerator'),
   'password': () => import('./components/tools/PasswordGenerator'),
@@ -21,7 +20,6 @@ const PasswordGenerator = lazy(toolsMap['password']);
 const ContentChecker = lazy(toolsMap['content-checker']);
 const SeoChecker = lazy(toolsMap['seo-checker']);
 const HtmlCleaner = lazy(toolsMap['html-cleaner']);
-const UrlOpener = lazy(toolsMap['url-opener']);
 
 // Global prefetch helper for instant tool opening on hover
 export const prefetchTool = (toolId: string) => {
@@ -79,8 +77,6 @@ export default function App() {
         return <SeoChecker />;
       case 'html-cleaner':
         return <HtmlCleaner />;
-      case 'url-opener':
-        return <UrlOpener />;
       case 'image':
         return <ImageConverter />;
       case 'gradient':
@@ -110,8 +106,6 @@ export default function App() {
         return 'SEO & Schema';
       case 'html-cleaner':
         return 'HTML Cleaner & Sanitizer';
-      case 'url-opener':
-        return 'Multiple URL Opener (Max 50 Tabs)';
       case 'image':
         return 'Bulk Image Format Converter';
       case 'gradient':
