@@ -760,7 +760,7 @@ export default function ImageConverter() {
             </div>
           </div>
 
-          {(globalFormat === 'jpg' || globalFormat === 'jpeg' || globalFormat === 'webp' || globalFormat === 'avif') ? (
+          {(globalFormat === 'jpeg' || globalFormat === 'webp' || globalFormat === 'avif') ? (
             <div className="space-y-1">
               <label className="text-xs font-medium text-zinc-500 flex items-center justify-between">
                 <span>Output Quality</span>
