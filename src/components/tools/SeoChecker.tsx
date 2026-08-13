@@ -20,6 +20,7 @@ import {
   ChevronRight,
   ShieldCheck
 } from 'lucide-react';
+import { normalizeUrl } from '../../lib/utils';
 
 interface SchemaIssue {
   type: 'error' | 'warning' | 'info';
@@ -158,6 +159,32 @@ function clientParseSeoAndSchemas(html: string, pageUrlStr?: string): SeoAuditDa
         const schemaType = obj['@type'] || obj['type'] || 'UnknownSchema';
         const typeStr = Array.isArray(schemaType) ? schemaType.join(', ') : String(schemaType);
         const issues: SchemaIssue[] = [];
+
+        if (typeStr.includes('Article') || typeStr.includes('BlogPosting') || typeStr.includes('NewsArticle')) {
+          if (!obj.headline && !obj.name) issues.push({ type: 'warning', message: 'Missing "headline" property.', field: 'headline' });
+          if (!obj.image) issues.push({ type: 'warning', message: 'Missing "image" property (recommended for Rich Snippets).', field: 'image' });
+          if (!obj.datePublished) issues.push({ type: 'info', message: 'Missing "datePublished" property.', field: 'datePublished' });
+          if (!obj.author) issues.push({ type: 'info', message: 'Missing "author" property.', field: 'author' });
+        } else if (typeStr.includes('Product')) {
+          if (!obj.name) issues.push({ type: 'error', message: 'Missing required "name" property.', field: 'name' });
+          if (!obj.image) issues.push({ type: 'warning', message: 'Missing "image" property.', field: 'image' });
+          if (!obj.offers && !obj.aggregateRating && !obj.review) {
+            issues.push({ type: 'warning', message: 'Missing "offers" or "aggregateRating" for Product rich results.', field: 'offers' });
+          }
+        } else if (typeStr.includes('Organization') || typeStr.includes('LocalBusiness')) {
+          if (!obj.name) issues.push({ type: 'error', message: 'Missing required "name" property.', field: 'name' });
+          if (!obj.url) issues.push({ type: 'warning', message: 'Missing "url" property.', field: 'url' });
+          if (!obj.logo && !obj.image) issues.push({ type: 'info', message: 'Missing "logo" or "image" property.', field: 'logo' });
+        } else if (typeStr.includes('BreadcrumbList')) {
+          if (!obj.itemListElement || !Array.isArray(obj.itemListElement) || obj.itemListElement.length === 0) {
+            issues.push({ type: 'error', message: 'BreadcrumbList requires "itemListElement" array.', field: 'itemListElement' });
+          }
+        } else if (typeStr.includes('FAQPage')) {
+          if (!obj.mainEntity || !Array.isArray(obj.mainEntity)) {
+            issues.push({ type: 'error', message: 'FAQPage requires "mainEntity" array of Question/Answer items.', field: 'mainEntity' });
+          }
+        }
+
         if (!obj['@type']) {
           issues.push({ type: 'error', message: 'Missing @type property in JSON-LD object.' });
         }
@@ -314,11 +341,16 @@ export default function SeoChecker() {
     setSeoError(null);
     setSeoAuditData(null);
 
-    let sanitizedUrl = url.trim();
-    if (sanitizedUrl && !/^https?:\/\//i.test(sanitizedUrl)) {
-      sanitizedUrl = 'https://' + sanitizedUrl;
-      setUrl(sanitizedUrl);
+    try {
+      await runSeoCheckInternal();
+    } finally {
+      setIsAuditing(false);
     }
+  };
+
+  const runSeoCheckInternal = async () => {
+    const sanitizedUrl = normalizeUrl(url);
+    if (sanitizedUrl !== url.trim()) setUrl(sanitizedUrl);
 
     // 1. Try server API endpoint first
     try {
