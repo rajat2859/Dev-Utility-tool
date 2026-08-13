@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileImage, Paintbrush, Key, ArrowRight, Heart, Sparkles, Terminal, Search, ShieldCheck, Zap, CheckCircle2, Activity, FileCode, ExternalLink } from 'lucide-react';
+import { FileImage, Paintbrush, Key, ArrowRight, Heart, Sparkles, Terminal, Search, ShieldCheck, Zap, CheckCircle2, Activity, FileCode } from 'lucide-react';
 import { motion } from 'motion/react';
 import { prefetchTool } from '../App';
 
@@ -20,18 +20,6 @@ export default function DashboardGrid({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const tools = [
-    {
-      id: 'url-opener',
-      name: 'Multiple URL Opener',
-      description: 'Paste up to 50 URLs or web links to batch open them simultaneously into individual new browser tabs with popup delay protection.',
-      category: 'Productivity & Utilities',
-      icon: ExternalLink,
-      badge: 'Max 50 Tabs',
-      badgeStyle: 'bg-blue-100 text-blue-700 border-blue-200',
-      iconBg: 'bg-gradient-to-br from-blue-600 to-cyan-600 text-white shadow-blue-200/50',
-      hoverBorder: 'hover:border-blue-300 hover:shadow-blue-100/50',
-      stats: 'Max 50 URLs'
-    },
     {
       id: 'seo-checker',
       name: 'SEO & Schema',
