@@ -1,36 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Copy, 
-  Check, 
-  RefreshCw, 
-  Plus, 
-  Trash2, 
-  ArrowRightLeft, 
-  LayoutGrid, 
-  FileDown, 
-  Layers, 
-  MoveRight, 
-  Paintbrush, 
-  Sparkles, 
-  Code, 
-  Sun, 
-  Palette, 
-  Bookmark, 
-  BookmarkCheck, 
-  Smartphone, 
-  Type, 
-  Square, 
-  Eye, 
-  ShieldCheck, 
-  ShieldAlert, 
-  Wand2, 
-  Share2, 
-  CopyCheck, 
-  RotateCw,
+import {
+  Copy,
+  Check,
+  RefreshCw,
+  Plus,
+  Trash2,
+  ArrowRightLeft,
+  LayoutGrid,
+  FileDown,
+  Layers,
+  MoveRight,
+  Paintbrush,
+  Sparkles,
+  Code,
+  Bookmark,
+  BookmarkCheck,
+  Eye,
+  ShieldCheck,
+  ShieldAlert,
+  Wand2,
+  Share2,
   Search,
   CheckCircle2,
-  Sliders,
-  Play
+  Upload,
+  X
 } from 'lucide-react';
 
 interface ColorStop {
@@ -74,6 +67,240 @@ const PRESETS = [
   { name: 'Retro Sunrise', colors: ['#facc15', '#f97316', '#dc2626'], stops: [0, 50, 100], type: 'conic' as const, category: 'Vibrant' }
 ];
 
+const POSITION_KEYWORD_MAP: Record<string, [number, number]> = {
+  center: [50, 50], top: [50, 0], bottom: [50, 100], left: [0, 50], right: [100, 50],
+  'top left': [0, 0], 'left top': [0, 0], 'top right': [100, 0], 'right top': [100, 0],
+  'bottom left': [0, 100], 'left bottom': [0, 100], 'bottom right': [100, 100], 'right bottom': [100, 100]
+};
+
+function hslToHex(hDeg: number, s: number, l: number): string {
+  const hNorm = (((hDeg % 360) + 360) % 360) / 360;
+  let r: number, g: number, b: number;
+  if (s === 0) {
+    r = g = b = l;
+  } else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    const hue2rgb = (pIn: number, qIn: number, tIn: number) => {
+      let t = tIn;
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return pIn + (qIn - pIn) * 6 * t;
+      if (t < 1 / 2) return qIn;
+      if (t < 2 / 3) return pIn + (qIn - pIn) * (2 / 3 - t) * 6;
+      return pIn;
+    };
+    r = hue2rgb(p, q, hNorm + 1 / 3);
+    g = hue2rgb(p, q, hNorm);
+    b = hue2rgb(p, q, hNorm - 1 / 3);
+  }
+  const toHex = (x: number) => Math.round(x * 255).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function hexToRgbTuple(hex: string): [number, number, number] {
+  let clean = hex.replace('#', '');
+  if (clean.length === 3) clean = clean.split('').map(c => c + c).join('');
+  return [
+    parseInt(clean.substring(0, 2), 16) || 0,
+    parseInt(clean.substring(2, 4), 16) || 0,
+    parseInt(clean.substring(4, 6), 16) || 0
+  ];
+}
+
+function averageHexColors(colors: string[]): string {
+  if (colors.length === 0) return '#888888';
+  let r = 0, g = 0, b = 0;
+  colors.forEach(c => {
+    const [cr, cg, cb] = hexToRgbTuple(c);
+    r += cr; g += cg; b += cb;
+  });
+  const n = colors.length;
+  const toHex = (v: number) => Math.round(v / n).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+// Approximates a gradient's dominant color by weighting each stop by the width
+// of the band it dominates (its midpoint distance to its neighboring stops).
+function computeAverageColor(colorStops: { color: string; stop: number }[]): string {
+  if (colorStops.length === 0) return '#888888';
+  const sorted = [...colorStops].sort((a, b) => a.stop - b.stop);
+  if (sorted.length === 1) return sorted[0].color;
+
+  let totalWeight = 0, rSum = 0, gSum = 0, bSum = 0;
+  sorted.forEach((s, i) => {
+    const left = i === 0 ? 0 : (sorted[i - 1].stop + s.stop) / 2;
+    const right = i === sorted.length - 1 ? 100 : (s.stop + sorted[i + 1].stop) / 2;
+    const weight = Math.max(right - left, 0.01);
+    const [r, g, b] = hexToRgbTuple(s.color);
+    rSum += r * weight; gSum += g * weight; bSum += b * weight;
+    totalWeight += weight;
+  });
+
+  const toHex = (v: number) => Math.round(v / totalWeight).toString(16).padStart(2, '0');
+  return `#${toHex(rSum)}${toHex(gSum)}${toHex(bSum)}`;
+}
+
+function getRelativeLuminance(hex: string): number {
+  const [r, g, b] = hexToRgbTuple(hex).map(c => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function getContrastRatio(hexA: string, hexB: string): number {
+  const lA = getRelativeLuminance(hexA);
+  const lB = getRelativeLuminance(hexB);
+  return (Math.max(lA, lB) + 0.05) / (Math.min(lA, lB) + 0.05);
+}
+
+function contrastRating(ratio: number): { label: string; level: 'AAA' | 'AA' | 'partial' | 'fail' } {
+  if (ratio >= 7) return { label: 'AAA', level: 'AAA' };
+  if (ratio >= 4.5) return { label: 'AA', level: 'AA' };
+  if (ratio >= 3) return { label: 'Large text only', level: 'partial' };
+  return { label: 'Fails', level: 'fail' };
+}
+
+// A single hidden 1x1 canvas reused to resolve any valid CSS color (named colors,
+// rgb/hsl/hwb/oklch/lab, etc.) to concrete sRGB bytes via the browser's own color
+// parser + rasterizer, instead of hand-rolled regexes that can't cover every syntax.
+let colorProbeCtx: CanvasRenderingContext2D | null = null;
+function resolveCssColorToRgba(token: string): { r: number; g: number; b: number; a: number } | null {
+  if (typeof document === 'undefined') return null;
+  if (!colorProbeCtx) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    colorProbeCtx = canvas.getContext('2d', { willReadFrequently: true });
+  }
+  if (!colorProbeCtx) return null;
+
+  const sentinel = 'rgba(1, 2, 3, 0.004)';
+  colorProbeCtx.fillStyle = sentinel;
+  const baseline = colorProbeCtx.fillStyle;
+  colorProbeCtx.fillStyle = token;
+  if (colorProbeCtx.fillStyle === baseline) return null; // browser silently rejected an unparsable token
+
+  colorProbeCtx.clearRect(0, 0, 1, 1);
+  colorProbeCtx.fillRect(0, 0, 1, 1);
+  const [r, g, b, a] = colorProbeCtx.getImageData(0, 0, 1, 1).data;
+  return { r, g, b, a: a / 255 };
+}
+
+function parseCssColorToken(token: string): { hex: string; opacity: number } | null {
+  const t = token.trim();
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(t)) {
+    let hex = t;
+    if (hex.length === 4) hex = '#' + hex.slice(1).split('').map(c => c + c).join('');
+    return { hex: hex.toLowerCase(), opacity: 100 };
+  }
+  const resolved = resolveCssColorToRgba(t);
+  if (!resolved) return null;
+  const toHex = (n: number) => Math.round(Math.min(255, Math.max(0, n))).toString(16).padStart(2, '0');
+  return { hex: `#${toHex(resolved.r)}${toHex(resolved.g)}${toHex(resolved.b)}`, opacity: Math.round(resolved.a * 100) };
+}
+
+function splitTopLevel(str: string): string[] {
+  const parts: string[] = [];
+  let depth = 0, current = '';
+  for (const ch of str) {
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (ch === ',' && depth === 0) {
+      parts.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim()) parts.push(current.trim());
+  return parts;
+}
+
+interface ParsedGradient {
+  type: 'linear' | 'radial' | 'conic';
+  angle: number;
+  radialShape: 'circle' | 'ellipse';
+  radialPosition: string;
+  radialX: number;
+  radialY: number;
+  stops: { id: string; color: string; stop: number; opacity: number }[];
+}
+
+// Parses a pasted CSS gradient string (e.g. "linear-gradient(135deg, #6366f1 0%, #ec4899 100%)")
+// into editor state. Returns null when the string isn't a recognizable gradient function.
+function parseGradientCss(input: string): ParsedGradient | null {
+  const cleaned = input.trim().replace(/^background(-image)?\s*:\s*/i, '').replace(/;+\s*$/, '');
+  const match = cleaned.match(/^(linear|radial|conic)-gradient\(([\s\S]+)\)\s*$/i);
+  if (!match) return null;
+
+  const type = match[1].toLowerCase() as 'linear' | 'radial' | 'conic';
+  const segments = splitTopLevel(match[2]);
+  if (segments.length === 0) return null;
+
+  let angle = type === 'conic' ? 0 : 135;
+  let radialShape: 'circle' | 'ellipse' = 'circle';
+  let radialPosition = 'center';
+  let radialX = 50, radialY = 50;
+  let stopSegments = segments;
+
+  const first = segments[0];
+  const firstIsColor = !!parseCssColorToken(first.split(/\s+/)[0]);
+
+  if (!firstIsColor) {
+    if (type === 'linear') {
+      const degMatch = first.match(/^(-?[\d.]+)deg$/i);
+      const keywordMap: Record<string, number> = {
+        top: 0, right: 90, bottom: 180, left: 270,
+        'top right': 45, 'right top': 45, 'bottom right': 135, 'right bottom': 135,
+        'bottom left': 225, 'left bottom': 225, 'top left': 315, 'left top': 315
+      };
+      const toMatch = first.match(/^to\s+([a-z\s]+)$/i);
+      if (degMatch) angle = Number(degMatch[1]);
+      else if (toMatch) angle = keywordMap[toMatch[1].trim().toLowerCase().replace(/\s+/g, ' ')] ?? 135;
+      stopSegments = segments.slice(1);
+    } else {
+      if (/ellipse/i.test(first)) radialShape = 'ellipse';
+      if (type === 'conic') {
+        const fromMatch = first.match(/from\s+(-?[\d.]+)deg/i);
+        if (fromMatch) angle = Number(fromMatch[1]);
+      }
+      const atPctMatch = first.match(/at\s+([\d.]+)%\s+([\d.]+)%/i);
+      const atKeywordMatch = first.match(/at\s+([a-z\s]+)$/i);
+      if (atPctMatch) {
+        radialPosition = 'custom';
+        radialX = Number(atPctMatch[1]);
+        radialY = Number(atPctMatch[2]);
+      } else if (atKeywordMatch) {
+        const kw = atKeywordMatch[1].trim().toLowerCase().replace(/\s+/g, ' ');
+        if (POSITION_KEYWORD_MAP[kw]) {
+          radialPosition = kw;
+          [radialX, radialY] = POSITION_KEYWORD_MAP[kw];
+        }
+      }
+      stopSegments = segments.slice(1);
+    }
+  }
+
+  if (stopSegments.length === 0) return null;
+
+  const parsedStops = stopSegments.map((seg, i) => {
+    const tokens = seg.trim().split(/\s+/);
+    const pctToken = tokens.find(t => /^[\d.]+%$/.test(t));
+    const colorTokens = tokens.filter(t => t !== pctToken);
+    const parsedColor = parseCssColorToken(colorTokens.join(' '));
+    return {
+      id: `imp-${i}-${Math.random().toString(36).slice(2, 8)}`,
+      color: parsedColor?.hex || '#888888',
+      opacity: parsedColor?.opacity ?? 100,
+      stop: pctToken ? Number(pctToken.replace('%', '')) : Math.round((i / Math.max(stopSegments.length - 1, 1)) * 100)
+    };
+  });
+
+  return { type, angle, radialShape, radialPosition, radialX, radialY, stops: parsedStops };
+}
+
 export default function GradientGenerator() {
   const [stops, setStops] = useState<ColorStop[]>([
     { id: '1', color: '#6366f1', stop: 0, opacity: 100 },
@@ -102,6 +329,15 @@ export default function GradientGenerator() {
   const [savedGradients, setSavedGradients] = useState<SavedGradient[]>([]);
   const [gradientName, setGradientName] = useState<string>('Custom Gradient');
   const [isSaved, setIsSaved] = useState(false);
+
+  const [showImportBox, setShowImportBox] = useState(false);
+  const [importCssText, setImportCssText] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
+  // A ref (not state) so onPointerMove reads the current drag target synchronously —
+  // setState-driven state would still show the pre-drag value on the first move event
+  // fired immediately after pointerdown, dropping fast drags.
+  const draggingStopIdRef = useRef<string | null>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
 
   const activeStopId = stops[0]?.id || '';
   const [selectedStopId, setSelectedStopId] = useState<string>(activeStopId);
@@ -153,27 +389,74 @@ export default function GradientGenerator() {
       return `/* Mesh gradient inline style recommended */`;
     }
     const stopsStr = sortedStops.map(s => `${s.color}_${s.stop}%`).join(',');
+    const positionToken = radialPosition === 'custom' ? `${radialX}%_${radialY}%` : radialPosition.replace(/\s+/g, '_');
     if (gradientType === 'linear') {
       return `bg-[linear-gradient(${angle}deg,${stopsStr})]`;
     } else if (gradientType === 'radial') {
-      return `bg-[radial-gradient(${radialShape}_at_${radialPosition.replace(' ', '_')},${stopsStr})]`;
+      return `bg-[radial-gradient(${radialShape}_at_${positionToken},${stopsStr})]`;
     } else {
-      return `bg-[conic-gradient(from_${angle}deg_at_${radialPosition.replace(' ', '_')},${stopsStr})]`;
+      return `bg-[conic-gradient(from_${angle}deg_at_${positionToken},${stopsStr})]`;
     }
   };
 
   const getSvgCode = () => {
-    const stopsXml = sortedStops.map(s => 
+    const stopsXml = sortedStops.map(s =>
       `<stop offset="${s.stop}%" stop-color="${s.color}" stop-opacity="${s.opacity / 100}" />`
-    ).join('\n    ');
+    ).join('\n      ');
 
-    return `<svg width="100%" height="100%" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+    if (gradientType === 'mesh') {
+      const defs = meshPoints.map((p, i) => `
+    <radialGradient id="mesh${i}" cx="${p.x}%" cy="${p.y}%" r="${p.radius}%">
+      <stop offset="0%" stop-color="${p.color}" stop-opacity="1" />
+      <stop offset="100%" stop-color="${p.color}" stop-opacity="0" />
+    </radialGradient>`).join('');
+      const layers = meshPoints.map((_, i) => `  <rect width="100%" height="100%" fill="url(#mesh${i})" />`).join('\n');
+      return `<svg width="100%" height="100%" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>${defs}
+  </defs>
+  <rect width="100%" height="100%" fill="#0f172a" />
+${layers}
+</svg>`;
+    }
+
+    if (gradientType === 'linear') {
+      const rad = (angle * Math.PI) / 180;
+      const dx = Math.sin(rad), dy = -Math.cos(rad);
+      const cx = 500, cy = 500, half = 500;
+      const x1 = (cx - dx * half).toFixed(1), y1 = (cy - dy * half).toFixed(1);
+      const x2 = (cx + dx * half).toFixed(1), y2 = (cy + dy * half).toFixed(1);
+      return `<svg width="100%" height="100%" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-    ${stopsXml}
+    <linearGradient id="gradient" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}">
+      ${stopsXml}
     </linearGradient>
   </defs>
   <rect width="100%" height="100%" fill="url(#gradient)" />
+</svg>`;
+    }
+
+    if (gradientType === 'radial') {
+      const [pxPct, pyPct] = radialPosition === 'custom' ? [radialX, radialY] : (POSITION_KEYWORD_MAP[radialPosition] || [50, 50]);
+      const cx = pxPct * 10, cy = pyPct * 10;
+      const transform = radialShape === 'ellipse'
+        ? ` gradientTransform="translate(${cx} ${cy}) scale(1.4 1) translate(${-cx} ${-cy})"`
+        : '';
+      return `<svg width="100%" height="100%" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="gradient" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${cy}" r="750"${transform}>
+      ${stopsXml}
+    </radialGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#gradient)" />
+</svg>`;
+    }
+
+    // SVG has no native conic-gradient element. A foreignObject with the real CSS
+    // conic-gradient renders correctly in browsers, though not in non-browser SVG viewers.
+    return `<svg width="100%" height="100%" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+  <foreignObject width="100%" height="100%">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;background:${getGradientString()}"></div>
+  </foreignObject>
 </svg>`;
   };
 
@@ -296,33 +579,6 @@ export default function GradientGenerator() {
       h /= 6;
     }
 
-    const hslToHex = (hVal: number, sVal: number, lVal: number) => {
-      let hNormalized = (hVal % 360 + 360) % 360 / 360;
-      let rOut: number, gOut: number, bOut: number;
-
-      if (sVal === 0) {
-        rOut = gOut = bOut = lVal;
-      } else {
-        const q = lVal < 0.5 ? lVal * (1 + sVal) : lVal + sVal - lVal * sVal;
-        const p = 2 * lVal - q;
-        const hue2rgb = (pIn: number, qIn: number, tIn: number) => {
-          let t = tIn;
-          if (t < 0) t += 1;
-          if (t > 1) t -= 1;
-          if (t < 1/6) return pIn + (qIn - pIn) * 6 * t;
-          if (t < 1/2) return qIn;
-          if (t < 2/3) return pIn + (qIn - pIn) * (2/3 - t) * 6;
-          return pIn;
-        };
-        rOut = hue2rgb(p, q, hNormalized + 1/3);
-        gOut = hue2rgb(p, q, hNormalized);
-        bOut = hue2rgb(p, q, hNormalized - 1/3);
-      }
-
-      const toHex = (x: number) => Math.round(x * 255).toString(16).padStart(2, '0');
-      return `#${toHex(rOut)}${toHex(gOut)}${toHex(bOut)}`;
-    };
-
     let hDegrees = h * 360;
     let newColors: string[] = [];
 
@@ -360,6 +616,26 @@ export default function GradientGenerator() {
 
     setStops(generatedStops);
     setSelectedStopId(generatedStops[0].id);
+  };
+
+  const handleImportCss = () => {
+    const parsed = parseGradientCss(importCssText);
+    if (!parsed) {
+      setImportError('Could not parse that as a linear-gradient(), radial-gradient(), or conic-gradient() value.');
+      return;
+    }
+    setGradientType(parsed.type);
+    setAngle(parsed.angle);
+    setRadialShape(parsed.radialShape);
+    setRadialPosition(parsed.radialPosition);
+    setRadialX(parsed.radialX);
+    setRadialY(parsed.radialY);
+    setStops(parsed.stops);
+    setSelectedStopId(parsed.stops[0].id);
+    setGradientName('Imported Gradient');
+    setImportError(null);
+    setImportCssText('');
+    setShowImportBox(false);
   };
 
   const handleLoadPreset = (preset: typeof PRESETS[0]) => {
@@ -506,6 +782,15 @@ export default function GradientGenerator() {
             </button>
             
             <button
+              onClick={() => { setShowImportBox(!showImportBox); setImportError(null); }}
+              className={`p-2 rounded-lg cursor-pointer transition-colors ${
+                showImportBox ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+              title="Import from CSS"
+            >
+              <Upload className="h-4 w-4" />
+            </button>
+            <button
               onClick={handleRandomize}
               className="p-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
               title="Randomize Swatches"
@@ -528,6 +813,39 @@ export default function GradientGenerator() {
             </button>
           </div>
         </div>
+
+        {/* Import from CSS bar */}
+        {showImportBox && (
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-700">Paste a CSS gradient to import</label>
+              <button
+                onClick={() => { setShowImportBox(false); setImportError(null); }}
+                className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={importCssText}
+                onChange={(e) => setImportCssText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleImportCss(); }}
+                placeholder="linear-gradient(135deg, #6366f1 0%, #ec4899 100%)"
+                className="flex-1 min-w-0 px-3 py-1.5 text-xs font-mono rounded-lg border border-slate-200 bg-white outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button
+                onClick={handleImportCss}
+                disabled={!importCssText.trim()}
+                className="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 rounded-lg cursor-pointer shrink-0 transition-colors"
+              >
+                Load
+              </button>
+            </div>
+            {importError && <p className="text-[11px] text-rose-600 font-medium">{importError}</p>}
+          </div>
+        )}
 
         {/* Gradient Mode selector */}
         <div className="space-y-3">
@@ -697,8 +1015,8 @@ export default function GradientGenerator() {
             </button>
           </div>
 
-          <div className="relative h-12 flex items-center bg-slate-100 rounded-xl px-4 border border-slate-200">
-            <div 
+          <div ref={trackRef} className="relative h-12 flex items-center bg-slate-100 rounded-xl px-4 border border-slate-200">
+            <div
               className="absolute left-4 right-4 h-4 rounded-lg border border-slate-300 shadow-inner"
               style={{
                 backgroundImage: `linear-gradient(90deg, ${sortedStops.map(s => `${hexToRgba(s.color, s.opacity)} ${s.stop}%`).join(', ')})`
@@ -707,17 +1025,34 @@ export default function GradientGenerator() {
             {stops.map(s => (
               <button
                 key={s.id}
-                onClick={() => setSelectedStopId(s.id)}
-                className={`absolute w-6 h-6 rounded-full border-2 transform -translate-x-1/2 shadow-md cursor-pointer active:scale-110 transition-transform ${
+                onPointerDown={(e) => {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  setSelectedStopId(s.id);
+                  draggingStopIdRef.current = s.id;
+                }}
+                onPointerMove={(e) => {
+                  if (draggingStopIdRef.current !== s.id || !trackRef.current) return;
+                  const rect = trackRef.current.getBoundingClientRect();
+                  const pct = ((e.clientX - rect.left - 16) / (rect.width - 32)) * 100;
+                  handleUpdateStopValue(s.id, Math.round(Math.min(Math.max(pct, 0), 100)));
+                }}
+                onPointerUp={() => { draggingStopIdRef.current = null; }}
+                title={`Drag to reposition (${s.stop}%)`}
+                className={`absolute w-6 h-6 rounded-full border-2 transform -translate-x-1/2 shadow-md cursor-grab active:cursor-grabbing touch-none select-none transition-transform ${
                   selectedStopId === s.id ? 'border-slate-900 scale-125 z-10 ring-2 ring-indigo-500' : 'border-white'
                 }`}
                 style={{
-                  left: `calc(1rem + ${s.stop}% * (100% - 2rem) / 100)`,
+                  // `calc()` can't multiply two percentages together — ${s.stop}% * (100% - 2rem)
+                  // is invalid CSS and the browser silently drops the whole declaration, which is
+                  // why every stop used to collapse to the left edge. Multiplying by a plain
+                  // unitless fraction keeps the expression valid.
+                  left: `calc(1rem + (100% - 2rem) * ${s.stop / 100})`,
                   backgroundColor: s.color
                 }}
               />
             ))}
           </div>
+          <p className="text-[11px] text-slate-400">Drag a stop directly on the timeline, or fine-tune it below.</p>
         </div>
 
         {/* Selected Stop Modifier */}
@@ -963,6 +1298,64 @@ export default function GradientGenerator() {
               <span>4K Wallpaper</span>
             </button>
           </div>
+        </div>
+
+        {/* Accessibility Contrast Checker */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <ShieldCheck className="h-4 w-4 text-indigo-600" />
+              <span>Text Contrast Check</span>
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono">WCAG 2.1</span>
+          </div>
+
+          {(() => {
+            const avgHex = gradientType === 'mesh'
+              ? averageHexColors(meshPoints.map(p => p.color))
+              : computeAverageColor(sortedStops);
+            const rows = [
+              { label: 'White Text', textColor: '#ffffff', ratio: getContrastRatio(avgHex, '#ffffff') },
+              { label: 'Black Text', textColor: '#000000', ratio: getContrastRatio(avgHex, '#000000') }
+            ];
+
+            return (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  {rows.map(row => {
+                    const rating = contrastRating(row.ratio);
+                    return (
+                      <div key={row.label} className="space-y-1.5">
+                        <div
+                          className="h-14 rounded-lg flex items-center justify-center text-sm font-bold shadow-inner border border-slate-200"
+                          style={{ backgroundColor: avgHex, color: row.textColor }}
+                        >
+                          Aa Text
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] gap-1">
+                          <span className="font-semibold text-slate-600">{row.label}</span>
+                          <span className={`inline-flex items-center gap-1 font-bold px-1.5 py-0.5 rounded-full border whitespace-nowrap ${
+                            rating.level === 'AAA' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                            rating.level === 'AA' ? 'bg-sky-50 text-sky-700 border-sky-200' :
+                            rating.level === 'partial' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            'bg-rose-50 text-rose-700 border-rose-200'
+                          }`}>
+                            {rating.level === 'AAA' ? <CheckCircle2 className="h-3 w-3" /> :
+                             rating.level === 'fail' ? <ShieldAlert className="h-3 w-3" /> :
+                             <ShieldCheck className="h-3 w-3" />}
+                            {row.ratio.toFixed(1)}:1
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed">
+                  Contrast ratio against this gradient's approximate dominant color (<span className="font-mono uppercase">{avgHex}</span>). Text placed over the lighter or darker end of the gradient may score differently — verify against the actual rendered background before shipping.
+                </p>
+              </>
+            );
+          })()}
         </div>
 
         {/* Saved Collection */}

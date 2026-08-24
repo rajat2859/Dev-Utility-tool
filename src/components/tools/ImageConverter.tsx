@@ -485,15 +485,14 @@ export default function ImageConverter() {
   };
 
   const handleConvertAll = async () => {
-    const updatedImages = [...images];
-    for (let i = 0; i < updatedImages.length; i++) {
-      const current = updatedImages[i];
-      if (current.status === 'pending' || current.status === 'error' || current.status === 'processing') {
-        const result = await convertSingleImage({ ...current, status: 'processing' });
-        updatedImages[i] = result;
-        setImages([...updatedImages]);
-      }
-    }
+    await Promise.all(
+      images.map(async (current) => {
+        if (current.status === 'pending' || current.status === 'error' || current.status === 'processing') {
+          const result = await convertSingleImage({ ...current, status: 'processing' });
+          setImages((prev) => prev.map((img) => (img.id === result.id ? result : img)));
+        }
+      })
+    );
   };
 
   const triggerDownload = (img: ImageFile) => {
@@ -526,24 +525,24 @@ export default function ImageConverter() {
   };
 
   const handleDownloadAll = async () => {
-    const listToProcess = [...images];
+    let listToProcess = [...images];
     const hasPendingOrError = listToProcess.some((img) => img.status === 'pending' || img.status === 'error');
-    
+
     if (hasPendingOrError) {
       setImages((prev) =>
         prev.map((img) => (img.status === 'pending' || img.status === 'error' ? { ...img, status: 'processing' } : img))
       );
-      
-      for (let i = 0; i < listToProcess.length; i++) {
-        const img = listToProcess[i];
-        if (img.status === 'pending' || img.status === 'error' || img.status === 'processing') {
-          const result = await convertSingleImage({ ...img, status: 'processing' });
-          listToProcess[i] = result;
-          setImages([...listToProcess]);
-        }
-      }
+
+      listToProcess = await Promise.all(
+        listToProcess.map((img) =>
+          img.status === 'pending' || img.status === 'error' || img.status === 'processing'
+            ? convertSingleImage({ ...img, status: 'processing' })
+            : img
+        )
+      );
+      setImages(listToProcess);
     }
-    
+
     const completed = listToProcess.filter((img) => img.status === 'completed');
     if (completed.length === 0) return;
 

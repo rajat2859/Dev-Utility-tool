@@ -68,7 +68,7 @@ const DEFAULT_OPTIONS: CleanOptions = {
   stripClassesAndIds: true,
   removeAllTags: false,
   removeSuccessiveNbsp: true,
-  removeEmptyTags: true,
+  removeEmptyTags: false,
   removeTagsWithOneNbsp: true,
   removeSpanTags: true,
   removeDivTags: true,
@@ -717,9 +717,9 @@ export default function HtmlCleaner() {
       </div>
 
       {/* DUAL EDITABLE WINDOWS WORKSPACE (Visual Content Editor on Left, HTML Code Editor on Right) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 min-h-[550px]">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 h-[clamp(550px,70vh,820px)]">
         {/* WINDOW 1: VISUAL CONTENT EDITOR (Editable Content) */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col h-full min-h-[550px]">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col h-full min-h-0">
           {/* Window Header */}
           <div className="bg-slate-900 text-slate-200 px-3.5 py-2.5 flex items-center justify-between gap-2 border-b border-slate-800">
             <div className="flex items-center gap-2">
@@ -813,7 +813,7 @@ export default function HtmlCleaner() {
 
           {/* Editable Content Window Area */}
           <div
-            className={`flex-1 flex flex-col relative bg-white ${
+            className={`flex-1 flex flex-col relative bg-white min-h-0 ${
               dragActive ? 'bg-sky-50/50 ring-2 ring-sky-500 ring-inset' : ''
             }`}
             onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
@@ -824,13 +824,13 @@ export default function HtmlCleaner() {
               ref={wysiwygRef}
               contentEditable
               onInput={(e) => setInputHtml((e.target as HTMLElement).innerHTML)}
-              className="flex-1 p-4 font-sans text-xs text-slate-800 focus:outline-none overflow-y-auto leading-relaxed prose prose-slate max-w-none min-h-[450px]"
+              className="flex-1 p-4 font-sans text-xs text-slate-800 focus:outline-none overflow-y-auto leading-relaxed prose prose-slate max-w-none min-h-0"
             />
           </div>
         </div>
 
         {/* WINDOW 2: HTML CODE EDITOR (Editable Code) */}
-        <div className="bg-slate-950 rounded-2xl border border-slate-800 shadow-2xs overflow-hidden flex flex-col h-full min-h-[550px] text-slate-100">
+        <div className="bg-slate-950 rounded-2xl border border-slate-800 shadow-2xs overflow-hidden flex flex-col h-full min-h-0 text-slate-100">
           {/* Window Header */}
           <div className="bg-slate-900 px-3.5 py-2.5 flex items-center justify-between gap-2 border-b border-slate-800">
             <div className="flex items-center gap-2">
@@ -861,13 +861,13 @@ export default function HtmlCleaner() {
           </div>
 
           {/* Editable HTML Code Area */}
-          <div className="flex-1 flex flex-col bg-slate-950 overflow-hidden">
+          <div className="flex-1 flex flex-col bg-slate-950 overflow-hidden min-h-0">
             <textarea
               ref={rightTextareaRef}
               value={rightCodeHtml}
               onChange={(e) => handleRightCodeChange(e.target.value)}
               placeholder="Cleaned HTML code will appear here (live editable)..."
-              className="w-full flex-1 p-4 font-mono text-xs text-slate-200 bg-transparent focus:outline-none resize-none leading-relaxed selection:bg-sky-600 focus:ring-1 focus:ring-sky-500/50"
+              className="w-full flex-1 p-4 font-mono text-xs text-slate-200 bg-transparent focus:outline-none resize-none leading-relaxed selection:bg-sky-600 focus:ring-1 focus:ring-sky-500/50 min-h-0 overflow-y-auto"
               spellCheck={false}
             />
           </div>

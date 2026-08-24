@@ -12,16 +12,21 @@ import {
   CheckCircle2,
   XCircle,
   FileText,
-  Layers
+  Layers,
+  ChevronDown,
+  ChevronRight,
+  Code
 } from 'lucide-react';
 import { normalizeUrl } from '../../lib/utils';
 
 const CHECK_CATEGORIES = [
-  { id: 'title', label: 'Title & Meta Description' },
+  { id: 'title', label: 'URL, Title & Description' },
   { id: 'headings', label: 'Headings' },
   { id: 'paragraphs', label: 'Paragraphs' },
   { id: 'lists', label: 'List Items' },
   { id: 'tables', label: 'Tables' },
+  { id: 'image', label: 'Feature Image' },
+  { id: 'faq', label: 'FAQ Schema' },
 ] as const;
 
 // Maps a mismatch's free-text category (from either the local comparator or the AI prompt)
@@ -37,6 +42,10 @@ function categoryGroup(category: string): string {
 }
 
 interface SEOSection {
+  urlMatches: boolean;
+  expectedUrl: string;
+  actualUrl: string;
+  urlDifference: string;
   titleMatches: boolean;
   expectedTitle: string;
   actualTitle: string;
@@ -80,10 +89,28 @@ interface BodyContentSection {
   analysis: string;
 }
 
+interface FaqSchemaSection {
+  present: boolean;
+  rawJson: string;
+  status: 'match' | 'mismatch' | 'missing' | 'not_present';
+  mismatchDetails: string[];
+  analysis: string;
+}
+
+interface FeatureImageSection {
+  applicable: boolean;
+  expected: string;
+  actual: string;
+  matches: boolean;
+  analysis: string;
+}
+
 interface AnalysisReport {
   seo: SEOSection;
   headings: HeadingsSection;
   bodyContent: BodyContentSection;
+  faqSchema?: FaqSchemaSection;
+  featureImage?: FeatureImageSection;
   overallScore: number;
   summary: string;
   recommendations: string[];
@@ -95,7 +122,6 @@ export default function ContentChecker() {
   const [showHtmlPaste, setShowHtmlPaste] = useState<boolean>(false);
 
   // Screenshot QA states
-  const [awesomeUrl, setAwesomeUrl] = useState<string>('');
   const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -104,19 +130,18 @@ export default function ContentChecker() {
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<AnalysisReport | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
+  const [showFaqJson, setShowFaqJson] = useState<boolean>(false);
 
-  const [isResolvingAwesome, setIsResolvingAwesome] = useState<boolean>(false);
-  const [awesomeError, setAwesomeError] = useState<string | null>(null);
-
-  // Google Doc reference-copy state (text-only alternative to a screenshot)
-  const [googleDocUrl, setGoogleDocUrl] = useState<string>('');
+  // Single reference-link field: accepts either an Awesome Screenshot share URL or a Google Doc share URL
+  const [referenceUrl, setReferenceUrl] = useState<string>('');
+  const [isResolvingReference, setIsResolvingReference] = useState<boolean>(false);
+  const [referenceError, setReferenceError] = useState<string | null>(null);
   const [referenceDocText, setReferenceDocText] = useState<string | null>(null);
-  const [isResolvingDoc, setIsResolvingDoc] = useState<boolean>(false);
-  const [docError, setDocError] = useState<string | null>(null);
 
   const [selectedChecks, setSelectedChecks] = useState<Set<string>>(
     new Set(CHECK_CATEGORIES.map((c) => c.id))
   );
+  const [showAllMatches, setShowAllMatches] = useState<boolean>(false);
   const toggleCheck = (id: string) => {
     setSelectedChecks((prev) => {
       const next = new Set(prev);
@@ -176,7 +201,7 @@ export default function ContentChecker() {
             if (file) {
               processFile(file);
               setError(null);
-              setAwesomeError(null);
+              setReferenceError(null);
               break;
             }
           }
@@ -233,25 +258,40 @@ export default function ContentChecker() {
   const resetScreenshot = () => {
     setScreenshotBase64(null);
     setScreenshotPreview(null);
-    setAwesomeError(null);
+    setReferenceError(null);
   };
 
-  const resolveAwesomeLink = async (targetAwesomeUrl?: string): Promise<string | null> => {
-    const linkToResolve = targetAwesomeUrl || awesomeUrl;
-    if (!linkToResolve.trim()) {
-      setAwesomeError('Please enter a valid Awesome Screenshot share URL.');
+  // Auto-detects whether the pasted link is an Awesome Screenshot share URL or a Google Doc share URL,
+  // resolves it against the matching backend endpoint, and returns the resolved payload.
+  const resolveReferenceLink = async (
+    targetUrl?: string
+  ): Promise<{ type: 'awesome'; value: string } | { type: 'doc'; value: string } | null> => {
+    const linkToResolve = (targetUrl ?? referenceUrl).trim();
+    if (!linkToResolve) {
+      setReferenceError('Please enter an Awesome Screenshot or Google Doc share URL.');
       return null;
     }
 
-    setIsResolvingAwesome(true);
-    setAwesomeError(null);
+    const isDoc = /docs\.google\.com/i.test(linkToResolve);
+    const isAwesome = /awesomescreenshot\.com/i.test(linkToResolve);
+    if (!isDoc && !isAwesome) {
+      setReferenceError('Enter a valid Awesome Screenshot (awesomescreenshot.com) or Google Doc (docs.google.com) share link.');
+      return null;
+    }
+
+    setIsResolvingReference(true);
+    setReferenceError(null);
     setError(null);
 
     try {
-      const response = await fetch('/api/content-checker/resolve-awesome-screenshot', {
+      const endpoint = isDoc
+        ? '/api/content-checker/resolve-google-doc'
+        : '/api/content-checker/resolve-awesome-screenshot';
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: linkToResolve.trim() })
+        body: JSON.stringify({ url: linkToResolve })
       });
 
       const responseText = await response.text();
@@ -263,66 +303,35 @@ export default function ContentChecker() {
       }
 
       if (!response.ok) {
-        throw new Error(data?.error || `Server error (${response.status}) while resolving Awesome Screenshot link.`);
+        throw new Error(data?.error || `Server error (${response.status}) while resolving the reference link.`);
+      }
+
+      if (isDoc) {
+        if (data.success && data.text) {
+          setReferenceDocText(data.text);
+          return { type: 'doc', value: data.text };
+        }
+        throw new Error(data?.error || 'Failed to extract text from Google Doc link.');
       }
 
       if (data.success && data.base64) {
         const compressed = await compressImage(data.base64);
         setScreenshotBase64(compressed);
         setScreenshotPreview(compressed);
-        return compressed;
-      } else {
-        throw new Error(data?.error || 'Failed to extract screenshot asset from Awesome Screenshot link.');
+        return { type: 'awesome', value: compressed };
       }
+      throw new Error(data?.error || 'Failed to extract screenshot asset from Awesome Screenshot link.');
     } catch (err: any) {
-      const errMsg = err.message || 'Could not resolve screenshot from Awesome Screenshot link.';
-      setAwesomeError(errMsg);
+      setReferenceError(err.message || 'Could not resolve the reference link.');
       return null;
     } finally {
-      setIsResolvingAwesome(false);
+      setIsResolvingReference(false);
     }
   };
 
-  const resolveGoogleDoc = async (targetDocUrl?: string): Promise<string | null> => {
-    const linkToResolve = targetDocUrl || googleDocUrl;
-    if (!linkToResolve.trim()) {
-      setDocError('Please enter a valid Google Doc share URL.');
-      return null;
-    }
-
-    setIsResolvingDoc(true);
-    setDocError(null);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/content-checker/resolve-google-doc', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: linkToResolve.trim() })
-      });
-
-      const data = await response.json().catch(() => null);
-      if (!response.ok || !data) {
-        throw new Error(data?.error || `Server error (${response.status}) while resolving Google Doc link.`);
-      }
-
-      if (data.success && data.text) {
-        setReferenceDocText(data.text);
-        return data.text;
-      } else {
-        throw new Error(data?.error || 'Failed to extract text from Google Doc link.');
-      }
-    } catch (err: any) {
-      setDocError(err.message || 'Could not resolve Google Doc reference text.');
-      return null;
-    } finally {
-      setIsResolvingDoc(false);
-    }
-  };
-
-  const resetGoogleDoc = () => {
+  const resetReferenceDoc = () => {
     setReferenceDocText(null);
-    setDocError(null);
+    setReferenceError(null);
   };
 
   const runScreenshotAnalysis = async () => {
@@ -334,14 +343,11 @@ export default function ContentChecker() {
     let currentBase64 = screenshotBase64;
     let currentDocText = referenceDocText;
 
-    if (!currentBase64 && !currentDocText && awesomeUrl.trim()) {
-      currentBase64 = await resolveAwesomeLink(awesomeUrl);
-      if (!currentBase64) return;
-    }
-
-    if (!currentBase64 && !currentDocText && googleDocUrl.trim()) {
-      currentDocText = await resolveGoogleDoc(googleDocUrl);
-      if (!currentDocText) return;
+    if (!currentBase64 && !currentDocText && referenceUrl.trim()) {
+      const resolved = await resolveReferenceLink(referenceUrl);
+      if (!resolved) return;
+      if (resolved.type === 'awesome') currentBase64 = resolved.value;
+      else currentDocText = resolved.value;
     }
 
     if (!currentBase64 && !currentDocText) {
@@ -355,6 +361,7 @@ export default function ContentChecker() {
     setIsLoading(true);
     setError(null);
     setReport(null);
+    setShowFaqJson(false);
 
     const steps = [
       'Connecting to target webpage & fetching HTML metadata...',
@@ -467,16 +474,23 @@ export default function ContentChecker() {
     }
   };
 
-  const hasReference = !!(screenshotBase64 || referenceDocText || awesomeUrl.trim() || googleDocUrl.trim());
+  const hasReference = !!(screenshotBase64 || referenceDocText || referenceUrl.trim());
   const readyToSelectChecks = !!(url.trim() || rawHtml.trim()) && hasReference;
 
   const filteredComparisons = report
     ? report.bodyContent.mismatches.filter((m) => selectedChecks.has(categoryGroup(m.category)))
     : [];
   const filteredMismatchCount = filteredComparisons.filter((m) => m.status !== 'match').length;
+  // Mismatches need full expected/actual detail; matches are just noise unless someone asks to see them.
+  const realMismatches = filteredComparisons.filter((m) => m.status !== 'match');
+  const plainMatches = filteredComparisons.filter((m) => m.status === 'match');
   const titleOrDescriptionMismatch = !!report && (
-    (selectedChecks.has('title') && (!report.seo.titleMatches || !report.seo.descriptionMatches))
+    (selectedChecks.has('title') && (!report.seo.urlMatches || !report.seo.titleMatches || !report.seo.descriptionMatches))
   );
+  const faqMismatch = !!report?.faqSchema && selectedChecks.has('faq') &&
+    report.faqSchema.status !== 'match' && report.faqSchema.status !== 'not_present';
+  const imageMismatch = !!report?.featureImage && selectedChecks.has('image') &&
+    report.featureImage.applicable && !report.featureImage.matches;
 
   return (
     <div className="space-y-6 text-slate-900">
@@ -488,7 +502,7 @@ export default function ContentChecker() {
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-900 tracking-tight">
-              Visual Copy & Screenshot Auditor
+              Content Audit
             </h2>
             <p className="text-xs text-slate-500">
               Audit live webpage content, copy accuracy, and heading structures against design reference screenshots.
@@ -542,39 +556,14 @@ export default function ContentChecker() {
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
               <Link2 className="h-4 w-4 text-sky-600" />
-              <span>Awesome Screenshot Share URL</span>
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="e.g. https://www.awesomescreenshot.com/image/..."
-                value={awesomeUrl}
-                onChange={(e) => setAwesomeUrl(e.target.value)}
-                className="flex-1 px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:bg-white shadow-2xs"
-              />
-              <button
-                type="button"
-                onClick={() => resolveAwesomeLink()}
-                disabled={isResolvingAwesome || !awesomeUrl.trim()}
-                className="px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 disabled:opacity-40 rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 shrink-0"
-              >
-                {isResolvingAwesome ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <span>Fetch</span>}
-              </button>
-            </div>
-            {awesomeError && <p className="text-[11px] text-rose-600 font-medium">{awesomeError}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <FileText className="h-4 w-4 text-purple-600" />
-              <span>Or Google Doc Reference Link</span>
+              <span>Reference Link (Awesome Screenshot or Google Doc)</span>
             </label>
             {referenceDocText ? (
               <div className="flex items-center justify-between p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl">
                 <span className="text-xs font-bold text-emerald-900 truncate">
                   Reference Doc Loaded ({referenceDocText.length.toLocaleString()} chars)
                 </span>
-                <button type="button" onClick={resetGoogleDoc} className="px-2 py-1 text-xs font-medium text-rose-700 bg-white border border-rose-200 rounded-lg cursor-pointer shrink-0">
+                <button type="button" onClick={resetReferenceDoc} className="px-2 py-1 text-xs font-medium text-rose-700 bg-white border border-rose-200 rounded-lg cursor-pointer shrink-0">
                   Change
                 </button>
               </div>
@@ -582,23 +571,23 @@ export default function ContentChecker() {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="e.g. https://docs.google.com/document/d/.../edit"
-                  value={googleDocUrl}
-                  onChange={(e) => setGoogleDocUrl(e.target.value)}
-                  className="flex-1 px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:bg-white shadow-2xs"
+                  placeholder="Paste an awesomescreenshot.com or docs.google.com share link..."
+                  value={referenceUrl}
+                  onChange={(e) => setReferenceUrl(e.target.value)}
+                  className="flex-1 px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:bg-white shadow-2xs"
                 />
                 <button
                   type="button"
-                  onClick={() => resolveGoogleDoc()}
-                  disabled={isResolvingDoc || !googleDocUrl.trim()}
-                  className="px-3.5 py-2 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-500 disabled:opacity-40 rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 shrink-0"
+                  onClick={() => resolveReferenceLink()}
+                  disabled={isResolvingReference || !referenceUrl.trim()}
+                  className="px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 disabled:opacity-40 rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 shrink-0"
                 >
-                  {isResolvingDoc ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <span>Fetch</span>}
+                  {isResolvingReference ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <span>Fetch</span>}
                 </button>
               </div>
             )}
-            {docError && <p className="text-[11px] text-rose-600 font-medium">{docError}</p>}
-            <p className="text-[11px] text-slate-500">Doc must be shared as "Anyone with the link can view".</p>
+            {referenceError && <p className="text-[11px] text-rose-600 font-medium">{referenceError}</p>}
+            <p className="text-[11px] text-slate-500">Google Docs must be shared as "Anyone with the link can view".</p>
           </div>
 
           {/* Screenshot Preview / Upload Dropzone */}
@@ -682,28 +671,62 @@ export default function ContentChecker() {
       {/* SCREENSHOT REPORT RESULTS VIEW */}
       {report && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-6">
-          <div className="flex items-center gap-2.5 border-b border-slate-100 pb-5">
-            {filteredMismatchCount === 0 && !titleOrDescriptionMismatch ? (
-              <>
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                <span className="text-sm font-bold text-emerald-800">Everything you checked matches the reference.</span>
-              </>
-            ) : (
-              <>
-                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-                <span className="text-sm font-bold text-amber-900">Differences found — see the comparison below.</span>
-              </>
-            )}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 border-b border-slate-100 pb-5">
+            <div
+              className={`shrink-0 flex flex-col items-center justify-center h-16 w-16 rounded-2xl border-2 font-black text-lg leading-none ${
+                report.overallScore >= 90
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                  : report.overallScore >= 70
+                    ? 'bg-amber-50 text-amber-700 border-amber-300'
+                    : 'bg-rose-50 text-rose-700 border-rose-300'
+              }`}
+            >
+              <span>{report.overallScore}</span>
+              <span className="text-[9px] font-bold uppercase tracking-wide opacity-70 mt-0.5">Score</span>
+            </div>
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex items-center gap-2">
+                {filteredMismatchCount === 0 && !titleOrDescriptionMismatch && !faqMismatch && !imageMismatch ? (
+                  <>
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                    <span className="text-sm font-bold text-emerald-800">Everything you checked matches the reference.</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                    <span className="text-sm font-bold text-amber-900">Differences found — see the comparison below.</span>
+                  </>
+                )}
+              </div>
+              {report.summary && <p className="text-xs text-slate-600 leading-relaxed">{report.summary}</p>}
+            </div>
           </div>
 
-          {/* Title & Description — side by side against the reference's first two lines */}
+          {report.recommendations.length > 0 && (
+            <div className="border border-amber-200 bg-amber-50/60 rounded-xl p-4 space-y-2">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-amber-900 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600" /> Recommendations
+              </h3>
+              <ul className="space-y-1.5">
+                {report.recommendations.map((rec, idx) => (
+                  <li key={idx} className="text-xs text-amber-900 flex items-start gap-2">
+                    <span className="mt-1.5 h-1 w-1 rounded-full bg-amber-500 shrink-0" />
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* URL, Title & Description — side by side against the reference's header block */}
           {selectedChecks.has('title') && (
             <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
               <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2 border-b border-slate-200/80 pb-2">
-                <FileText className="h-4 w-4 text-purple-600" /> Title & Description
+                <FileText className="h-4 w-4 text-purple-600" /> URL, Title & Description
               </h3>
               <div className="space-y-2">
                 {[
+                  { label: 'URL', expected: report.seo.expectedUrl, actual: report.seo.actualUrl, matches: report.seo.urlMatches },
                   { label: 'Title', expected: report.seo.expectedTitle, actual: report.seo.actualTitle, matches: report.seo.titleMatches },
                   { label: 'Meta Description', expected: report.seo.expectedDescription, actual: report.seo.actualDescription, matches: report.seo.descriptionMatches }
                 ].map((row) => (
@@ -733,23 +756,33 @@ export default function ContentChecker() {
           )}
 
           {/* Heading-to-heading, paragraph-to-paragraph, side by side */}
-          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2 border-b border-slate-200/80 pb-2">
-              <Layers className="h-4 w-4 text-purple-600" /> Content Comparison
-            </h3>
+          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                <Layers className="h-4 w-4 text-purple-600" /> Content Comparison
+              </h3>
+              {filteredComparisons.length > 0 && (
+                <span className="text-[11px] font-semibold flex items-center gap-2.5">
+                  <span className="text-emerald-700">{filteredComparisons.length - filteredMismatchCount} matched</span>
+                  {filteredMismatchCount > 0 && <span className="text-rose-700">{filteredMismatchCount} mismatched</span>}
+                </span>
+              )}
+            </div>
+
             {filteredComparisons.length === 0 ? (
               <p className="text-xs text-slate-600 leading-relaxed">No content in the categories you checked.</p>
+            ) : realMismatches.length === 0 ? (
+              <div className="flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50/70 border border-emerald-200 rounded-lg px-3 py-2.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>Every checked item matches the reference.</span>
+              </div>
             ) : (
-              <div className="space-y-3">
-                {filteredComparisons.map((item, idx) => (
-                  <div key={idx} className="border border-slate-200 rounded-lg overflow-hidden">
-                    <div className="px-2.5 py-1.5 bg-slate-100 text-[11px] font-bold text-slate-700 flex items-center justify-between">
-                      <span>{item.category}</span>
-                      {item.status === 'match' ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                      ) : (
-                        <XCircle className="h-3.5 w-3.5 text-amber-600" />
-                      )}
+              <div className="space-y-2">
+                {realMismatches.map((item, idx) => (
+                  <div key={idx} className="border border-rose-200 rounded-lg overflow-hidden">
+                    <div className="px-3 py-1.5 bg-rose-50 text-[11px] font-bold text-rose-800 flex items-center gap-1.5">
+                      <XCircle className="h-3.5 w-3.5 shrink-0" />
+                      {item.category}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
                       <div className="p-2.5 bg-white text-xs">
@@ -765,7 +798,114 @@ export default function ContentChecker() {
                 ))}
               </div>
             )}
+
+            {plainMatches.length > 0 && (
+              <div className="pt-1 border-t border-slate-200/80">
+                <button
+                  type="button"
+                  onClick={() => setShowAllMatches((v) => !v)}
+                  className="text-[11px] font-semibold text-purple-600 hover:underline cursor-pointer flex items-center gap-1 pt-2"
+                >
+                  {showAllMatches ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  {showAllMatches ? 'Hide' : 'Show'} {plainMatches.length} matched item{plainMatches.length === 1 ? '' : 's'}
+                </button>
+                {showAllMatches && (
+                  <div className="space-y-1 pt-2">
+                    {plainMatches.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{item.category}</span>
+                        <span className="text-xs text-slate-600 truncate">{item.actual}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Feature Image — expected (from the doc) vs actual (og:image/twitter:image/first <img>) */}
+          {selectedChecks.has('image') && report.featureImage && report.featureImage.applicable && (
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                  <FileImage className="h-4 w-4 text-purple-600" /> Feature Image
+                </h3>
+                {report.featureImage.matches ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                ) : (
+                  <XCircle className="h-3.5 w-3.5 text-amber-600" />
+                )}
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">{report.featureImage.analysis}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 border border-slate-200 rounded-lg overflow-hidden">
+                <div className="p-2.5 bg-white text-xs space-y-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Expected (Reference)</span>
+                  {/^https?:\/\//i.test(report.featureImage.expected) && (
+                    <img src={report.featureImage.expected} alt="Expected feature" className="h-16 w-16 object-cover rounded-lg border border-slate-200" />
+                  )}
+                  <p className="text-slate-700 break-all">{report.featureImage.expected}</p>
+                </div>
+                <div className="p-2.5 bg-white text-xs space-y-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Actual (Webpage)</span>
+                  {/^https?:\/\//i.test(report.featureImage.actual) && (
+                    <img src={report.featureImage.actual} alt="Actual feature" className="h-16 w-16 object-cover rounded-lg border border-slate-200" />
+                  )}
+                  <p className="text-slate-700 break-all">{report.featureImage.actual}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* FAQ Schema — present/absent, plus an expandable JSON-LD view checked against the reference doc */}
+          {selectedChecks.has('faq') && report.faqSchema && (
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                  <Code className="h-4 w-4 text-purple-600" /> FAQ Schema
+                </h3>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                  report.faqSchema.status === 'match'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : report.faqSchema.status === 'not_present'
+                      ? 'bg-slate-100 text-slate-600 border-slate-200'
+                      : 'bg-amber-50 text-amber-700 border-amber-200'
+                }`}>
+                  {report.faqSchema.present ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                  <span>{report.faqSchema.present ? 'Present' : 'Not Present'}</span>
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">{report.faqSchema.analysis}</p>
+
+              {report.faqSchema.mismatchDetails.length > 0 && (
+                <ul className="space-y-1.5">
+                  {report.faqSchema.mismatchDetails.map((detail, idx) => (
+                    <li key={idx} className="text-xs text-amber-900 bg-amber-50/60 border border-amber-200 rounded-lg px-2.5 py-1.5 flex items-start gap-1.5">
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                      <span>{detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {report.faqSchema.present && (
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowFaqJson(!showFaqJson)}
+                    className="w-full px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200/80 text-[11px] font-bold text-slate-700 flex items-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    {showFaqJson ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                    <span>View FAQPage JSON-LD</span>
+                  </button>
+                  {showFaqJson && (
+                    <pre className="p-3 bg-slate-950 text-slate-200 overflow-x-auto font-mono text-[11px] leading-relaxed">{report.faqSchema.rawJson}</pre>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

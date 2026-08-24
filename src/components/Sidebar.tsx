@@ -27,7 +27,7 @@ export default function Sidebar({
   const menuItems: MenuItem[] = [
     { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
     { id: 'seo-checker', name: 'SEO & Schema', icon: Search },
-    { id: 'content-checker', name: 'Auditor', icon: ShieldCheck },
+    { id: 'content-checker', name: 'Content Audit', icon: ShieldCheck },
     { id: 'html-cleaner', name: 'HTML Cleaner', icon: FileCode },
     { id: 'image', name: 'Image Converter', icon: FileImage },
     { id: 'gradient', name: 'Gradient Studio', icon: Paintbrush },

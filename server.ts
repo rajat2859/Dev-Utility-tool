@@ -17,7 +17,7 @@ process.on('uncaughtException', (err) => {
 });
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 2000;
 
 // Compress all responses (static JS/CSS bundles & JSON API payloads)
 app.use(compression());
@@ -51,6 +51,10 @@ const responseSchema = {
     seo: {
       type: Type.OBJECT,
       properties: {
+        urlMatches: { type: Type.BOOLEAN },
+        expectedUrl: { type: Type.STRING },
+        actualUrl: { type: Type.STRING },
+        urlDifference: { type: Type.STRING },
         titleMatches: { type: Type.BOOLEAN },
         expectedTitle: { type: Type.STRING },
         actualTitle: { type: Type.STRING },
@@ -63,6 +67,7 @@ const responseSchema = {
         analysis: { type: Type.STRING }
       },
       required: [
+        "urlMatches", "expectedUrl", "actualUrl", "urlDifference",
         "titleMatches", "expectedTitle", "actualTitle", "titleDifference",
         "descriptionMatches", "expectedDescription", "actualDescription",
         "descriptionDifference", "status", "analysis"
@@ -114,6 +119,31 @@ const responseSchema = {
       },
       required: ["status", "mismatches", "matchesCount", "mismatchesCount", "analysis"]
     },
+    faqSchema: {
+      type: Type.OBJECT,
+      properties: {
+        present: { type: Type.BOOLEAN },
+        rawJson: { type: Type.STRING },
+        status: { type: Type.STRING }, // "match", "mismatch", "missing", "not_present"
+        mismatchDetails: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING }
+        },
+        analysis: { type: Type.STRING }
+      },
+      required: ["present", "rawJson", "status", "mismatchDetails", "analysis"]
+    },
+    featureImage: {
+      type: Type.OBJECT,
+      properties: {
+        applicable: { type: Type.BOOLEAN },
+        expected: { type: Type.STRING },
+        actual: { type: Type.STRING },
+        matches: { type: Type.BOOLEAN },
+        analysis: { type: Type.STRING }
+      },
+      required: ["applicable", "expected", "actual", "matches", "analysis"]
+    },
     overallScore: { type: Type.INTEGER }, // 0 to 100
     summary: { type: Type.STRING },
     recommendations: {
@@ -121,14 +151,33 @@ const responseSchema = {
       items: { type: Type.STRING }
     }
   },
-  required: ["seo", "headings", "bodyContent", "overallScore", "summary", "recommendations"]
+  required: ["seo", "headings", "bodyContent", "faqSchema", "featureImage", "overallScore", "summary", "recommendations"]
 };
 
 // Shared HTML micro-parsing helpers (used by both parseFullSeoAndSchemas and parseHtml)
 const DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
+const HTML_NAMED_ENTITIES: Record<string, string> = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+  rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“',
+  ndash: '–', mdash: '—', hellip: '…', copy: '©', reg: '®', trade: '™'
+};
+
+// Extracted text is compared/displayed as-is elsewhere, so undecoded entities (a real page's
+// apostrophes/ampersands almost always export as &#x27;/&amp;) would otherwise show up literally
+// in the report instead of the character they represent.
+function decodeHtmlEntities(text: string): string {
+  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (match, entity) => {
+    if (entity[0] === '#') {
+      const code = entity[1].toLowerCase() === 'x' ? parseInt(entity.slice(2), 16) : parseInt(entity.slice(1), 10);
+      return Number.isNaN(code) ? match : String.fromCodePoint(code);
+    }
+    return HTML_NAMED_ENTITIES[entity.toLowerCase()] ?? match;
+  });
+}
+
 function stripTags(fragment: string): string {
-  return fragment.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  return decodeHtmlEntities(fragment.replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
 }
 
 function normalizeUrl(rawUrl: string): string {
@@ -148,6 +197,83 @@ function extractMetaDescriptionTag(html: string): string {
   const descMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([\s\S]*?)["']/i) ||
                     html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']description["']/i);
   return descMatch ? stripTags(descMatch[1]) : '';
+}
+
+// Best-effort "featured image" for the page: og:image, then twitter:image, then the first <img>.
+function extractOgImage(html: string): string {
+  const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([\s\S]*?)["']/i) ||
+             html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+property=["']og:image["']/i);
+  if (og) return og[1].trim();
+  const twitter = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([\s\S]*?)["']/i) ||
+                  html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']twitter:image["']/i);
+  if (twitter) return twitter[1].trim();
+  const img = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+  return img ? img[1].trim() : '';
+}
+
+// The page's own declared URL — <link rel="canonical">, falling back to og:url — read straight
+// from the HTML source, rather than trusting whatever URL was typed into the input box (which
+// may not match after redirects, trailing slashes, or a copy-pasted staging link).
+function extractCanonicalUrl(html: string): string {
+  const canonical = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([\s\S]*?)["']/i) ||
+                     html.match(/<link[^>]+href=["']([\s\S]*?)["'][^>]+rel=["']canonical["']/i);
+  if (canonical) return canonical[1].trim();
+  const ogUrl = html.match(/<meta[^>]+property=["']og:url["'][^>]+content=["']([\s\S]*?)["']/i) ||
+                html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+property=["']og:url["']/i);
+  return ogUrl ? ogUrl[1].trim() : '';
+}
+
+interface FaqQA { question: string; answer: string }
+
+// Finds a FAQPage JSON-LD block (directly, inside @graph, or inside an array) and pulls out
+// its question/answer pairs, so the Auditor can check both "is it there" and "does it match the doc".
+function extractFaqSchema(html: string): { present: boolean; raw: any | null; qa: FaqQA[] } {
+  const jsonLdRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let scriptMatch;
+  while ((scriptMatch = jsonLdRegex.exec(html)) !== null) {
+    const rawScriptContent = scriptMatch[1].trim();
+    if (!rawScriptContent) continue;
+    try {
+      const cleanedJson = rawScriptContent.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1').trim();
+      const parsed = JSON.parse(cleanedJson);
+
+      const findFaq = (obj: any): any | null => {
+        if (!obj || typeof obj !== 'object') return null;
+        if (Array.isArray(obj)) {
+          for (const item of obj) {
+            const found = findFaq(item);
+            if (found) return found;
+          }
+          return null;
+        }
+        if (Array.isArray(obj['@graph'])) {
+          for (const item of obj['@graph']) {
+            const found = findFaq(item);
+            if (found) return found;
+          }
+          return null;
+        }
+        const type = obj['@type'] || obj['type'];
+        const typeStr = Array.isArray(type) ? type.join(',') : String(type || '');
+        return typeStr.includes('FAQPage') ? obj : null;
+      };
+
+      const faqObj = findFaq(parsed);
+      if (faqObj) {
+        const mainEntity = Array.isArray(faqObj.mainEntity) ? faqObj.mainEntity : [];
+        const qa: FaqQA[] = mainEntity
+          .map((q: any) => ({
+            question: stripTags(String(q?.name || '')),
+            answer: stripTags(String(q?.acceptedAnswer?.text || ''))
+          }))
+          .filter((q: FaqQA) => q.question || q.answer);
+        return { present: true, raw: faqObj, qa };
+      }
+    } catch {
+      // Malformed JSON-LD block — skip it and keep scanning the rest of the page.
+    }
+  }
+  return { present: false, raw: null, qa: [] };
 }
 
 function extractAllHeadings(html: string): { level: string; text: string }[] {
@@ -593,7 +719,13 @@ app.post("/api/seo-checker/analyze", async (req, res) => {
 
 // Robust server-side parser for metadata, headings, paragraphs, lists, and tables
 function parseHtml(html: string) {
-  const title = extractPageTitle(html);
+  // Many blog pages skip (or duplicate) the <title>/og:title tag but always have a visible H1 —
+  // fall back to it so the audit still has something real to compare against the reference.
+  let title = extractPageTitle(html);
+  if (!title) {
+    const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    if (h1Match) title = stripTags(h1Match[1]);
+  }
 
   // Meta description, falling back to og:description / twitter:description
   let description = extractMetaDescriptionTag(html);
@@ -629,7 +761,10 @@ function parseHtml(html: string) {
     }
   }
 
-  // Extract Tables (<table>, <tr>, <th>, <td>)
+  // Extract Tables (<table>, <tr>, <th>, <td>) — cells are read per-row in document order so a
+  // <th> used as a row label inside a data row (a common accessibility pattern: first column
+  // <th scope="row">, rest <td>) is kept as part of that row instead of being pulled out into
+  // the headers list. Only a first row made up entirely of <th> cells is treated as the header.
   const tables: { headers: string[]; rows: string[][] }[] = [];
   const tableRegex = /<table[^>]*>([\s\S]*?)<\/table>/gi;
   let tableMatch;
@@ -638,27 +773,36 @@ function parseHtml(html: string) {
     const headers: string[] = [];
     const rows: string[][] = [];
 
-    const thRegex = /<th[^>]*>([\s\S]*?)<\/th>/gi;
-    let thMatch;
-    while ((thMatch = thRegex.exec(tableHtml)) !== null) {
-      const thText = stripTags(thMatch[1]);
-      if (thText) headers.push(thText);
-    }
-
     const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
     let trMatch;
+    let rowIndex = 0;
     while ((trMatch = trRegex.exec(tableHtml)) !== null) {
       const trHtml = trMatch[1];
-      const rowCells: string[] = [];
-      const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
-      let tdMatch;
-      while ((tdMatch = tdRegex.exec(trHtml)) !== null) {
-        const tdText = stripTags(tdMatch[1]);
-        if (tdText) rowCells.push(tdText);
+      const cellRegex = /<(th|td)[^>]*>([\s\S]*?)<\/\1>/gi;
+      let cellMatch;
+      const cells: string[] = [];
+      let isHeaderRow = true;
+      while ((cellMatch = cellRegex.exec(trHtml)) !== null) {
+        if (cellMatch[1].toLowerCase() !== 'th') isHeaderRow = false;
+        // A cell can hold multiple paragraphs (e.g. a bolded label paragraph plus a description
+        // paragraph) — split on those so each one is its own comparable value instead of being
+        // flattened into a single run-on blob that can't match either paragraph individually.
+        const innerParagraphs = cellMatch[2].match(/<p[^>]*>[\s\S]*?<\/p>/gi);
+        if (innerParagraphs && innerParagraphs.length > 1) {
+          innerParagraphs.forEach((p) => {
+            const text = stripTags(p);
+            if (text) cells.push(text);
+          });
+        } else {
+          const cellText = stripTags(cellMatch[2]);
+          if (cellText) cells.push(cellText);
+        }
       }
-      if (rowCells.length > 0) {
-        rows.push(rowCells);
+      if (cells.length > 0) {
+        if (rowIndex === 0 && isHeaderRow) headers.push(...cells);
+        else rows.push(cells);
       }
+      rowIndex++;
     }
 
     if (headers.length > 0 || rows.length > 0) {
@@ -684,6 +828,9 @@ function parseHtml(html: string) {
     paragraphs,
     listItems,
     tables,
+    canonicalUrl: extractCanonicalUrl(html),
+    faqSchema: extractFaqSchema(html),
+    featureImage: extractOgImage(html),
     bodyText: cleanText
   };
 }
@@ -756,15 +903,19 @@ function stringSimilarity(s1: string, s2: string): number {
 // visual gaps rather than at every paragraph boundary. So a block boundary has to be "one line",
 // not "one blank-line-delimited chunk" — the latter would merge genuinely separate blocks (e.g. a
 // heading and the very next paragraph) whenever the author didn't happen to leave a blank line
-// between them, which is the normal case. Table cells (Docs exports each as its own tab-indented
-// continuation line) are dropped since the page's own table cells aren't part of this alignment.
+// between them, which is the normal case. Table rows/cells (Docs exports each as its own
+// tab-indented line, or a whole row as one tab-separated line) are kept, not dropped — .trim()
+// below strips the leading tab so they flow through as regular reference lines to check against
+// the page's table content.
 function splitReferenceBlocks(text: string): string[] {
   if (!text) return [];
   return text
     .split('\n')
-    .filter((l) => !l.startsWith('\t'))
     .map((l) => l.replace(/^[*\-•]\s*/, '').trim())
-    .filter((l) => l.length > 0);
+    .filter((l) => l.length > 0)
+    // Drop visual-only divider lines (Google Docs horizontal rules export as a run of
+    // underscores/dashes) — not real content, so they'd otherwise show up as a fake mismatch.
+    .filter((l) => !/^[_\-=]{3,}$/.test(l));
 }
 
 // Real pages surround the article with nav menus, sidebars, related-post lists, author bios, and
@@ -789,10 +940,11 @@ function scopeToMainContent(html: string): string {
   return start < end ? html.slice(start, end) : html;
 }
 
-// Finds an explicitly-labeled line like "Meta title: ..." or "Meta description: ..." anywhere in
-// the reference (a common content-brief convention), stripping any trailing "(53 chars)" annotation.
+// Finds an explicitly-labeled line like "Meta title: ..." or "title - ..." anywhere in the
+// reference (content briefs use both "label:" and "label -" conventions), stripping any
+// trailing "(53 chars)" annotation.
 function extractLabeledLine(text: string, label: string): string {
-  const re = new RegExp(`^\\s*${label}\\s*:?\\s*(.+)$`, 'im');
+  const re = new RegExp(`^\\s*${label}\\s*[:\\-]?\\s*(.+)$`, 'im');
   const m = text.match(re);
   if (!m) return '';
   return m[1].replace(/\(\d+\s*chars?\)\s*$/i, '').trim();
@@ -811,6 +963,22 @@ function skipReferencePreamble(text: string): string {
   return lastEnd >= 0 ? text.slice(lastEnd) : text;
 }
 
+// Reference docs commonly end with an FAQ section (questions & answers), which is checked
+// separately against the page's FAQPage schema. Cut it from the text before heading/paragraph/
+// list alignment so it doesn't also show up there as a wall of "extra reference content" mismatches.
+function truncateBeforeFaqSection(text: string): string {
+  const m = text.match(/^\s*(faqs?|frequently asked questions)\s*:?\s*$/im);
+  return m && m.index !== undefined ? text.slice(0, m.index) : text;
+}
+
+// Content briefs often mark where the body copy starts with a standalone "Content" line (as its
+// own heading, not "Content: ..." with text on the same line). Skip past it so that marker line
+// itself doesn't get treated as a stray paragraph.
+function skipStandaloneContentMarker(text: string): string {
+  const m = text.match(/^\s*content\s*:?\s*$/im);
+  return m && m.index !== undefined ? text.slice(m.index + m[0].length) : text;
+}
+
 // Walks the HTML once so headings, paragraphs, and list items come back in true document
 // order (interleaved), which is required to align them positionally against a reference
 // document written in the same reading order — heading-to-heading, paragraph-to-paragraph.
@@ -818,7 +986,11 @@ function parseOrderedContentBlocks(html: string): { type: 'heading' | 'paragraph
   const body = html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<!--[\s\S]*?-->/g, ' ');
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    // Table cells commonly wrap their text in <p>/<h*> tags (e.g. <td><p>...</p></td>) — strip
+    // whole tables out here so those don't also get scooped up as regular paragraphs/headings;
+    // table content is extracted separately (parsedWebData.tables) and pooled on its own.
+    .replace(/<table[^>]*>[\s\S]*?<\/table>/gi, ' ');
 
   const blocks: { type: 'heading' | 'paragraph' | 'listItem'; level?: string; text: string }[] = [];
   const blockRegex = /<(h1|h2|h3|h4|h5|h6|p|li)[^>]*>([\s\S]*?)<\/\1>/gi;
@@ -845,11 +1017,12 @@ function textsRoughlyMatch(a: string, b: string): boolean {
   return stringSimilarity(a, b) >= 0.9;
 }
 
-// Deterministic compliance report: aligns the reference (Google Doc text or OCR output) against
+// Deterministic compliance report: checks the reference (Google Doc text or OCR output) against
 // the webpage's own content. Title/description come from explicit "Meta title:"/"Meta description:"
 // labels if the reference uses that content-brief convention, otherwise from its first two lines.
-// The body (heading-to-heading, paragraph-to-paragraph) is aligned by position, skipping past any
-// metadata/heading-outline preamble so alignment starts at the reference's actual prose.
+// The body is checked line-by-line: every reference line (heading, paragraph, or list item outline)
+// after that title/description preamble is tested for whether it exists anywhere among the page's
+// own headings/paragraphs/list items/tables (scoped to content after the page's first H1).
 async function buildLocalReport(
   parsedWebData: ReturnType<typeof parseHtml>,
   url: string,
@@ -859,8 +1032,14 @@ async function buildLocalReport(
   const rawReference = referenceText || '';
   const hasReference = rawReference.trim().length > 0;
 
-  const labeledTitle = extractLabeledLine(rawReference, 'meta title');
-  const labeledDescription = extractLabeledLine(rawReference, 'meta description');
+  // Labels accept either "Meta title: ..." (older content-brief convention) or "title - ..."
+  // (URL / title / desc. / Feature image header block convention).
+  const labeledTitle = extractLabeledLine(rawReference, 'meta title') || extractLabeledLine(rawReference, 'title');
+  const labeledDescription = extractLabeledLine(rawReference, 'meta description')
+    || extractLabeledLine(rawReference, 'desc\\.?')
+    || extractLabeledLine(rawReference, 'description');
+  const labeledUrl = extractLabeledLine(rawReference, 'url');
+  const labeledFeatureImage = extractLabeledLine(rawReference, 'feature(?:d)? image');
 
   let refTitle: string;
   let refDescription: string;
@@ -869,11 +1048,11 @@ async function buildLocalReport(
   if (labeledTitle || labeledDescription) {
     refTitle = labeledTitle;
     refDescription = labeledDescription;
-    refBodyBlocks = splitReferenceBlocks(skipReferencePreamble(rawReference))
-      // Safety net if no heading outline was found to skip past: drop any leftover metadata lines.
-      .filter(b => !/^(url|meta title|meta description|primary keyword|secondary keywords?|required schema|internal links?|heading structure)\s*:?/i.test(b));
+    refBodyBlocks = splitReferenceBlocks(skipStandaloneContentMarker(skipReferencePreamble(truncateBeforeFaqSection(rawReference))))
+      // Safety net if no heading outline / content marker was found to skip past: drop any leftover metadata lines.
+      .filter(b => !/^(url|meta title|meta description|feature(?:d)? image|primary keyword|secondary keywords?|required schema|internal links?|heading structure)\s*[:\-]?\s*/i.test(b));
   } else {
-    const referenceBlocks = splitReferenceBlocks(rawReference);
+    const referenceBlocks = splitReferenceBlocks(truncateBeforeFaqSection(rawReference));
     refTitle = referenceBlocks[0] || '';
     refDescription = referenceBlocks[1] || '';
     refBodyBlocks = referenceBlocks.slice(2);
@@ -886,20 +1065,60 @@ async function buildLocalReport(
   const titleMatches = hasReference ? textsRoughlyMatch(parsedWebData.title, refTitle) : hasTitle;
   const descriptionMatches = hasReference ? textsRoughlyMatch(parsedWebData.description, refDescription) : hasDescription;
 
-  // Heading-to-heading, paragraph-to-paragraph — aligned in reading order, but NOT by rigid index:
-  // a single extra/missing heading, callout box, or table on either side would otherwise permanently
-  // shift every comparison after it out of sync. Instead this walks both sequences together and, on
-  // a mismatch, looks a short distance ahead in each side for the next real match, skipping over
-  // whichever side has the extra content so the rest of the document realigns (like a text diff).
-  const LOOKAHEAD = 30;
-  const categoryFor = (pageBlock: typeof orderedBlocks[number] | undefined) =>
-    !pageBlock
-      ? 'Extra Reference Content'
-      : pageBlock.type === 'heading'
-        ? `Heading (${(pageBlock.level || 'h').toUpperCase()})`
-        : pageBlock.type === 'listItem'
-          ? 'List Item'
-          : 'Paragraph';
+  // URL: only checked when the doc actually specifies one (protocol/trailing-slash-insensitive).
+  // Compared against the page's own declared URL (<link rel="canonical">/og:url) rather than the
+  // input URL box, since that's what the page's HTML source actually claims to be published at —
+  // falling back to the input URL when the source declares no canonical/og:url at all.
+  const normalizeUrlForCompare = (u: string) => u.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '').toLowerCase();
+  const actualUrl = parsedWebData.canonicalUrl || url || '';
+  const urlMatches = !labeledUrl ? true : normalizeUrlForCompare(labeledUrl) === normalizeUrlForCompare(actualUrl);
+
+  // Feature image: compares the page's og:image/twitter:image/first <img> against the doc's
+  // "Feature image" line, by exact match or matching filename (URLs for the same asset commonly
+  // differ by CDN/query-string but keep the same filename).
+  const actualFeatureImage = parsedWebData.featureImage || '';
+  const imageBaseName = (u: string) => {
+    const clean = u.split('?')[0].split('#')[0];
+    const idx = clean.lastIndexOf('/');
+    return (idx >= 0 ? clean.slice(idx + 1) : clean).toLowerCase();
+  };
+  const featureImageMatches = !labeledFeatureImage
+    ? true
+    : !!actualFeatureImage && (
+      actualFeatureImage.toLowerCase() === labeledFeatureImage.toLowerCase() ||
+      actualFeatureImage.toLowerCase().includes(labeledFeatureImage.toLowerCase()) ||
+      labeledFeatureImage.toLowerCase().includes(actualFeatureImage.toLowerCase()) ||
+      imageBaseName(actualFeatureImage) === imageBaseName(labeledFeatureImage)
+    );
+
+  // Page content pool to test the reference against: every heading, paragraph, list item, and
+  // table row on the page, scoped to content after the page's first H1 (the H1 itself is the
+  // title, already checked above) and before its own FAQ section (checked separately below).
+  const firstH1Index = orderedBlocks.findIndex((b) => b.type === 'heading' && b.level === 'h1');
+  const afterH1 = firstH1Index >= 0 ? orderedBlocks.slice(firstH1Index + 1) : orderedBlocks;
+  const pageFaqHeadingIdx = afterH1.findIndex(
+    (b) => b.type === 'heading' && /^(faqs?|frequently asked questions)$/i.test(b.text.trim())
+  );
+  const bodyBlocks = pageFaqHeadingIdx >= 0 ? afterH1.slice(0, pageFaqHeadingIdx) : afterH1;
+
+  const pagePool: { category: string; text: string }[] = bodyBlocks.map((b) => ({
+    category: b.type === 'heading' ? `Heading (${(b.level || 'h').toUpperCase()})` : b.type === 'listItem' ? 'List Item' : 'Paragraph',
+    text: b.text
+  }));
+  // Each row is pooled as one whole-row entry (for a doc that exports a table row as one
+  // tab-separated line) AND as separate per-cell entries (for a doc that exports each table
+  // cell on its own line) — the reference side's exact convention isn't known upfront, so both
+  // granularities are offered and whichever one the reference line actually matches wins.
+  parsedWebData.tables.forEach((tbl, tblIdx) => {
+    const allRows = tbl.headers.length > 0 ? [tbl.headers, ...tbl.rows] : tbl.rows;
+    allRows.forEach((row, rowIdx) => {
+      const rowText = row.join(' | ');
+      if (rowText) pagePool.push({ category: `Table ${tblIdx + 1} Row ${rowIdx + 1}`, text: rowText });
+      row.forEach((cell) => {
+        if (cell) pagePool.push({ category: `Table ${tblIdx + 1} Row ${rowIdx + 1}`, text: cell });
+      });
+    });
+  });
 
   const comparisons: Array<{
     category: string;
@@ -910,83 +1129,111 @@ async function buildLocalReport(
     status: 'match' | 'mismatch';
   }> = [];
 
+  // Every line pulled from the reference doc gets its own row here — nothing is skipped or
+  // repositioned — and is checked for whether it exists anywhere in the page pool above.
+  // Whether that content also happens to repeat elsewhere on the page isn't this check's
+  // concern — the doc asked for it, the page has it, that's a match.
   let matchesCount = 0;
-  const pushComparison = (pageBlock: typeof orderedBlocks[number] | undefined, refLine: string | undefined, isMatch: boolean) => {
-    if (isMatch) matchesCount++;
-    comparisons.push({
-      category: categoryFor(pageBlock),
-      expected: refLine || '(not present in the reference)',
-      actual: pageBlock ? pageBlock.text : '(missing on the webpage)',
-      severity: 'medium',
-      comment: isMatch
-        ? 'Matches the reference (styling ignored, text only).'
-        : 'Differs from the reference at this position (styling ignored, text only).',
-      status: isMatch ? 'match' : 'mismatch'
+  if (hasReference) {
+    refBodyBlocks.forEach((refLine) => {
+      const found = pagePool.find((entry) => textsRoughlyMatch(entry.text, refLine));
+      if (found) matchesCount++;
+      comparisons.push({
+        category: found?.category || 'Paragraph',
+        expected: refLine,
+        actual: found ? found.text : '(not found on the webpage)',
+        severity: 'medium',
+        comment: found
+          ? 'Found on the webpage (styling ignored, text only).'
+          : 'Not found on the webpage (checked headings, paragraphs, list items, and tables).',
+        status: found ? 'match' : 'mismatch'
+      });
     });
-  };
-
-  let pi = 0;
-  let ri = 0;
-  while (hasReference ? (pi < orderedBlocks.length || ri < refBodyBlocks.length) : pi < orderedBlocks.length) {
-    if (pi >= orderedBlocks.length) {
-      pushComparison(undefined, refBodyBlocks[ri], false);
-      ri++;
-      continue;
-    }
-    if (!hasReference || ri >= refBodyBlocks.length) {
-      pushComparison(orderedBlocks[pi], undefined, false);
-      pi++;
-      continue;
-    }
-
-    const pageText = orderedBlocks[pi].text;
-    const refText = refBodyBlocks[ri];
-    if (textsRoughlyMatch(pageText, refText)) {
-      pushComparison(orderedBlocks[pi], refText, true);
-      pi++; ri++;
-      continue;
-    }
-
-    let pageAhead = -1;
-    for (let k = 1; k <= LOOKAHEAD && pi + k < orderedBlocks.length; k++) {
-      if (textsRoughlyMatch(orderedBlocks[pi + k].text, refText)) { pageAhead = k; break; }
-    }
-    let refAhead = -1;
-    for (let k = 1; k <= LOOKAHEAD && ri + k < refBodyBlocks.length; k++) {
-      if (textsRoughlyMatch(pageText, refBodyBlocks[ri + k])) { refAhead = k; break; }
-    }
-
-    if (pageAhead === -1 && refAhead === -1) {
-      // No resync point nearby — report this one pair as a genuine mismatch and move on together.
-      pushComparison(orderedBlocks[pi], refText, false);
-      pi++; ri++;
-    } else if (pageAhead !== -1 && (refAhead === -1 || pageAhead <= refAhead)) {
-      // The page has extra content the reference doesn't — skip it, then the next pair matches.
-      for (let k = 0; k < pageAhead; k++) pushComparison(orderedBlocks[pi + k], undefined, false);
-      pi += pageAhead;
-      pushComparison(orderedBlocks[pi], refBodyBlocks[ri], true);
-      pi++; ri++;
-    } else {
-      // The reference has extra content the page doesn't — skip it, then the next pair matches.
-      for (let k = 0; k < refAhead; k++) pushComparison(undefined, refBodyBlocks[ri + k], false);
-      ri += refAhead;
-      pushComparison(orderedBlocks[pi], refBodyBlocks[ri], true);
-      pi++; ri++;
-    }
+  } else {
+    // No reference to check against — just surface what's on the page.
+    pagePool.forEach((entry) => {
+      matchesCount++;
+      comparisons.push({
+        category: entry.category,
+        expected: 'No reference provided',
+        actual: entry.text,
+        severity: 'medium',
+        comment: 'No reference document provided — showing extracted webpage content only.',
+        status: 'match'
+      });
+    });
   }
 
   const mismatchesOnly = comparisons.filter(c => c.status === 'mismatch');
   const bodyStatus = comparisons.length === 0 ? 'partial' : mismatchesOnly.length > 0 ? 'mismatch' : 'match';
 
+  // Score & summary: every check (each heading/paragraph/list item/table row, plus title,
+  // description, and URL-if-the-reference-specifies-one) counts as one pass/fail unit, so the
+  // score is just "% of checks that passed" — simple to compute and simple to read.
+  let totalChecks = matchesCount + mismatchesOnly.length + 2; // +2 for title & description
+  let passedChecks = matchesCount + (titleMatches ? 1 : 0) + (descriptionMatches ? 1 : 0);
+  if (labeledUrl) {
+    totalChecks++;
+    if (urlMatches) passedChecks++;
+  }
+  const overallScore = totalChecks > 0 ? Math.round((passedChecks / totalChecks) * 100) : 100;
+  const summary = !hasReference
+    ? 'No reference document provided — showing extracted webpage content only.'
+    : passedChecks === totalChecks
+      ? `All ${totalChecks} checks match the reference document (headings, paragraphs, list items, tables, title, description${labeledUrl ? ', and URL' : ''}).`
+      : `${passedChecks} of ${totalChecks} checks match the reference — ${mismatchesOnly.length} heading/paragraph/list item/table mismatch${mismatchesOnly.length === 1 ? '' : 'es'}${labeledUrl && !urlMatches ? ', plus the URL does not match the reference' : ''}.`;
+
   const recommendations: string[] = [];
   if (mismatchesOnly.length > 0) {
-    recommendations.push('Align mismatched headings, paragraphs, and list items with the reference, in the same order.');
+    recommendations.push('Align mismatched headings, paragraphs, list items, and tables with the reference.');
   }
   if (!hasTitle) recommendations.push('Add a descriptive <title> tag to the webpage <head>.');
   if (!hasDescription) recommendations.push('Add a meta description tag (<meta name="description" content="...">).');
+  if (labeledUrl && !urlMatches) recommendations.push('Publish this content at the URL specified in the reference document.');
+  if (labeledFeatureImage && !featureImageMatches) recommendations.push('Set the featured image to match the one specified in the reference document.');
+
+  // FAQ Schema: a present/absent check, plus (when a reference doc is provided) a check that
+  // every question & answer in the live FAQPage schema actually appears in that doc.
+  const faq = parsedWebData.faqSchema;
+  const faqMismatchDetails: string[] = [];
+  let faqMatchesDoc = false;
+
+  if (faq.present) {
+    if (hasReference) {
+      const normalizedRef = normalizeText(rawReference);
+      faq.qa.forEach((item, idx) => {
+        const qOk = !item.question || normalizedRef.includes(normalizeText(item.question));
+        const aOk = !item.answer || normalizedRef.includes(normalizeText(item.answer));
+        if (!qOk || !aOk) {
+          const label = item.question || `FAQ item #${idx + 1}`;
+          const missingPart = !qOk && !aOk ? 'question and answer' : !qOk ? 'question' : 'answer';
+          faqMismatchDetails.push(`"${label}" — ${missingPart} not found in the reference document.`);
+        }
+      });
+      faqMatchesDoc = faq.qa.length > 0 && faqMismatchDetails.length === 0;
+    } else {
+      faqMatchesDoc = true;
+    }
+  } else if (hasReference && /faq/i.test(rawReference)) {
+    faqMismatchDetails.push('The reference document mentions an FAQ section, but no FAQPage schema was found on the live webpage.');
+  }
+
+  if (faqMismatchDetails.length > 0) {
+    recommendations.push('Fix the FAQ schema so its questions and answers match the reference document.');
+  } else if (!faq.present) {
+    recommendations.push('Add a FAQPage JSON-LD schema for the FAQ section.');
+  }
+
+  const faqStatus: 'match' | 'mismatch' | 'missing' | 'not_present' = !faq.present
+    ? (hasReference && /faq/i.test(rawReference) ? 'missing' : 'not_present')
+    : (faqMatchesDoc ? 'match' : 'mismatch');
 
   return {
     seo: {
+      urlMatches,
+      expectedUrl: labeledUrl || 'No URL specified in the reference',
+      actualUrl: actualUrl || '(No target URL provided)',
+      urlDifference: !labeledUrl ? 'No URL specified in the reference.' : urlMatches ? 'URL matches the reference.' : 'URL differs from the reference.',
       titleMatches,
       expectedTitle: refTitle || (hasReference ? '(reference has no first line to use as a title)' : 'No reference provided'),
       actualTitle: parsedWebData.title || '(No title tag found)',
@@ -1010,8 +1257,32 @@ async function buildLocalReport(
       mismatchesCount: mismatchesOnly.length,
       analysis: ''
     },
-    overallScore: 0,
-    summary: '',
+    faqSchema: {
+      present: faq.present,
+      rawJson: faq.present ? JSON.stringify(faq.raw, null, 2) : '',
+      status: faqStatus,
+      mismatchDetails: faqMismatchDetails,
+      analysis: !faq.present
+        ? (faqStatus === 'missing'
+          ? 'The reference document expects an FAQ section, but no FAQPage schema was found on the webpage.'
+          : 'No FAQPage schema found on the webpage.')
+        : faqMatchesDoc
+          ? `FAQ schema present with ${faq.qa.length} question${faq.qa.length === 1 ? '' : 's'}, matching the reference document.`
+          : `FAQ schema present, but ${faqMismatchDetails.length} item(s) did not match the reference document.`
+    },
+    featureImage: {
+      applicable: !!labeledFeatureImage,
+      expected: labeledFeatureImage || 'No feature image specified in the reference',
+      actual: actualFeatureImage || '(No image found on the webpage)',
+      matches: featureImageMatches,
+      analysis: !labeledFeatureImage
+        ? 'No feature image specified in the reference document.'
+        : featureImageMatches
+          ? 'Feature image matches the reference document.'
+          : 'Feature image differs from the one specified in the reference document.'
+    },
+    overallScore,
+    summary,
     recommendations
   };
 }
@@ -1118,6 +1389,10 @@ ${parsedWebData.listItems.length > 0 ? parsedWebData.listItems.map((li, idx) => 
 ${parsedWebData.tables.length > 0 ? parsedWebData.tables.map((tbl, idx) => `  * Table #${idx + 1}:\n    - Headers: ${tbl.headers.join(' | ') || 'None'}\n    - Rows:\n${tbl.rows.map(r => `      [ ${r.join(' | ')} ]`).join('\n')}`).join("\n") : '  [No tables found]'}
 - Full Extracted Body Copy Text:
 "${parsedWebData.bodyText}"
+- Detected FAQPage Schema (JSON-LD) on the Crawled Webpage:
+${parsedWebData.faqSchema.present ? JSON.stringify(parsedWebData.faqSchema.raw, null, 2) : '[No FAQPage schema found on the webpage]'}
+- Detected Feature Image on the Crawled Webpage (og:image / twitter:image / first <img>): "${parsedWebData.featureImage || '[None found]'}"
+- Canonical URL declared in the Crawled Webpage's HTML source (<link rel="canonical"> / og:url): "${parsedWebData.canonicalUrl || '[None found]'}"
 
 CRITICAL COMPARISON MANDATE:
 1. Examine the Reference Document Screenshot image in high detail. Read every title, heading, paragraph (<p>), list item (<li>), table cell (<td>/<th>), and sentence shown in the document screenshot.
@@ -1134,6 +1409,18 @@ CRITICAL COMPARISON MANDATE:
    - Set 'bodyContent.mismatchesCount' to the number of discrepancies found.
    - Lower the 'overallScore' proportionally (e.g. deduct 15-30 points per mismatch).
    - NEVER give an overallScore of 100 if the webpage copy, paragraphs, list items, or tables do not match the document screenshot 100% exactly word-for-word!
+5. FAQ SCHEMA CHECK: Many reference documents now include an FAQ section (questions & answers) near the bottom.
+   - Set 'faqSchema.present' to whether the "Detected FAQPage Schema" section above shows a schema was found.
+   - Set 'faqSchema.rawJson' to that exact JSON text verbatim (or an empty string if none was found).
+   - If the reference screenshot shows an FAQ section: the schema must be present AND every question/answer pair in it must match the reference word-for-word. If the schema is missing, or any question/answer differs from the reference, set 'faqSchema.status' to "mismatch" (or "missing" if the schema is absent entirely) and explain each discrepancy in 'faqSchema.mismatchDetails'.
+   - If the reference screenshot shows no FAQ section: set 'faqSchema.status' to "not_present" regardless of what's on the webpage, and leave 'faqSchema.mismatchDetails' empty.
+   - If everything matches, set 'faqSchema.status' to "match".
+6. URL CHECK: If the reference screenshot specifies an intended publish URL (e.g. a "URL:" or "URL -" line), compare it against the Canonical URL declared in the Crawled Webpage's HTML source above (ignore protocol and trailing slash differences) — not the Target Source address, since that's just where the page was fetched from, not what its own source claims. Fall back to the Target Source "${targetUrlName}" only if no canonical/og:url was found. Set 'seo.urlMatches', 'seo.expectedUrl', 'seo.actualUrl', and 'seo.urlDifference' accordingly. If the reference specifies no URL, set 'seo.urlMatches' to true and 'seo.expectedUrl' to "No URL specified in the reference".
+7. FEATURE IMAGE CHECK: If the reference screenshot specifies a "Feature image" (e.g. a "Feature image:" or "Feature image -" line, or shows a distinct hero/featured image), compare it against the "Detected Feature Image" above.
+   - Set 'featureImage.applicable' to whether the reference specifies a feature image at all.
+   - Set 'featureImage.expected' and 'featureImage.actual' to the two image references/URLs being compared.
+   - Set 'featureImage.matches' to whether they refer to the same image (same file, allowing for different CDN/query-string wrapping).
+   - If the reference specifies no feature image, set 'applicable' to false and 'matches' to true.
 
 Calculate the Overall Compliance Score (0 to 100) based on strict copy alignment. Return your response strictly as a JSON object adhering to this schema:
 ${JSON.stringify(responseSchema, null, 2)}

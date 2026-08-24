@@ -94,7 +94,6 @@ export default function App() {
             }}
             favorites={favorites}
             onToggleFavorite={handleToggleFavorite}
-            userEmail="stavro3804@gmail.com"
           />
         );
     }
@@ -113,7 +112,7 @@ export default function App() {
       case 'password':
         return 'Cryptographic Key & Password Generator';
       case 'content-checker':
-        return 'Visual Copy & Screenshot Auditor';
+        return 'Content Audit';
       default:
         return 'Utility Tool Manager Workspace';
     }

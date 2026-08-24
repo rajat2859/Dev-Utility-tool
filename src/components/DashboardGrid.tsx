@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileImage, Paintbrush, Key, ArrowRight, Heart, Sparkles, Terminal, Search, ShieldCheck, Zap, CheckCircle2, Activity, FileCode } from 'lucide-react';
+import { FileImage, Paintbrush, Key, ArrowRight, Heart, Sparkles, Terminal, Search, ShieldCheck, Zap, Activity, FileCode } from 'lucide-react';
 import { motion } from 'motion/react';
 import { prefetchTool } from '../App';
 
@@ -7,14 +7,12 @@ interface DashboardGridProps {
   onSelectTool: (toolId: string) => void;
   favorites: string[];
   onToggleFavorite: (toolId: string, event: React.MouseEvent) => void;
-  userEmail: string;
 }
 
 export default function DashboardGrid({
   onSelectTool,
   favorites,
   onToggleFavorite,
-  userEmail,
 }: DashboardGridProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -34,7 +32,7 @@ export default function DashboardGrid({
     },
     {
       id: 'content-checker',
-      name: 'Auditor',
+      name: 'Content Audit',
       description: 'AI-powered visual copy and screenshot compliance auditor. Compares live webpage copy against reference Awesome Screenshot designs.',
       category: 'AI & Quality Assurance',
       icon: ShieldCheck,
@@ -75,9 +73,9 @@ export default function DashboardGrid({
       category: 'Design & Assets',
       icon: Paintbrush,
       badge: 'CSS Synthesizer',
-      badgeStyle: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200',
-      iconBg: 'bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-fuchsia-200/50',
-      hoverBorder: 'hover:border-fuchsia-300 hover:shadow-fuchsia-100/50',
+      badgeStyle: 'bg-slate-200 text-slate-800 border-slate-300',
+      iconBg: 'bg-gradient-to-br from-slate-800 to-black text-white shadow-slate-300/50',
+      hoverBorder: 'hover:border-slate-400 hover:shadow-slate-200/50',
       stats: 'Designer Suite'
     },
     {
@@ -134,10 +132,6 @@ export default function DashboardGrid({
             An ultra-fast suite of utility tools optimized for instant client-side execution, crisp visual accuracy, and AI content analysis.
           </p>
           <div className="pt-2 text-xs text-slate-400 font-mono flex flex-wrap gap-x-4 gap-y-2 items-center">
-            <div className="flex items-center gap-1.5 bg-slate-900/90 px-2.5 py-1 rounded-md border border-slate-800">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-              <span>User: <span className="text-slate-200 font-medium">{userEmail}</span></span>
-            </div>
             <div className="flex items-center gap-1.5 bg-slate-900/90 px-2.5 py-1 rounded-md border border-slate-800">
               <Zap className="h-3.5 w-3.5 text-amber-400" />
               <span>Response Time: <span className="text-emerald-400 font-semibold">&lt;1ms</span></span>
@@ -199,7 +193,7 @@ export default function DashboardGrid({
 
       {/* Tool Grid with Fast Stagger Animation */}
       <motion.div 
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-5"
+        className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5"
         initial="hidden"
         animate="show"
         variants={{
