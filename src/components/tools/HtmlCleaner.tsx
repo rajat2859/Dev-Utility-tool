@@ -635,7 +635,7 @@ export default function HtmlCleaner() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-sky-600" />
+              <Sparkles className="h-5 w-5 text-blue-600" />
               <h2 className="text-base font-bold text-slate-900 tracking-tight">
                 HTML Cleaner & Visual Editor
               </h2>
@@ -649,10 +649,10 @@ export default function HtmlCleaner() {
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               onClick={() => setOptions(DEFAULT_OPTIONS)}
-              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200/80 cursor-pointer transition-colors flex items-center gap-1.5 shadow-2xs"
+              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200/80 cursor-pointer transition-colors flex items-center gap-1.5 shadow-2xs"
               title="Reset to default screenshot options"
             >
-              <RefreshCw className="h-3.5 w-3.5 text-sky-600" />
+              <RefreshCw className="h-3.5 w-3.5 text-blue-600" />
               <span>Default Options</span>
             </button>
             <button
@@ -672,7 +672,7 @@ export default function HtmlCleaner() {
             <button
               onClick={() => setShowReplaceBar(!showReplaceBar)}
               className={`p-1.5 rounded-lg border text-xs cursor-pointer transition-colors ${
-                showReplaceBar ? 'bg-sky-100 border-sky-300 text-sky-800' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                showReplaceBar ? 'bg-blue-100 border-blue-300 text-blue-800' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
               }`}
               title="Find & Replace Utility"
             >
@@ -702,14 +702,14 @@ export default function HtmlCleaner() {
                 placeholder="Find (text or regex)..."
                 value={findText}
                 onChange={(e) => setFindText(e.target.value)}
-                className="flex-1 min-w-[180px] px-3 py-1.5 text-xs font-mono rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="flex-1 min-w-[180px] px-3 py-1.5 text-xs font-mono rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <input
                 type="text"
                 placeholder="Replace with..."
                 value={replaceText}
                 onChange={(e) => setReplaceText(e.target.value)}
-                className="flex-1 min-w-[180px] px-3 py-1.5 text-xs font-mono rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="flex-1 min-w-[180px] px-3 py-1.5 text-xs font-mono rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </motion.div>
           )}
@@ -723,14 +723,14 @@ export default function HtmlCleaner() {
           {/* Window Header */}
           <div className="bg-slate-900 text-slate-200 px-3.5 py-2.5 flex items-center justify-between gap-2 border-b border-slate-800">
             <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-sky-400" />
+              <Eye className="h-4 w-4 text-blue-400" />
               <span className="font-bold text-xs tracking-tight text-white">Visual Content</span>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="text-[11px] font-semibold text-sky-400 hover:text-sky-300 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                 title="Upload File"
               >
                 <Upload className="h-3 w-3" />
@@ -814,7 +814,7 @@ export default function HtmlCleaner() {
           {/* Editable Content Window Area */}
           <div
             className={`flex-1 flex flex-col relative bg-white min-h-0 ${
-              dragActive ? 'bg-sky-50/50 ring-2 ring-sky-500 ring-inset' : ''
+              dragActive ? 'bg-blue-50/50 ring-2 ring-blue-500 ring-inset' : ''
             }`}
             onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
             onDragLeave={() => setDragActive(false)}
@@ -851,7 +851,7 @@ export default function HtmlCleaner() {
 
               <button
                 onClick={handleDownload}
-                className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-sky-600 hover:bg-sky-500 text-white flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
+                className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
                 title="Download Clean File"
               >
                 <Download className="h-3.5 w-3.5" />
@@ -867,7 +867,7 @@ export default function HtmlCleaner() {
               value={rightCodeHtml}
               onChange={(e) => handleRightCodeChange(e.target.value)}
               placeholder="Cleaned HTML code will appear here (live editable)..."
-              className="w-full flex-1 p-4 font-mono text-xs text-slate-200 bg-transparent focus:outline-none resize-none leading-relaxed selection:bg-sky-600 focus:ring-1 focus:ring-sky-500/50 min-h-0 overflow-y-auto"
+              className="w-full flex-1 p-4 font-mono text-xs text-slate-200 bg-transparent focus:outline-none resize-none leading-relaxed selection:bg-blue-600 focus:ring-1 focus:ring-blue-500/50 min-h-0 overflow-y-auto"
               spellCheck={false}
             />
           </div>
@@ -875,20 +875,19 @@ export default function HtmlCleaner() {
       </div>
 
       {/* PANEL BELOW: CLEANING OPTIONS CHECKBOXES DIV */}
-      <div className="bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden flex flex-col">
-        {/* Header styled like screenshot (Dark Blue bar with master checkbox) */}
-        <div className="bg-[#3b5998] text-white px-4 py-2.5 flex items-center justify-between shadow-xs border-b border-[#2d4373]">
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col">
+        <div className="bg-blue-600 text-white px-4 py-2.5 flex items-center justify-between shadow-xs border-b border-blue-700">
           <div className="flex items-center gap-2.5">
             <input
               type="checkbox"
               checked={isMasterChecked}
               onChange={handleMasterToggle}
-              className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-400 cursor-pointer bg-white"
+              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-300 cursor-pointer bg-white"
               title="Select / Deselect All Options"
             />
             <span className="font-bold text-sm tracking-wide text-white">Cleaning options</span>
           </div>
-          <div className="text-xs text-slate-200 font-medium">
+          <div className="text-xs text-blue-100 font-medium">
             {cleanedResult.stats.tagsRemoved + cleanedResult.stats.attrsRemoved} operations performed
           </div>
         </div>
@@ -900,15 +899,15 @@ export default function HtmlCleaner() {
             return (
               <label
                 key={key}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-slate-100 hover:border-sky-200 hover:bg-sky-50/50 cursor-pointer select-none transition-all group"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 cursor-pointer select-none transition-all group"
               >
                 <input
                   type="checkbox"
                   checked={isChecked}
                   onChange={(e) => setOptions({ ...options, [key]: e.target.checked })}
-                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                 />
-                <Icon className="h-4 w-4 text-slate-500 group-hover:text-sky-600 shrink-0 transition-colors" />
+                <Icon className="h-4 w-4 text-slate-500 group-hover:text-blue-600 shrink-0 transition-colors" />
                 <span className={`text-xs transition-colors ${isChecked ? 'text-slate-900 font-semibold' : 'text-slate-600 font-medium'}`}>
                   {label}
                 </span>

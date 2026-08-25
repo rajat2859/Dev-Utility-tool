@@ -119,7 +119,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950 font-sans antialiased flex selection:bg-indigo-600 selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-950 font-sans antialiased flex selection:bg-blue-600 selection:text-white">
       <Sidebar
         currentView={activeView}
         onSelectView={(id) => {
@@ -156,7 +156,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <span className="inline-flex text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 px-2 sm:px-2.5 py-1 rounded-md font-semibold items-center gap-1.5 shadow-2xs">
+            <span className="inline-flex text-xs bg-blue-50 text-blue-700 border border-blue-200/80 px-2 sm:px-2.5 py-1 rounded-md font-semibold items-center gap-1.5 shadow-2xs">
               <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0 animate-pulse" />
               <span className="hidden sm:inline font-mono">Instant Turbo Engine</span>
               <span className="sm:hidden font-mono text-[11px]">Turbo</span>

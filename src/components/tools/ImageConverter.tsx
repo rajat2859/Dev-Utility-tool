@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, Trash2, Download, RefreshCw, Check, AlertCircle, FileCode, Sliders, ChevronDown, Info, TrendingDown, TrendingUp, Sparkles } from 'lucide-react';
+import { UploadCloud, Trash2, Download, RefreshCw, Check, AlertCircle, FileCode, Sliders, ChevronDown, Info, TrendingDown, TrendingUp, Minus, Sparkles, Zap } from 'lucide-react';
 
 interface ImageFile {
   id: string;
@@ -681,23 +681,24 @@ export default function ImageConverter() {
     : 0;
 
   return (
-    <div className="space-y-6 text-zinc-900">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b pb-4 border-zinc-200">
+    <div className="space-y-6 text-slate-900">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b pb-4 border-slate-200">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-base font-semibold tracking-tight">Bulk Image Format Converter</h2>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800 border border-zinc-200">
-              ⚡ 100% Offline Local Processing
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
+              <Zap className="h-3 w-3 text-amber-500" />
+              100% Offline Local Processing
             </span>
           </div>
-          <p className="text-xs text-zinc-500 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Batch-convert files securely in browser. Conversions run purely locally on your device.
           </p>
         </div>
         {images.length > 0 && (
           <button
             onClick={clearAll}
-            className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white text-rose-600 px-2.5 py-1 text-xs font-medium hover:bg-rose-50 transition-colors cursor-pointer shadow-xs"
+            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white text-rose-600 px-2.5 py-1 text-xs font-medium hover:bg-rose-50 transition-colors cursor-pointer shadow-xs"
           >
             <Trash2 className="h-3.5 w-3.5" />
             Clear Files
@@ -706,22 +707,22 @@ export default function ImageConverter() {
       </div>
 
       {/* Global Config Settings Bar */}
-      <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs space-y-4">
-        <div className="flex items-center gap-2 pb-2.5 border-b border-zinc-100">
-          <Sliders className="h-4 w-4 text-zinc-700" />
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-900">Global Configurations (Bulk Edit)</h3>
+      <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-2xs space-y-4">
+        <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
+          <Sliders className="h-4 w-4 text-blue-600" />
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900">Global Configurations (Bulk Edit)</h3>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1">
-            <label className="text-xs font-medium text-zinc-500 flex items-center justify-between">
+            <label className="text-xs font-medium text-slate-500 flex items-center justify-between">
               <span>Target Output</span>
-              <span className="text-[10px] font-mono font-semibold text-zinc-900 uppercase">{globalFormat}</span>
+              <span className="text-[10px] font-mono font-semibold text-slate-900 uppercase">{globalFormat}</span>
             </label>
             <div className="relative">
               <select
                 value={globalFormat}
                 onChange={(e) => setGlobalFormat(e.target.value as any)}
-                className="w-full text-xs font-medium rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-zinc-900 focus:ring-1 focus:ring-zinc-950 appearance-none cursor-pointer shadow-xs"
+                className="w-full text-xs font-medium rounded-md border border-slate-200 bg-white px-3 py-1.5 text-slate-900 focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer shadow-xs"
               >
                 <option value="webp">WebP (Optimized/Modern)</option>
                 <option value="avif">AVIF (Ultra Optimized)</option>
@@ -729,21 +730,21 @@ export default function ImageConverter() {
                 <option value="jpeg">JPEG (High Compatibility)</option>
                 <option value="svg">SVG (Scale Vector Graphic)</option>
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-zinc-400">
+              <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-slate-400">
                 <ChevronDown className="h-3.5 w-3.5" />
               </div>
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-zinc-500 block">
+            <label className="text-xs font-medium text-slate-500 block">
               Compression Mode
             </label>
             <div className="relative">
               <select
                 value={globalCompressionMode}
                 onChange={(e) => handleGlobalCompressionChange(e.target.value as any)}
-                className="w-full text-xs font-medium rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-zinc-900 focus:ring-1 focus:ring-zinc-950 appearance-none cursor-pointer shadow-xs"
+                className="w-full text-xs font-medium rounded-md border border-slate-200 bg-white px-3 py-1.5 text-slate-900 focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer shadow-xs"
               >
                 <option value="lossless">Lossless (100% Quality)</option>
                 <option value="balanced">Balanced (High Optimize)</option>
@@ -753,7 +754,7 @@ export default function ImageConverter() {
                 )}
                 <option value="custom">Custom (Use Slider)</option>
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-zinc-400">
+              <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-slate-400">
                 <ChevronDown className="h-3.5 w-3.5" />
               </div>
             </div>
@@ -761,9 +762,9 @@ export default function ImageConverter() {
 
           {(globalFormat === 'jpeg' || globalFormat === 'webp' || globalFormat === 'avif') ? (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-zinc-500 flex items-center justify-between">
+              <label className="text-xs font-medium text-slate-500 flex items-center justify-between">
                 <span>Output Quality</span>
-                <span className="text-xs font-mono font-semibold text-zinc-900">
+                <span className="text-xs font-mono font-semibold text-slate-900">
                   {globalCompressionMode === 'below100kb' ? '<100KB' : `${globalQuality}%`}
                 </span>
               </label>
@@ -774,18 +775,18 @@ export default function ImageConverter() {
                 value={globalQuality}
                 disabled={globalCompressionMode === 'below100kb'}
                 onChange={(e) => handleGlobalQualityChange(Number(e.target.value))}
-                className="w-full accent-zinc-900 h-1.5 bg-zinc-100 rounded-lg cursor-pointer disabled:opacity-50"
+                className="w-full accent-blue-600 h-1.5 bg-slate-100 rounded-lg cursor-pointer disabled:opacity-50"
               />
             </div>
           ) : globalFormat === 'svg' ? (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-zinc-500 block">SVG Vector Mode</label>
-              <div className="grid grid-cols-2 gap-1 p-0.5 bg-zinc-100 border border-zinc-200 rounded-md">
+              <label className="text-xs font-medium text-slate-500 block">SVG Vector Mode</label>
+              <div className="grid grid-cols-2 gap-1 p-0.5 bg-slate-100 border border-slate-200 rounded-md">
                 <button
                   type="button"
                   onClick={() => setGlobalSvgMode('embed')}
                   className={`py-1 text-xs font-medium rounded cursor-pointer ${
-                    globalSvgMode === 'embed' ? 'bg-white shadow-xs text-zinc-900 font-semibold' : 'text-zinc-500'
+                    globalSvgMode === 'embed' ? 'bg-white shadow-xs text-slate-900 font-semibold' : 'text-slate-500'
                   }`}
                 >
                   Embed
@@ -794,7 +795,7 @@ export default function ImageConverter() {
                   type="button"
                   onClick={() => setGlobalSvgMode('trace')}
                   className={`py-1 text-xs font-medium rounded cursor-pointer ${
-                    globalSvgMode === 'trace' ? 'bg-white shadow-xs text-zinc-900 font-semibold' : 'text-zinc-500'
+                    globalSvgMode === 'trace' ? 'bg-white shadow-xs text-slate-900 font-semibold' : 'text-slate-500'
                   }`}
                 >
                   Trace
@@ -803,24 +804,24 @@ export default function ImageConverter() {
             </div>
           ) : (
             <div className="space-y-1 opacity-40">
-              <label className="text-xs font-medium text-zinc-400 block">Settings</label>
-              <div className="text-xs py-1 text-zinc-400 italic">No extra settings.</div>
+              <label className="text-xs font-medium text-slate-400 block">Settings</label>
+              <div className="text-xs py-1 text-slate-400 italic">No extra settings.</div>
             </div>
           )}
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-zinc-500 flex items-center justify-between">
+            <label className="text-xs font-medium text-slate-500 flex items-center justify-between">
               <span>Resolution Scale</span>
-              <span className="text-xs font-mono font-semibold text-zinc-900">x{globalScale}</span>
+              <span className="text-xs font-mono font-semibold text-slate-900">x{globalScale}</span>
             </label>
-            <div className="grid grid-cols-4 gap-1 p-0.5 bg-zinc-100 border border-zinc-200 rounded-md">
+            <div className="grid grid-cols-4 gap-1 p-0.5 bg-slate-100 border border-slate-200 rounded-md">
               {[0.5, 1, 2, 4].map((sc) => (
                 <button
                   key={sc}
                   type="button"
                   onClick={() => setGlobalScale(sc)}
                   className={`py-1 text-xs font-medium rounded cursor-pointer ${
-                    globalScale === sc ? 'bg-white shadow-xs text-zinc-900 font-semibold' : 'text-zinc-500'
+                    globalScale === sc ? 'bg-white shadow-xs text-slate-900 font-semibold' : 'text-slate-500'
                   }`}
                 >
                   {sc}x
@@ -833,7 +834,7 @@ export default function ImageConverter() {
             <button
               onClick={applyGlobalConfig}
               disabled={images.length === 0}
-              className="w-full text-xs font-medium py-1.5 px-3 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 rounded-md shadow-xs cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full text-xs font-medium py-1.5 px-3 bg-blue-600 text-white hover:bg-blue-700 rounded-md shadow-xs cursor-pointer transition-colors disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
             >
               Apply to Queue
             </button>
@@ -866,51 +867,52 @@ export default function ImageConverter() {
         const activeSavingsPct = Math.round(((activeProjectedSize - activeOriginalSize) / activeOriginalSize) * 100);
 
         return (
-          <div className="bg-zinc-50 border border-zinc-200 p-5 rounded-xl space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-200/80">
+          <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-zinc-200 text-zinc-900 rounded">
+                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shadow-2xs">
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-semibold text-zinc-900">Sizing Forecast Simulator</h3>
-                  <p className="text-[11px] text-zinc-500">
+                  <h3 className="text-xs font-semibold text-slate-900">Sizing Forecast Simulator</h3>
+                  <p className="text-[11px] text-slate-500">
                     {isQueueEmpty ? 'Mode: Simulated Sample (2.5MB JPEG)' : 'Mode: Active Queue Sizing'}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className={`font-mono text-xs font-semibold px-2 py-0.5 rounded border ${
-                  activeSavingsPct < 0 
-                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200' 
-                    : activeSavingsPct === 0 
-                      ? 'text-zinc-600 bg-zinc-100 border-zinc-200' 
+                <span className={`inline-flex items-center gap-1 font-mono text-xs font-semibold px-2 py-0.5 rounded border ${
+                  activeSavingsPct < 0
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                    : activeSavingsPct === 0
+                      ? 'text-slate-600 bg-slate-100 border-slate-200'
                       : 'text-amber-700 bg-amber-50 border-amber-200'
                 }`}>
-                  {activeSavingsPct < 0 
-                    ? `📉 Saves ${Math.abs(activeSavingsPct)}%` 
-                    : activeSavingsPct === 0 
-                      ? '⚖️ No change' 
-                      : `📈 +${activeSavingsPct}% size`
-                  }
+                  {activeSavingsPct < 0 ? (
+                    <><TrendingDown className="h-3.5 w-3.5" /> Saves {Math.abs(activeSavingsPct)}%</>
+                  ) : activeSavingsPct === 0 ? (
+                    <><Minus className="h-3.5 w-3.5" /> No change</>
+                  ) : (
+                    <><TrendingUp className="h-3.5 w-3.5" /> +{activeSavingsPct}% size</>
+                  )}
                 </span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs font-medium text-zinc-500">
+              <div className="flex items-center justify-between text-xs font-medium text-slate-500">
                 <span>Size Comparison</span>
-                <span className="font-mono text-zinc-900 font-semibold">
+                <span className="font-mono text-slate-900 font-semibold">
                   {formatBytes(activeOriginalSize)} → {formatBytes(activeProjectedSize)}
                 </span>
               </div>
 
-              <div className="h-3 bg-zinc-200 rounded-full overflow-hidden flex relative">
+              <div className="h-3 bg-slate-200 rounded-full overflow-hidden flex relative">
                 {activeSavingsPct < 0 ? (
                   <>
                     <div 
-                      className="bg-zinc-900 h-full transition-all duration-300" 
+                      className="bg-slate-900 h-full transition-all duration-300" 
                       style={{ width: `${Math.max(10, 100 + activeSavingsPct)}%` }}
                     />
                     <div className="bg-emerald-500 h-full opacity-80 flex-1" />
@@ -918,7 +920,7 @@ export default function ImageConverter() {
                 ) : (
                   <>
                     <div 
-                      className="bg-zinc-900 h-full transition-all duration-300" 
+                      className="bg-slate-900 h-full transition-all duration-300" 
                       style={{ width: `${Math.max(20, Math.round((activeOriginalSize / activeProjectedSize) * 100))}%` }}
                     />
                     <div className="bg-amber-500 h-full flex-1" />
@@ -936,10 +938,10 @@ export default function ImageConverter() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-8 text-center flex flex-col items-center justify-center cursor-pointer transition-colors ${
+        className={`border-2 border-dashed rounded-2xl p-8 text-center flex flex-col items-center justify-center cursor-pointer transition-colors ${
           isDragging
-            ? 'border-zinc-900 bg-zinc-100'
-            : 'border-zinc-200 hover:border-zinc-400 bg-zinc-50/50'
+            ? 'border-blue-500 bg-blue-50'
+            : 'border-slate-200 hover:border-blue-300 bg-slate-50/50'
         }`}
       >
         <input
@@ -950,24 +952,24 @@ export default function ImageConverter() {
           accept="image/*"
           className="hidden"
         />
-        <div className="h-10 w-10 bg-zinc-100 border border-zinc-200 rounded-lg flex items-center justify-center mb-3 text-zinc-700">
+        <div className="h-10 w-10 bg-slate-100 border border-slate-200 rounded-lg flex items-center justify-center mb-3 text-slate-700">
           <UploadCloud className="h-5 w-5" />
         </div>
-        <span className="text-xs font-semibold text-zinc-900 block mb-1">
+        <span className="text-xs font-semibold text-slate-900 block mb-1">
           Drag and drop images here or click to browse
         </span>
-        <span className="text-[11px] text-zinc-400">
+        <span className="text-[11px] text-slate-400">
           Supports PNG, JPEG, SVG, WebP, GIF, BMP, TIFF formats.
         </span>
       </div>
 
       {/* Uploaded Images Table List */}
       {images.length > 0 && (
-        <div className="bg-white border border-zinc-200 rounded-xl shadow-xs overflow-hidden">
-          <div className="px-5 py-3 border-b border-zinc-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-zinc-50">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-slate-50">
             <div className="space-y-0.5">
-              <span className="text-xs font-semibold text-zinc-900">Queue ({images.length} files)</span>
-              <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
+              <span className="text-xs font-semibold text-slate-900">Queue ({images.length} files)</span>
+              <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
                 <span>Original: {formatBytes(totalOriginalSize)}</span>
                 <span>•</span>
                 <span>Projected: ~{formatBytes(totalProjectedSize)}</span>
@@ -977,16 +979,16 @@ export default function ImageConverter() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleConvertAll}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-zinc-900 text-zinc-50 rounded-md text-xs font-medium hover:bg-zinc-800 shadow-xs cursor-pointer transition-colors"
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 shadow-xs cursor-pointer transition-colors"
               >
-                <RefreshCw className="h-3.5 w-3.5 text-zinc-300" />
+                <RefreshCw className="h-3.5 w-3.5 text-blue-200" />
                 Convert All
               </button>
               
               <button
                 onClick={handleDownloadAll}
                 disabled={images.length === 0 || images.every((img) => img.status === 'processing')}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-zinc-100 text-zinc-900 border border-zinc-200 rounded-md text-xs font-medium hover:bg-zinc-200 shadow-xs transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-900 border border-slate-200 rounded-md text-xs font-medium hover:bg-slate-200 shadow-xs transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Download className="h-3.5 w-3.5" />
                 Download Batch
@@ -994,13 +996,13 @@ export default function ImageConverter() {
             </div>
           </div>
 
-          <div className="divide-y divide-zinc-100 overflow-x-auto">
+          <div className="divide-y divide-slate-100 overflow-x-auto">
             {images.map((img) => (
-              <div key={img.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-zinc-50/50 transition-colors">
+              <div key={img.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
                 
                 {/* Visual File Preview Column */}
                 <div className="flex items-center gap-3 min-w-[220px] max-w-sm">
-                  <div className="h-12 w-12 rounded-lg overflow-hidden border border-zinc-200 shrink-0 bg-zinc-100 flex items-center justify-center relative">
+                  <div className="h-12 w-12 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-100 flex items-center justify-center relative">
                     <img
                       src={img.previewUrl}
                       alt={img.name}
@@ -1009,10 +1011,10 @@ export default function ImageConverter() {
                     />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-xs font-semibold text-zinc-900 block truncate" title={img.name}>
+                    <span className="text-xs font-semibold text-slate-900 block truncate" title={img.name}>
                       {img.name}
                     </span>
-                    <div className="flex items-center gap-2 mt-0.5 text-[11px] text-zinc-400 font-mono">
+                    <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400 font-mono">
                       <span>{formatBytes(img.size)}</span>
                       <span>•</span>
                       <span>{img.width}x{img.height}px</span>
@@ -1023,11 +1025,11 @@ export default function ImageConverter() {
                 {/* Settings Block for this item */}
                 <div className="flex flex-wrap items-center gap-3 flex-1">
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-zinc-400 block uppercase font-medium">Format</span>
+                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Format</span>
                     <select
                       value={img.targetFormat}
                       onChange={(e) => updateIndividualImage(img.id, 'targetFormat', e.target.value as any)}
-                      className="text-xs font-medium rounded-md border border-zinc-200 bg-white px-2 py-1 text-zinc-900 focus:ring-1 focus:ring-zinc-950 shadow-xs"
+                      className="text-xs font-medium rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500/50 shadow-xs"
                     >
                       <option value="webp">WebP</option>
                       <option value="avif">AVIF</option>
@@ -1038,11 +1040,11 @@ export default function ImageConverter() {
                   </div>
 
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-zinc-400 block uppercase font-medium">Mode</span>
+                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Mode</span>
                     <select
                       value={img.compressionMode}
                       onChange={(e) => updateIndividualImage(img.id, 'compressionMode', e.target.value as any)}
-                      className="text-xs font-medium rounded-md border border-zinc-200 bg-white px-2 py-1 text-zinc-900 focus:ring-1 focus:ring-zinc-950 shadow-xs"
+                      className="text-xs font-medium rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500/50 shadow-xs"
                     >
                       <option value="lossless">Lossless</option>
                       <option value="balanced">Balanced</option>
@@ -1055,11 +1057,11 @@ export default function ImageConverter() {
                   </div>
 
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-zinc-400 block uppercase font-medium">Scale</span>
+                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Scale</span>
                     <select
                       value={img.scale}
                       onChange={(e) => updateIndividualImage(img.id, 'scale', Number(e.target.value))}
-                      className="text-xs font-medium rounded-md border border-zinc-200 bg-white px-2 py-1 text-zinc-900 focus:ring-1 focus:ring-zinc-950 shadow-xs"
+                      className="text-xs font-medium rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500/50 shadow-xs"
                     >
                       <option value={0.5}>0.5x</option>
                       <option value={1.0}>1x</option>
@@ -1073,13 +1075,13 @@ export default function ImageConverter() {
                 <div className="flex items-center gap-3 shrink-0 justify-end">
                   <div className="text-right">
                     {img.status === 'pending' && (
-                      <span className="text-xs font-mono text-zinc-400">
+                      <span className="text-xs font-mono text-slate-400">
                         ~{formatBytes(getProjectedSize(img))}
                       </span>
                     )}
                     {img.status === 'processing' && (
-                      <span className="inline-flex items-center gap-1 text-xs text-zinc-900 font-medium">
-                        <RefreshCw className="h-3 w-3 animate-spin text-zinc-900" />
+                      <span className="inline-flex items-center gap-1 text-xs text-slate-900 font-medium">
+                        <RefreshCw className="h-3 w-3 animate-spin text-slate-900" />
                         Converting...
                       </span>
                     )}
@@ -1101,7 +1103,7 @@ export default function ImageConverter() {
                     {img.status === 'completed' ? (
                       <button
                         onClick={() => triggerDownload(img)}
-                        className="p-1.5 rounded-md bg-zinc-900 text-zinc-50 hover:bg-zinc-800 cursor-pointer shadow-xs transition-colors"
+                        className="p-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 cursor-pointer shadow-xs transition-colors"
                         title="Download Asset"
                       >
                         <Download className="h-3.5 w-3.5" />
@@ -1109,7 +1111,7 @@ export default function ImageConverter() {
                     ) : (
                       <button
                         onClick={() => handleDownloadSingle(img)}
-                        className="p-1.5 rounded-md bg-zinc-900 text-zinc-50 hover:bg-zinc-800 cursor-pointer shadow-xs transition-colors"
+                        className="p-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 cursor-pointer shadow-xs transition-colors"
                         title="Convert & Download Asset"
                       >
                         <Download className="h-3.5 w-3.5" />
@@ -1118,7 +1120,7 @@ export default function ImageConverter() {
 
                     <button
                       onClick={() => removeImage(img.id)}
-                      className="p-1.5 rounded-md text-zinc-400 hover:text-rose-600 hover:bg-zinc-100 cursor-pointer transition-colors"
+                      className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-slate-100 cursor-pointer transition-colors"
                       title="Remove file"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -1134,12 +1136,12 @@ export default function ImageConverter() {
       )}
 
       {/* Developer tips footer */}
-      <div className="bg-zinc-50 border border-zinc-200 p-4 rounded-xl text-zinc-500 text-xs leading-relaxed flex items-start gap-2.5">
-        <FileCode className="h-4 w-4 text-zinc-700 shrink-0 mt-0.5" />
+      <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-slate-500 text-xs leading-relaxed flex items-start gap-2.5">
+        <FileCode className="h-4 w-4 text-slate-700 shrink-0 mt-0.5" />
         <div className="space-y-0.5">
-          <span className="font-semibold text-zinc-900 block">Digital Format Engineering Tips</span>
+          <span className="font-semibold text-slate-900 block">Digital Format Engineering Tips</span>
           <p>
-            • <strong className="text-zinc-900">WebP</strong> offers ~30% smaller sizes than PNG while keeping alpha transparency.
+            • <strong className="text-slate-900">WebP</strong> offers ~30% smaller sizes than PNG while keeping alpha transparency.
           </p>
         </div>
       </div>

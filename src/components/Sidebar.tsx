@@ -39,7 +39,7 @@ export default function Sidebar({
       {/* Mobile top bar trigger */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 flex items-center justify-between z-30">
         <div className="flex items-center gap-2.5">
-          <div className="h-7 w-7 bg-indigo-600 rounded-md flex items-center justify-center text-white font-bold text-xs shadow-xs">
+          <div className="h-7 w-7 bg-blue-600 rounded-md flex items-center justify-center text-white font-bold text-xs shadow-xs">
             <Wrench className="h-4 w-4" />
           </div>
           <span className="font-semibold text-sm tracking-tight text-slate-900">Utility Tool Manager</span>
@@ -74,9 +74,9 @@ export default function Sidebar({
       >
         {/* Header */}
         <div className="h-14 px-5 border-b border-slate-800 flex items-center gap-3 bg-slate-950/60">
-          <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm relative overflow-hidden group">
+          <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm relative overflow-hidden group">
             <Wrench className="h-4 w-4 text-white" />
-            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-violet-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-blue-500 to-violet-500 opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
           <div className="min-w-0 flex-1">
             <span className="font-semibold text-sm tracking-tight text-white block leading-tight truncate">
@@ -114,7 +114,7 @@ export default function Sidebar({
                 {isActive && (
                   <motion.div
                     layoutId="activeSidebarPill"
-                    className="absolute inset-0 bg-indigo-600 rounded-lg shadow-sm"
+                    className="absolute inset-0 bg-blue-600 rounded-lg shadow-sm"
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
@@ -125,7 +125,7 @@ export default function Sidebar({
 
                 {item.badge && (
                   <span className={`relative z-10 text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
-                    isActive ? 'bg-indigo-800 text-indigo-100 border border-indigo-700' : 'bg-slate-800 text-indigo-300'
+                    isActive ? 'bg-blue-800 text-blue-100 border border-blue-700' : 'bg-slate-800 text-blue-300'
                   }`}>
                     {item.badge}
                   </span>

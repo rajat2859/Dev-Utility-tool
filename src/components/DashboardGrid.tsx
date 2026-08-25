@@ -25,9 +25,9 @@ export default function DashboardGrid({
       category: 'AI & Quality Assurance',
       icon: Search,
       badge: 'SEO Inspector',
-      badgeStyle: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-      iconBg: 'bg-gradient-to-br from-indigo-600 to-blue-600 text-white shadow-indigo-200/50',
-      hoverBorder: 'hover:border-indigo-300 hover:shadow-indigo-100/50',
+      badgeStyle: 'bg-blue-100 text-blue-700 border-blue-200',
+      iconBg: 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-blue-200/50',
+      hoverBorder: 'hover:border-blue-300 hover:shadow-blue-100/50',
       stats: 'SEO & Schemas'
     },
     {
@@ -37,9 +37,9 @@ export default function DashboardGrid({
       category: 'AI & Quality Assurance',
       icon: ShieldCheck,
       badge: 'Visual AI',
-      badgeStyle: 'bg-purple-100 text-purple-700 border-purple-200',
-      iconBg: 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-purple-200/50',
-      hoverBorder: 'hover:border-purple-300 hover:shadow-purple-100/50',
+      badgeStyle: 'bg-slate-200 text-slate-800 border-slate-300',
+      iconBg: 'bg-gradient-to-br from-slate-800 to-black text-white shadow-slate-300/50',
+      hoverBorder: 'hover:border-slate-400 hover:shadow-slate-200/50',
       stats: 'Visual QA'
     },
     {
@@ -49,9 +49,9 @@ export default function DashboardGrid({
       category: 'Design & Assets',
       icon: FileCode,
       badge: 'Sanitizer',
-      badgeStyle: 'bg-sky-100 text-sky-800 border-sky-200',
-      iconBg: 'bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-sky-200/50',
-      hoverBorder: 'hover:border-sky-300 hover:shadow-sky-100/50',
+      badgeStyle: 'bg-blue-50 text-blue-700 border-blue-200',
+      iconBg: 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-200/50',
+      hoverBorder: 'hover:border-blue-300 hover:shadow-blue-100/50',
       stats: '100% Offline'
     },
     {
@@ -61,9 +61,9 @@ export default function DashboardGrid({
       category: 'Design & Assets',
       icon: FileImage,
       badge: 'High Speed',
-      badgeStyle: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-      iconBg: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-200/50',
-      hoverBorder: 'hover:border-emerald-300 hover:shadow-emerald-100/50',
+      badgeStyle: 'bg-slate-100 text-slate-700 border-slate-200',
+      iconBg: 'bg-gradient-to-br from-slate-700 to-slate-900 text-white shadow-slate-300/50',
+      hoverBorder: 'hover:border-slate-300 hover:shadow-slate-100/50',
       stats: '100% Offline'
     },
     {
@@ -73,9 +73,9 @@ export default function DashboardGrid({
       category: 'Design & Assets',
       icon: Paintbrush,
       badge: 'CSS Synthesizer',
-      badgeStyle: 'bg-slate-200 text-slate-800 border-slate-300',
-      iconBg: 'bg-gradient-to-br from-slate-800 to-black text-white shadow-slate-300/50',
-      hoverBorder: 'hover:border-slate-400 hover:shadow-slate-200/50',
+      badgeStyle: 'bg-blue-100 text-blue-800 border-blue-300',
+      iconBg: 'bg-gradient-to-br from-blue-700 to-black text-white shadow-blue-300/50',
+      hoverBorder: 'hover:border-blue-400 hover:shadow-blue-200/50',
       stats: 'Designer Suite'
     },
     {
@@ -85,9 +85,9 @@ export default function DashboardGrid({
       category: 'Security & Keys',
       icon: Key,
       badge: 'High Entropy',
-      badgeStyle: 'bg-amber-100 text-amber-800 border-amber-200',
-      iconBg: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-200/50',
-      hoverBorder: 'hover:border-amber-300 hover:shadow-amber-100/50',
+      badgeStyle: 'bg-slate-200 text-slate-900 border-slate-300',
+      iconBg: 'bg-gradient-to-br from-slate-900 to-black text-white shadow-slate-300/50',
+      hoverBorder: 'hover:border-slate-400 hover:shadow-slate-200/50',
       stats: 'Cryptographic'
     }
   ];
@@ -114,15 +114,15 @@ export default function DashboardGrid({
     <div className="space-y-6">
       {/* Hero Banner Section */}
       <div className="relative overflow-hidden bg-slate-950 rounded-2xl p-6 md:p-8 text-white shadow-xl border border-slate-800">
-        <div className="absolute top-0 right-0 p-8 opacity-15 pointer-events-none text-indigo-400">
+        <div className="absolute top-0 right-0 p-8 opacity-15 pointer-events-none text-blue-400">
           <Terminal size={220} />
         </div>
-        <div className="absolute -left-12 -top-12 w-48 h-48 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -left-12 -top-12 w-48 h-48 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-slate-700/30 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 max-w-2xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-950/80 text-indigo-300 border border-indigo-700/60 shadow-xs backdrop-blur-xs">
-            <Sparkles className="h-3.5 w-3.5 text-indigo-400 animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-950/80 text-blue-300 border border-blue-700/60 shadow-xs backdrop-blur-xs">
+            <Sparkles className="h-3.5 w-3.5 text-blue-400 animate-pulse" />
             <span>Utility Tool Manager v2.0</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
@@ -137,8 +137,8 @@ export default function DashboardGrid({
               <span>Response Time: <span className="text-emerald-400 font-semibold">&lt;1ms</span></span>
             </div>
             <div className="flex items-center gap-1.5 bg-slate-900/90 px-2.5 py-1 rounded-md border border-slate-800">
-              <Activity className="h-3.5 w-3.5 text-indigo-400" />
-              <span>Status: <span className="text-indigo-300 font-semibold">Ultra Fast</span></span>
+              <Activity className="h-3.5 w-3.5 text-blue-400" />
+              <span>Status: <span className="text-blue-300 font-semibold">Ultra Fast</span></span>
             </div>
           </div>
         </div>
@@ -154,7 +154,7 @@ export default function DashboardGrid({
             placeholder="Search tools, formats, or security keys..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-8 py-2.5 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-all text-slate-900 placeholder:text-slate-400 shadow-2xs"
+            className="w-full pl-10 pr-8 py-2.5 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all text-slate-900 placeholder:text-slate-400 shadow-2xs"
           />
           {searchQuery && (
             <button
@@ -245,7 +245,7 @@ export default function DashboardGrid({
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-base text-slate-900 tracking-tight group-hover:text-indigo-600 transition-colors">
+                    <h3 className="font-bold text-base text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors">
                       {tool.name}
                     </h3>
                     <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">
@@ -263,9 +263,9 @@ export default function DashboardGrid({
                 <span className="text-[10px] font-mono font-medium text-slate-600 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/80">
                   {tool.stats}
                 </span>
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-900 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all">
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-900 group-hover:text-blue-600 group-hover:translate-x-1 transition-all">
                   <span>Launch Tool</span>
-                  <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-indigo-600" />
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-blue-600" />
                 </span>
               </div>
             </motion.div>
@@ -280,7 +280,7 @@ export default function DashboardGrid({
             <p className="text-xs text-slate-500">Try searching for another keyword or reset category filters.</p>
             <button
               onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }}
-              className="mt-2 text-xs font-semibold text-indigo-600 underline hover:text-indigo-800 cursor-pointer"
+              className="mt-2 text-xs font-semibold text-blue-600 underline hover:text-blue-800 cursor-pointer"
             >
               Reset Filters
             </button>

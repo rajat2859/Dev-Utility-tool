@@ -497,7 +497,7 @@ export default function ContentChecker() {
       {/* Tool Header */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-purple-600 rounded-xl text-white shadow-xs">
+          <div className="p-2 bg-blue-600 rounded-xl text-white shadow-xs">
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
@@ -517,13 +517,13 @@ export default function ContentChecker() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <Globe className="h-4 w-4 text-purple-600" />
+              <Globe className="h-4 w-4 text-blue-600" />
               <span>Target Webpage URL</span>
             </label>
             <button
               type="button"
               onClick={() => setShowHtmlPaste(!showHtmlPaste)}
-              className="text-[11px] text-purple-600 hover:underline font-semibold cursor-pointer"
+              className="text-[11px] text-blue-600 hover:underline font-semibold cursor-pointer"
             >
               {showHtmlPaste ? 'Switch to URL Input' : 'Or Paste Raw HTML Code'}
             </button>
@@ -537,7 +537,7 @@ export default function ContentChecker() {
                 placeholder="e.g. https://example.com/landing-page"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className="w-full pl-10 pr-3 py-2.5 text-xs font-medium rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:bg-white shadow-2xs"
+                className="w-full pl-10 pr-3 py-2.5 text-xs font-medium rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white shadow-2xs"
               />
             </div>
           ) : (
@@ -546,7 +546,7 @@ export default function ContentChecker() {
               placeholder="Paste complete HTML source code here..."
               value={rawHtml}
               onChange={(e) => setRawHtml(e.target.value)}
-              className="w-full p-3 text-xs font-mono rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:bg-white shadow-2xs"
+              className="w-full p-3 text-xs font-mono rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white shadow-2xs"
             />
           )}
         </div>
@@ -555,7 +555,7 @@ export default function ContentChecker() {
         <div className="space-y-3 pt-2 border-t border-slate-100">
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <Link2 className="h-4 w-4 text-sky-600" />
+              <Link2 className="h-4 w-4 text-blue-600" />
               <span>Reference Link (Awesome Screenshot or Google Doc)</span>
             </label>
             {referenceDocText ? (
@@ -574,13 +574,13 @@ export default function ContentChecker() {
                   placeholder="Paste an awesomescreenshot.com or docs.google.com share link..."
                   value={referenceUrl}
                   onChange={(e) => setReferenceUrl(e.target.value)}
-                  className="flex-1 px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:bg-white shadow-2xs"
+                  className="flex-1 px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white shadow-2xs"
                 />
                 <button
                   type="button"
                   onClick={() => resolveReferenceLink()}
                   disabled={isResolvingReference || !referenceUrl.trim()}
-                  className="px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 disabled:opacity-40 rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 shrink-0"
+                  className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 shrink-0"
                 >
                   {isResolvingReference ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <span>Fetch</span>}
                 </button>
@@ -616,8 +616,8 @@ export default function ContentChecker() {
           )}
 
           {readyToSelectChecks && (
-            <div className="p-3.5 bg-purple-50/60 border border-purple-200/80 rounded-xl space-y-2.5">
-              <span className="text-xs font-bold text-purple-950">What do you want to check?</span>
+            <div className="p-3.5 bg-blue-50/60 border border-blue-200/80 rounded-xl space-y-2.5">
+              <span className="text-xs font-bold text-blue-950">What do you want to check?</span>
               <div className="flex flex-wrap gap-2">
                 {CHECK_CATEGORIES.map((cat) => {
                   const active = selectedChecks.has(cat.id);
@@ -628,8 +628,8 @@ export default function ContentChecker() {
                       onClick={() => toggleCheck(cat.id)}
                       className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors cursor-pointer ${
                         active
-                          ? 'bg-purple-600 text-white border-purple-600'
-                          : 'bg-white text-slate-600 border-slate-200 hover:border-purple-300'
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
                       }`}
                     >
                       {cat.label}
@@ -644,16 +644,16 @@ export default function ContentChecker() {
             type="button"
             onClick={runScreenshotAnalysis}
             disabled={isLoading || !readyToSelectChecks || selectedChecks.size === 0}
-            className="w-full py-3 px-4 rounded-xl font-bold text-xs tracking-tight flex items-center justify-center gap-2 transition-all shadow-2xs bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="w-full py-3 px-4 rounded-xl font-bold text-xs tracking-tight flex items-center justify-center gap-2 transition-all shadow-2xs bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed cursor-pointer"
           >
             {isLoading ? (
               <>
-                <RefreshCw className="h-4 w-4 animate-spin text-purple-200" />
+                <RefreshCw className="h-4 w-4 animate-spin text-blue-200" />
                 <span>{loadingStep || 'Comparing Webpage with Screenshot...'}</span>
               </>
             ) : (
               <>
-                <FileSearch className="h-4 w-4 text-purple-200" />
+                <FileSearch className="h-4 w-4 text-blue-200" />
                 <span>Run Visual & Copy Audit</span>
               </>
             )}
@@ -722,7 +722,7 @@ export default function ContentChecker() {
           {selectedChecks.has('title') && (
             <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
               <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2 border-b border-slate-200/80 pb-2">
-                <FileText className="h-4 w-4 text-purple-600" /> URL, Title & Description
+                <FileText className="h-4 w-4 text-blue-600" /> URL, Title & Description
               </h3>
               <div className="space-y-2">
                 {[
@@ -759,7 +759,7 @@ export default function ContentChecker() {
           <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
               <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2">
-                <Layers className="h-4 w-4 text-purple-600" /> Content Comparison
+                <Layers className="h-4 w-4 text-blue-600" /> Content Comparison
               </h3>
               {filteredComparisons.length > 0 && (
                 <span className="text-[11px] font-semibold flex items-center gap-2.5">
@@ -804,7 +804,7 @@ export default function ContentChecker() {
                 <button
                   type="button"
                   onClick={() => setShowAllMatches((v) => !v)}
-                  className="text-[11px] font-semibold text-purple-600 hover:underline cursor-pointer flex items-center gap-1 pt-2"
+                  className="text-[11px] font-semibold text-blue-600 hover:underline cursor-pointer flex items-center gap-1 pt-2"
                 >
                   {showAllMatches ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                   {showAllMatches ? 'Hide' : 'Show'} {plainMatches.length} matched item{plainMatches.length === 1 ? '' : 's'}
@@ -829,7 +829,7 @@ export default function ContentChecker() {
             <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
               <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
                 <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2">
-                  <FileImage className="h-4 w-4 text-purple-600" /> Feature Image
+                  <FileImage className="h-4 w-4 text-blue-600" /> Feature Image
                 </h3>
                 {report.featureImage.matches ? (
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
@@ -862,7 +862,7 @@ export default function ContentChecker() {
             <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
               <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
                 <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2">
-                  <Code className="h-4 w-4 text-purple-600" /> FAQ Schema
+                  <Code className="h-4 w-4 text-blue-600" /> FAQ Schema
                 </h3>
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
                   report.faqSchema.status === 'match'

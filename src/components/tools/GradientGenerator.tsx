@@ -755,7 +755,7 @@ ${layers}
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-4 gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100 shadow-2xs">
+            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shadow-2xs">
               <Paintbrush className="h-5 w-5" />
             </div>
             <div>
@@ -775,7 +775,7 @@ ${layers}
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleSaveGradient}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-lg cursor-pointer transition-colors shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg cursor-pointer transition-colors shadow-2xs"
             >
               {isSaved ? <BookmarkCheck className="h-3.5 w-3.5 text-emerald-600" /> : <Bookmark className="h-3.5 w-3.5" />}
               <span>{isSaved ? 'Saved!' : 'Save Gradient'}</span>
@@ -784,7 +784,7 @@ ${layers}
             <button
               onClick={() => { setShowImportBox(!showImportBox); setImportError(null); }}
               className={`p-2 rounded-lg cursor-pointer transition-colors ${
-                showImportBox ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                showImportBox ? 'bg-blue-100 text-blue-700' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
               }`}
               title="Import from CSS"
             >
@@ -833,12 +833,12 @@ ${layers}
                 onChange={(e) => setImportCssText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleImportCss(); }}
                 placeholder="linear-gradient(135deg, #6366f1 0%, #ec4899 100%)"
-                className="flex-1 min-w-0 px-3 py-1.5 text-xs font-mono rounded-lg border border-slate-200 bg-white outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 min-w-0 px-3 py-1.5 text-xs font-mono rounded-lg border border-slate-200 bg-white outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 onClick={handleImportCss}
                 disabled={!importCssText.trim()}
-                className="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 rounded-lg cursor-pointer shrink-0 transition-colors"
+                className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed rounded-lg cursor-pointer shrink-0 transition-colors"
               >
                 Load
               </button>
@@ -857,7 +857,7 @@ ${layers}
                 onClick={() => setGradientType(type)}
                 className={`py-2 text-xs font-semibold rounded-lg capitalize cursor-pointer transition-all ${
                   gradientType === type
-                    ? 'bg-white shadow-2xs text-indigo-600 font-bold border border-slate-200'
+                    ? 'bg-white shadow-2xs text-blue-600 font-bold border border-slate-200'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -882,7 +882,7 @@ ${layers}
               max={360}
               value={angle}
               onChange={(e) => setAngle(Number(e.target.value))}
-              className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+              className="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
             />
             <div className="flex items-center gap-1 pt-1 justify-between text-[11px] font-semibold text-slate-600">
               {[0, 45, 90, 135, 180, 225, 270, 315].map(a => (
@@ -890,7 +890,7 @@ ${layers}
                   key={a}
                   onClick={() => setAngle(a)}
                   className={`px-2 py-1 rounded border cursor-pointer transition-all ${
-                    angle === a ? 'bg-indigo-600 text-white border-indigo-600 font-bold' : 'bg-white border-slate-200 hover:bg-slate-100'
+                    angle === a ? 'bg-blue-600 text-white border-blue-600 font-bold' : 'bg-white border-slate-200 hover:bg-slate-100'
                   }`}
                 >
                   {a}°
@@ -908,7 +908,7 @@ ${layers}
                 <select
                   value={radialShape}
                   onChange={(e) => setRadialShape(e.target.value as any)}
-                  className="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-2xs focus:ring-2 focus:ring-indigo-600 outline-none"
+                  className="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-2xs focus:ring-2 focus:ring-blue-600 outline-none"
                 >
                   <option value="circle">Circle</option>
                   <option value="ellipse">Ellipse</option>
@@ -920,7 +920,7 @@ ${layers}
                 <select
                   value={radialPosition}
                   onChange={(e) => setRadialPosition(e.target.value)}
-                  className="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-2xs focus:ring-2 focus:ring-indigo-600 outline-none"
+                  className="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-2xs focus:ring-2 focus:ring-blue-600 outline-none"
                 >
                   <option value="center">Center</option>
                   <option value="top">Top Center</option>
@@ -944,7 +944,7 @@ ${layers}
                     max={100}
                     value={radialX}
                     onChange={(e) => setRadialX(Number(e.target.value))}
-                    className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                    className="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                   />
                 </div>
                 <div>
@@ -955,7 +955,7 @@ ${layers}
                     max={100}
                     value={radialY}
                     onChange={(e) => setRadialY(Number(e.target.value))}
-                    className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                    className="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                   />
                 </div>
               </div>
@@ -964,36 +964,36 @@ ${layers}
         )}
 
         {/* Color Harmony Synthesizer */}
-        <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
+        <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
-              <Wand2 className="h-4 w-4 text-indigo-600" />
+            <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+              <Wand2 className="h-4 w-4 text-blue-600" />
               <span>Color Harmony Synthesizer</span>
             </span>
-            <span className="text-[10px] text-indigo-600 font-mono font-medium">1-Click Palettes</span>
+            <span className="text-[10px] text-blue-600 font-mono font-medium">1-Click Palettes</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
             <button
               onClick={() => generateHarmony('analogous')}
-              className="py-1.5 px-2 bg-white hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-900 shadow-2xs cursor-pointer transition-colors"
+              className="py-1.5 px-2 bg-white hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-semibold text-blue-900 shadow-2xs cursor-pointer transition-colors"
             >
               Analogous
             </button>
             <button
               onClick={() => generateHarmony('complementary')}
-              className="py-1.5 px-2 bg-white hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-900 shadow-2xs cursor-pointer transition-colors"
+              className="py-1.5 px-2 bg-white hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-semibold text-blue-900 shadow-2xs cursor-pointer transition-colors"
             >
               Complementary
             </button>
             <button
               onClick={() => generateHarmony('triadic')}
-              className="py-1.5 px-2 bg-white hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-900 shadow-2xs cursor-pointer transition-colors"
+              className="py-1.5 px-2 bg-white hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-semibold text-blue-900 shadow-2xs cursor-pointer transition-colors"
             >
               Triadic
             </button>
             <button
               onClick={() => generateHarmony('pastel')}
-              className="py-1.5 px-2 bg-white hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-900 shadow-2xs cursor-pointer transition-colors"
+              className="py-1.5 px-2 bg-white hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-semibold text-blue-900 shadow-2xs cursor-pointer transition-colors"
             >
               Soft Pastel
             </button>
@@ -1039,7 +1039,7 @@ ${layers}
                 onPointerUp={() => { draggingStopIdRef.current = null; }}
                 title={`Drag to reposition (${s.stop}%)`}
                 className={`absolute w-6 h-6 rounded-full border-2 transform -translate-x-1/2 shadow-md cursor-grab active:cursor-grabbing touch-none select-none transition-transform ${
-                  selectedStopId === s.id ? 'border-slate-900 scale-125 z-10 ring-2 ring-indigo-500' : 'border-white'
+                  selectedStopId === s.id ? 'border-slate-900 scale-125 z-10 ring-2 ring-blue-500' : 'border-white'
                 }`}
                 style={{
                   // `calc()` can't multiply two percentages together — ${s.stop}% * (100% - 2rem)
@@ -1118,7 +1118,7 @@ ${layers}
                       max={100}
                       value={activeStop.stop}
                       onChange={(e) => handleUpdateStopValue(activeStop.id, Number(e.target.value))}
-                      className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                      className="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                     />
                   </div>
 
@@ -1133,7 +1133,7 @@ ${layers}
                       max={100}
                       value={activeStop.opacity}
                       onChange={(e) => handleUpdateOpacity(activeStop.id, Number(e.target.value))}
-                      className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                      className="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                     />
                   </div>
                 </div>
@@ -1154,7 +1154,7 @@ ${layers}
                   key={fmt}
                   onClick={() => setExportFormat(fmt)}
                   className={`px-2.5 py-1 text-xs font-semibold rounded-md uppercase cursor-pointer transition-all ${
-                    exportFormat === fmt ? 'bg-white text-indigo-600 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+                    exportFormat === fmt ? 'bg-white text-blue-600 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
                   {fmt}
@@ -1165,7 +1165,7 @@ ${layers}
 
           <div className="bg-slate-950 text-slate-100 rounded-xl p-4 font-mono text-xs border border-slate-800 space-y-3">
             <div className="flex items-center justify-between text-slate-400 pb-2 border-b border-slate-800 text-[11px]">
-              <span className="uppercase font-semibold text-indigo-400">{exportFormat} Output Snippet</span>
+              <span className="uppercase font-semibold text-blue-400">{exportFormat} Output Snippet</span>
               <button
                 onClick={() => {
                   const text = exportFormat === 'css' ? `background: ${getGradientString()};` :
@@ -1201,7 +1201,7 @@ ${layers}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-              <Eye className="h-4 w-4 text-indigo-600" />
+              <Eye className="h-4 w-4 text-blue-600" />
               <span>Live Mockup Sandbox</span>
             </span>
             <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
@@ -1211,7 +1211,7 @@ ${layers}
                   onClick={() => setPreviewTemplate(style)}
                   className={`px-2 py-0.5 text-xs font-semibold rounded capitalize cursor-pointer transition-all ${
                     previewTemplate === style
-                      ? 'bg-white shadow-2xs text-indigo-600 font-bold'
+                      ? 'bg-white shadow-2xs text-blue-600 font-bold'
                       : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
@@ -1236,7 +1236,7 @@ ${layers}
                   style={{ background: getGradientString() }}
                 />
                 <div className="p-4 space-y-2 flex flex-col justify-end">
-                  <div className="h-3 w-20 bg-indigo-500/80 rounded" />
+                  <div className="h-3 w-20 bg-blue-500/80 rounded" />
                   <div className="h-2.5 w-full bg-slate-800 rounded" />
                 </div>
               </div>
@@ -1259,7 +1259,7 @@ ${layers}
             {previewTemplate === 'button' && (
               <div className="p-6 text-center">
                 <button 
-                  className="px-6 py-3 text-white font-bold text-sm rounded-xl shadow-lg transition-transform active:scale-95 hover:shadow-indigo-500/25 flex items-center gap-2 cursor-pointer"
+                  className="px-6 py-3 text-white font-bold text-sm rounded-xl shadow-lg transition-transform active:scale-95 hover:shadow-blue-500/25 flex items-center gap-2 cursor-pointer"
                   style={{ background: getGradientString() }}
                 >
                   <span>Action Button</span>
@@ -1287,14 +1287,14 @@ ${layers}
               onClick={() => downloadAsPng(1920, 1080)}
               className="flex items-center justify-center gap-1.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
             >
-              <FileDown className="h-3.5 w-3.5 text-indigo-400" />
+              <FileDown className="h-3.5 w-3.5 text-blue-400" />
               <span>Download PNG (1080p)</span>
             </button>
             <button
               onClick={() => downloadAsPng(3840, 2160)}
-              className="flex items-center justify-center gap-1.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
             >
-              <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+              <Sparkles className="h-3.5 w-3.5 text-blue-600" />
               <span>4K Wallpaper</span>
             </button>
           </div>
@@ -1304,7 +1304,7 @@ ${layers}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-              <ShieldCheck className="h-4 w-4 text-indigo-600" />
+              <ShieldCheck className="h-4 w-4 text-blue-600" />
               <span>Text Contrast Check</span>
             </span>
             <span className="text-[10px] text-slate-400 font-mono">WCAG 2.1</span>
@@ -1363,7 +1363,7 @@ ${layers}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                <Bookmark className="h-4 w-4 text-indigo-600" />
+                <Bookmark className="h-4 w-4 text-blue-600" />
                 <span>My Saved Gradients ({savedGradients.length})</span>
               </span>
             </div>
@@ -1379,7 +1379,7 @@ ${layers}
                     setAngle(saved.angle);
                     setGradientName(saved.name);
                   }}
-                  className="group relative p-2.5 border border-slate-200 rounded-xl hover:border-indigo-400 bg-white cursor-pointer transition-all flex items-center justify-between shadow-2xs"
+                  className="group relative p-2.5 border border-slate-200 rounded-xl hover:border-blue-400 bg-white cursor-pointer transition-all flex items-center justify-between shadow-2xs"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <div 
@@ -1414,7 +1414,7 @@ ${layers}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <Layers className="h-4 w-4 text-indigo-600" />
+              <Layers className="h-4 w-4 text-blue-600" />
               <span className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
                 Presets Gallery
               </span>
@@ -1427,7 +1427,7 @@ ${layers}
                 value={presetSearch}
                 onChange={(e) => setPresetSearch(e.target.value)}
                 placeholder="Filter..."
-                className="w-full pl-6 pr-2 py-1 text-[11px] font-semibold rounded-lg border border-slate-200 bg-slate-50 outline-none focus:bg-white focus:border-indigo-500"
+                className="w-full pl-6 pr-2 py-1 text-[11px] font-semibold rounded-lg border border-slate-200 bg-slate-50 outline-none focus:bg-white focus:border-blue-500"
               />
             </div>
           </div>
@@ -1439,7 +1439,7 @@ ${layers}
                 key={cat}
                 onClick={() => setPresetCategory(cat)}
                 className={`px-2.5 py-1 rounded-md transition-all whitespace-nowrap cursor-pointer ${
-                  presetCategory === cat ? 'bg-indigo-600 text-white font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  presetCategory === cat ? 'bg-blue-600 text-white font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                 }`}
               >
                 {cat}
@@ -1452,7 +1452,7 @@ ${layers}
               <button
                 key={preset.name}
                 onClick={() => handleLoadPreset(preset)}
-                className="group relative p-2.5 border border-slate-200 rounded-xl hover:border-indigo-400 bg-white cursor-pointer transition-all flex items-center gap-2.5 text-left shadow-2xs"
+                className="group relative p-2.5 border border-slate-200 rounded-xl hover:border-blue-400 bg-white cursor-pointer transition-all flex items-center gap-2.5 text-left shadow-2xs"
               >
                 <div 
                   className="w-8 h-8 rounded-lg shrink-0 border border-slate-200 shadow-2xs group-hover:scale-105 transition-transform"
@@ -1461,7 +1461,7 @@ ${layers}
                   }}
                 />
                 <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+                  <h4 className="text-xs font-bold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
                     {preset.name}
                   </h4>
                   <span className="text-[10px] uppercase font-semibold text-slate-400 font-mono">
