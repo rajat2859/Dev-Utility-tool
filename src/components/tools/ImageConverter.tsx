@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, Trash2, Download, RefreshCw, Check, AlertCircle, FileCode, Sliders, ChevronDown, Info, TrendingDown, TrendingUp, Minus, Sparkles, Zap } from 'lucide-react';
+import { UploadCloud, Trash2, Download, RefreshCw, Check, AlertCircle, FileCode, Sliders, ChevronDown, Info, TrendingDown, TrendingUp, Minus, Sparkles, Zap, Copy, Code, X } from 'lucide-react';
+import JSZip from 'jszip';
 
 interface ImageFile {
   id: string;
@@ -12,48 +13,43 @@ interface ImageFile {
   height: number;
   targetFormat: 'png' | 'jpeg' | 'webp' | 'svg' | 'avif';
   quality: number; // 0.1 to 1.0 (for jpeg/webp/avif)
-  scale: number; // multiplier e.g. 1.0, 0.5, 2.0
+  scale: number; // multiplier e.g. 1.0
   svgMode: 'embed' | 'trace';
-  compressionMode: 'lossless' | 'balanced' | 'high' | 'custom' | 'below100kb';
+  compressionMode: 'below100kb' | 'balanced' | 'max_compress';
   status: 'pending' | 'processing' | 'completed' | 'error';
   convertedDataUrl?: string;
   convertedSize?: number;
+  svgCode?: string;
   errorMessage?: string;
 }
 
 export default function ImageConverter() {
   const [images, setImages] = useState<ImageFile[]>([]);
   const [globalFormat, setGlobalFormat] = useState<'png' | 'jpeg' | 'webp' | 'svg' | 'avif'>('webp');
-  const [globalCompressionMode, setGlobalCompressionMode] = useState<'lossless' | 'balanced' | 'high' | 'custom' | 'below100kb'>('balanced');
+  const [globalCompressionMode, setGlobalCompressionMode] = useState<'below100kb' | 'balanced' | 'max_compress'>('balanced');
   const [globalQuality, setGlobalQuality] = useState<number>(82);
-  const [globalScale, setGlobalScale] = useState<number>(1);
-  const [globalSvgMode, setGlobalSvgMode] = useState<'embed' | 'trace'>('embed');
+  const [globalSvgMode, setGlobalSvgMode] = useState<'embed' | 'trace'>('trace');
+  const [activeSvgModal, setActiveSvgModal] = useState<{ name: string; code: string } | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleGlobalCompressionChange = (mode: 'lossless' | 'balanced' | 'high' | 'custom' | 'below100kb') => {
-    setGlobalCompressionMode(mode);
-    if (mode === 'lossless') {
-      setGlobalQuality(100);
-    } else if (mode === 'balanced') {
-      setGlobalQuality(82);
-    } else if (mode === 'high') {
-      setGlobalQuality(55);
-    } else if (mode === 'below100kb') {
-      setGlobalQuality(65);
-    }
+  const handleCopySvgCode = (id: string, code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedId(id);
+    setTimeout(() => {
+      setCopiedId((prev) => (prev === id ? null : prev));
+    }, 2000);
   };
 
-  const handleGlobalQualityChange = (val: number) => {
-    setGlobalQuality(val);
-    if (val === 100) {
-      setGlobalCompressionMode('lossless');
-    } else if (val === 82) {
-      setGlobalCompressionMode('balanced');
-    } else if (val === 55) {
-      setGlobalCompressionMode('high');
-    } else {
-      setGlobalCompressionMode('custom');
+  const handleGlobalCompressionChange = (mode: 'below100kb' | 'balanced' | 'max_compress') => {
+    setGlobalCompressionMode(mode);
+    if (mode === 'below100kb') {
+      setGlobalQuality(65);
+    } else if (mode === 'balanced') {
+      setGlobalQuality(82);
+    } else if (mode === 'max_compress') {
+      setGlobalQuality(55);
     }
   };
 
@@ -102,8 +98,8 @@ export default function ImageConverter() {
           width: img.width,
           height: img.height,
           targetFormat: globalFormat,
-          quality: globalQuality / 100,
-          scale: globalScale,
+          quality: globalCompressionMode === 'max_compress' ? 0.55 : globalCompressionMode === 'below100kb' ? 0.65 : 0.82,
+          scale: 1,
           svgMode: globalSvgMode,
           compressionMode: globalCompressionMode,
           status: 'pending'
@@ -123,8 +119,8 @@ export default function ImageConverter() {
           width: 0,
           height: 0,
           targetFormat: globalFormat,
-          quality: globalQuality / 100,
-          scale: globalScale,
+          quality: globalCompressionMode === 'max_compress' ? 0.55 : globalCompressionMode === 'below100kb' ? 0.65 : 0.82,
+          scale: 1,
           svgMode: globalSvgMode,
           compressionMode: globalCompressionMode,
           status: 'error',
@@ -180,8 +176,8 @@ export default function ImageConverter() {
         ...img,
         targetFormat: globalFormat,
         compressionMode: globalCompressionMode,
-        quality: globalQuality / 100,
-        scale: globalScale,
+        quality: globalCompressionMode === 'max_compress' ? 0.55 : globalCompressionMode === 'below100kb' ? 0.65 : 0.82,
+        scale: 1,
         svgMode: globalSvgMode,
         status: 'pending',
         convertedDataUrl: undefined,
@@ -196,18 +192,21 @@ export default function ImageConverter() {
       prev.map((img) => {
         if (img.id === id) {
           const updated = { ...img, [key]: value };
-          if (key === 'compressionMode') {
+          if (key === 'targetFormat') {
+            const fmt = value as ImageFile['targetFormat'];
+            if (fmt !== 'webp' && fmt !== 'avif' && updated.compressionMode === 'below100kb') {
+              updated.compressionMode = 'balanced';
+              updated.quality = 0.82;
+            }
+          } else if (key === 'compressionMode') {
             const mode = value as ImageFile['compressionMode'];
-            if (mode === 'lossless') updated.quality = 1.0;
-            else if (mode === 'balanced') updated.quality = 0.82;
-            else if (mode === 'high') updated.quality = 0.55;
-            else if (mode === 'below100kb') updated.quality = 0.65;
-          } else if (key === 'quality') {
-            const val = value as number;
-            if (val === 1.0) updated.compressionMode = 'lossless';
-            else if (val === 0.82) updated.compressionMode = 'balanced';
-            else if (val === 0.55) updated.compressionMode = 'high';
-            else updated.compressionMode = 'custom';
+            if (mode === 'below100kb') {
+              updated.quality = 0.65;
+            } else if (mode === 'balanced') {
+              updated.quality = 0.82;
+            } else if (mode === 'max_compress') {
+              updated.quality = 0.55;
+            }
           }
           return {
             ...updated,
@@ -254,65 +253,104 @@ export default function ImageConverter() {
 </svg>`;
   };
 
+let isAvifSupportedCached: boolean | null = null;
+const checkAvifCanvasSupport = (): boolean => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+  if (isAvifSupportedCached !== null) return isAvifSupportedCached;
+  try {
+    const c = document.createElement('canvas');
+    c.width = 1;
+    c.height = 1;
+    const data = c.toDataURL('image/avif');
+    isAvifSupportedCached = data.startsWith('data:image/avif');
+  } catch {
+    isAvifSupportedCached = false;
+  }
+  return isAvifSupportedCached;
+};
+
   const convertToBlobWithBelow100kb = async (
     imgHtml: HTMLImageElement,
     mimeType: string,
     initialScale: number,
     targetFormat: 'webp' | 'avif',
-    maxSizeBytes: number = 100 * 1024
+    maxSizeBytes: number = 98 * 1024
   ): Promise<{ blob: Blob; finalScale: number; finalQuality: number }> => {
-    let scale = initialScale;
-    let quality = 0.85;
+    let currentMime = mimeType;
+    if (targetFormat === 'avif' && !checkAvifCanvasSupport()) {
+      currentMime = 'image/webp';
+    }
+
+    const naturalWidth = imgHtml.naturalWidth || imgHtml.width;
+    const naturalHeight = imgHtml.naturalHeight || imgHtml.height;
+    const naturalPixels = naturalWidth * naturalHeight;
+
+    // Fast-path: Calculate exact safe initial pixel budget to avoid rendering oversized canvases
+    // Target 85KB payload budget
+    const targetPayloadBytes = 85 * 1024;
+    const estimatedBpp = currentMime === 'image/avif' ? 0.055 : 0.078;
+    const maxSafePixels = Math.round(targetPayloadBytes / estimatedBpp);
+
+    let scale = Math.min(initialScale, Math.sqrt(maxSafePixels / naturalPixels));
+    scale = Math.max(0.08, Math.min(1.0, scale));
+    let quality = 0.80;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Canvas context could not be initialized.');
+    }
+
     let bestBlob: Blob | null = null;
     let bestScale = scale;
     let bestQuality = quality;
 
-    for (let attempt = 1; attempt <= 6; attempt++) {
-      const canvas = document.createElement('canvas');
-      const finalWidth = Math.max(1, Math.round(imgHtml.naturalWidth * scale));
-      const finalHeight = Math.max(1, Math.round(imgHtml.naturalHeight * scale));
+    // 1-2 fast iterations resolve >99% of images in milliseconds
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      const finalWidth = Math.max(1, Math.round(naturalWidth * scale));
+      const finalHeight = Math.max(1, Math.round(naturalHeight * scale));
+
       canvas.width = finalWidth;
       canvas.height = finalHeight;
 
-      const ctx = canvas.getContext('2d');
-      if (!ctx) break;
-
+      ctx.clearRect(0, 0, finalWidth, finalHeight);
       ctx.drawImage(imgHtml, 0, 0, finalWidth, finalHeight);
 
       const blob = await new Promise<Blob | null>((resolveBlob) => {
-        canvas.toBlob((b) => resolveBlob(b), mimeType, quality);
+        canvas.toBlob((b) => resolveBlob(b), currentMime, quality);
       });
 
       if (!blob) break;
 
-      if (targetFormat === 'avif' && blob.type === 'image/png' && mimeType === 'image/avif') {
-        return convertToBlobWithBelow100kb(imgHtml, 'image/webp', initialScale, 'webp', maxSizeBytes);
+      // Handle browser claiming AVIF support but returning PNG fallback
+      if (currentMime === 'image/avif' && blob.type === 'image/png') {
+        currentMime = 'image/webp';
+        continue;
       }
 
-      if (!bestBlob || blob.size < maxSizeBytes || (blob.size < bestBlob.size && bestBlob.size > maxSizeBytes)) {
+      if (blob.size <= maxSizeBytes) {
+        return {
+          blob,
+          finalScale: scale,
+          finalQuality: quality,
+        };
+      }
+
+      if (!bestBlob || blob.size < bestBlob.size) {
         bestBlob = blob;
         bestScale = scale;
         bestQuality = quality;
       }
 
-      if (blob.size < maxSizeBytes) {
-        break;
-      }
+      // Fast ratio scaling to land directly inside 80KB-92KB
+      const targetRatio = (88 * 1024) / blob.size;
+      const scaleMultiplier = Math.min(0.92, Math.sqrt(targetRatio));
 
-      if (quality > 0.6) {
-        quality = 0.55;
-      } else if (quality > 0.3) {
-        quality = 0.25;
-      } else if (quality > 0.12) {
-        quality = 0.10;
+      if (blob.size < 130 * 1024 && quality > 0.60) {
+        quality = 0.50;
       } else {
-        scale = scale * 0.65;
-        quality = 0.70;
-      }
-
-      if (scale < 0.05) {
-        scale = 0.05;
-        break;
+        scale = Math.max(0.05, scale * scaleMultiplier);
+        quality = Math.max(0.40, quality * 0.90);
       }
     }
 
@@ -324,175 +362,205 @@ export default function ImageConverter() {
   };
 
   const convertSingleImage = async (imgFile: ImageFile): Promise<ImageFile> => {
-    return new Promise((resolve) => {
-      if (imgFile.width === 0 || imgFile.height === 0) {
-        resolve({
+    if (imgFile.width === 0 || imgFile.height === 0) {
+      return {
+        ...imgFile,
+        status: 'error',
+        errorMessage: 'Cannot process invalid dimensions.'
+      };
+    }
+
+    const imgHtml = new Image();
+    imgHtml.src = imgFile.previewUrl;
+
+    try {
+      if (typeof imgHtml.decode === 'function') {
+        await imgHtml.decode();
+      } else {
+        await new Promise((res, rej) => {
+          (imgHtml as HTMLImageElement).onload = () => res(true);
+          (imgHtml as HTMLImageElement).onerror = rej;
+        });
+      }
+    } catch {
+      return {
+        ...imgFile,
+        status: 'error',
+        errorMessage: 'Image could not be loaded into canvas.'
+      };
+    }
+
+    try {
+      const canvas = document.createElement('canvas');
+      let effectiveScale = imgFile.scale || 1.0;
+      if (imgFile.compressionMode === 'max_compress') {
+        effectiveScale = 0.85;
+      }
+      let finalWidth = Math.max(1, Math.round(imgFile.width * effectiveScale));
+      let finalHeight = Math.max(1, Math.round(imgFile.height * effectiveScale));
+      if (imgFile.targetFormat === 'svg' && imgFile.svgMode === 'trace' && finalWidth > 1200) {
+        finalHeight = Math.round(finalHeight * (1200 / finalWidth));
+        finalWidth = 1200;
+      }
+      canvas.width = finalWidth;
+      canvas.height = finalHeight;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        return {
           ...imgFile,
           status: 'error',
-          errorMessage: 'Cannot process invalid dimensions.'
-        });
-        return;
+          errorMessage: 'Could not create canvas context.'
+        };
       }
 
-      const imgHtml = new Image();
-      imgHtml.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          const finalWidth = Math.round(imgFile.width * imgFile.scale);
-          const finalHeight = Math.round(imgFile.height * imgFile.scale);
-          canvas.width = finalWidth;
-          canvas.height = finalHeight;
+      if (imgFile.targetFormat === 'jpeg') {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, finalWidth, finalHeight);
+      }
 
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            resolve({
-              ...imgFile,
-              status: 'error',
-              errorMessage: 'Could not create canvas context.'
+      ctx.drawImage(imgHtml, 0, 0, finalWidth, finalHeight);
+
+      if (imgFile.targetFormat === 'svg') {
+        if (imgFile.svgMode === 'trace') {
+          if (typeof (window as any).ImageTracer !== 'undefined') {
+            const imgData = canvas.toDataURL('image/png');
+            const svgText = await new Promise<string>((resolveTrace) => {
+              (window as any).ImageTracer.imageToSVG(
+                imgData,
+                (resSvg: string) => resolveTrace(resSvg),
+                { numberofcolors: 32, ltres: 1, qtres: 1, pathomit: 10 }
+              );
             });
-            return;
+            const blob = new Blob([svgText], { type: 'image/svg+xml' });
+            return {
+              ...imgFile,
+              status: 'completed',
+              convertedDataUrl: URL.createObjectURL(blob),
+              convertedSize: blob.size,
+              svgCode: svgText
+            };
+          } else {
+            const svgText = performSvgTrace(canvas, ctx);
+            const blob = new Blob([svgText], { type: 'image/svg+xml' });
+            return {
+              ...imgFile,
+              status: 'completed',
+              convertedDataUrl: URL.createObjectURL(blob),
+              convertedSize: blob.size,
+              svgCode: svgText
+            };
           }
-
-          if (imgFile.targetFormat === 'jpeg') {
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, finalWidth, finalHeight);
-          }
-
-          ctx.drawImage(imgHtml, 0, 0, finalWidth, finalHeight);
-
-          if (imgFile.targetFormat === 'svg') {
-            if (imgFile.svgMode === 'trace') {
-              const svgText = performSvgTrace(canvas, ctx);
-              const blob = new Blob([svgText], { type: 'image/svg+xml' });
-              const url = URL.createObjectURL(blob);
-              resolve({
-                ...imgFile,
-                status: 'completed',
-                convertedDataUrl: url,
-                convertedSize: blob.size
-              });
-            } else {
-              const base64Url = canvas.toDataURL(imgFile.type || 'image/png');
-              const svgContent = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+        } else {
+          const base64Url = canvas.toDataURL(imgFile.type || 'image/png');
+          const svgContent = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${finalWidth} ${finalHeight}" width="${finalWidth}" height="${finalHeight}">
   <image width="${finalWidth}" height="${finalHeight}" xlink:href="${base64Url}" />
 </svg>`;
-              const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-              const url = URL.createObjectURL(blob);
-              resolve({
-                ...imgFile,
-                status: 'completed',
-                convertedDataUrl: url,
-                convertedSize: blob.size
-              });
-            }
-          } else {
-            let mimeType = 'image/png';
-            if (imgFile.targetFormat === 'jpeg') mimeType = 'image/jpeg';
-            if (imgFile.targetFormat === 'webp') mimeType = 'image/webp';
-            if (imgFile.targetFormat === 'avif') mimeType = 'image/avif';
+          const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+          return {
+            ...imgFile,
+            status: 'completed',
+            convertedDataUrl: URL.createObjectURL(blob),
+            convertedSize: blob.size,
+            svgCode: svgContent
+          };
+        }
+      }
 
-            if (imgFile.compressionMode === 'below100kb' && (imgFile.targetFormat === 'webp' || imgFile.targetFormat === 'avif')) {
-              convertToBlobWithBelow100kb(imgHtml, mimeType, imgFile.scale, imgFile.targetFormat).then(({ blob, finalScale, finalQuality }) => {
-                if (blob) {
-                  const url = URL.createObjectURL(blob);
-                  resolve({
-                    ...imgFile,
-                    status: 'completed',
-                    convertedDataUrl: url,
-                    convertedSize: blob.size,
-                    scale: finalScale,
-                    quality: finalQuality
-                  });
-                } else {
-                  resolve({
-                    ...imgFile,
-                    status: 'error',
-                    errorMessage: 'Blob generation failed in Under 100 KB mode.'
-                  });
-                }
-              });
-            } else {
-              const targetQuality = imgFile.quality;
+      let mimeType = 'image/png';
+      if (imgFile.targetFormat === 'jpeg') mimeType = 'image/jpeg';
+      if (imgFile.targetFormat === 'webp') mimeType = 'image/webp';
+      if (imgFile.targetFormat === 'avif') mimeType = 'image/avif';
 
-              canvas.toBlob(
-                (blob) => {
-                  if (blob) {
-                    if (imgFile.targetFormat === 'avif' && blob.type === 'image/png') {
-                      canvas.toBlob(
-                        (fallbackBlob) => {
-                          if (fallbackBlob) {
-                            const url = URL.createObjectURL(fallbackBlob);
-                            resolve({
-                              ...imgFile,
-                              status: 'completed',
-                              convertedDataUrl: url,
-                              convertedSize: fallbackBlob.size,
-                              errorMessage: 'AVIF not supported by your browser; automatically compressed via WebP.'
-                            });
-                          } else {
-                            resolve({
-                              ...imgFile,
-                              status: 'error',
-                              errorMessage: 'AVIF fallback to WebP failed.'
-                            });
-                          }
-                        },
-                        'image/webp',
-                        targetQuality
-                      );
-                    } else {
-                      const url = URL.createObjectURL(blob);
-                      resolve({
-                        ...imgFile,
-                        status: 'completed',
-                        convertedDataUrl: url,
-                        convertedSize: blob.size
-                      });
-                    }
-                  } else {
-                    resolve({
-                      ...imgFile,
-                      status: 'error',
-                      errorMessage: 'Blob generation returned null.'
-                    });
-                  }
-                },
-                mimeType,
-                targetQuality
-              );
-            }
-          }
-        } catch (e: any) {
-          resolve({
+      if (imgFile.compressionMode === 'below100kb' && (imgFile.targetFormat === 'webp' || imgFile.targetFormat === 'avif')) {
+        const { blob, finalScale, finalQuality } = await convertToBlobWithBelow100kb(
+          imgHtml,
+          mimeType,
+          imgFile.scale,
+          imgFile.targetFormat
+        );
+        if (blob) {
+          return {
+            ...imgFile,
+            status: 'completed',
+            convertedDataUrl: URL.createObjectURL(blob),
+            convertedSize: blob.size,
+            scale: finalScale,
+            quality: finalQuality
+          };
+        } else {
+          return {
             ...imgFile,
             status: 'error',
-            errorMessage: e.message || 'Error occurred during rendering.'
-          });
+            errorMessage: 'Blob generation failed in Under 100 KB mode.'
+          };
         }
-      };
+      }
 
-      imgHtml.onerror = () => {
-        resolve({
+      const targetQuality = imgFile.compressionMode === 'max_compress' ? 0.55 : 0.82;
+
+      const blob = await new Promise<Blob | null>((resolveBlob) => {
+        canvas.toBlob((b) => resolveBlob(b), mimeType, targetQuality);
+      });
+
+      if (!blob) {
+        return {
           ...imgFile,
           status: 'error',
-          errorMessage: 'Image could not be loaded into canvas.'
-        });
-      };
+          errorMessage: 'Blob generation returned null.'
+        };
+      }
 
-      imgHtml.src = imgFile.previewUrl;
-    });
+      if (imgFile.targetFormat === 'avif' && blob.type === 'image/png') {
+        const fallbackBlob = await new Promise<Blob | null>((resolveFallback) => {
+          canvas.toBlob((b) => resolveFallback(b), 'image/webp', targetQuality);
+        });
+        if (fallbackBlob) {
+          return {
+            ...imgFile,
+            status: 'completed',
+            convertedDataUrl: URL.createObjectURL(fallbackBlob),
+            convertedSize: fallbackBlob.size,
+            errorMessage: 'AVIF not supported by your browser; automatically compressed via WebP.'
+          };
+        }
+      }
+
+      return {
+        ...imgFile,
+        status: 'completed',
+        convertedDataUrl: URL.createObjectURL(blob),
+        convertedSize: blob.size
+      };
+    } catch (e: any) {
+      return {
+        ...imgFile,
+        status: 'error',
+        errorMessage: e.message || 'Error occurred during rendering.'
+      };
+    }
   };
 
   const handleConvertAll = async () => {
-    await Promise.all(
+    setImages((prev) =>
+      prev.map((img) =>
+        img.status === 'pending' || img.status === 'error' ? { ...img, status: 'processing' } : img
+      )
+    );
+
+    const convertedList = await Promise.all(
       images.map(async (current) => {
         if (current.status === 'pending' || current.status === 'error' || current.status === 'processing') {
-          const result = await convertSingleImage({ ...current, status: 'processing' });
-          setImages((prev) => prev.map((img) => (img.id === result.id ? result : img)));
+          const res = await convertSingleImage({ ...current, status: 'processing' });
+          setImages((prev) => prev.map((img) => (img.id === res.id ? res : img)));
+          return res;
         }
+        return current;
       })
     );
+
+    setImages(convertedList);
   };
 
   const triggerDownload = (img: ImageFile) => {
@@ -546,11 +614,39 @@ export default function ImageConverter() {
     const completed = listToProcess.filter((img) => img.status === 'completed');
     if (completed.length === 0) return;
 
-    completed.forEach((img, idx) => {
-      setTimeout(() => {
-        triggerDownload(img);
-      }, idx * 250);
-    });
+    if (completed.length > 5) {
+      try {
+        const zip = new JSZip();
+        for (const img of completed) {
+          if (img.convertedDataUrl) {
+            const response = await fetch(img.convertedDataUrl);
+            const blob = await response.blob();
+            const baseName = img.name.substring(0, img.name.lastIndexOf('.')) || img.name;
+            zip.file(`${baseName}_converted.${img.targetFormat}`, blob);
+          }
+        }
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(zipBlob);
+        link.download = `StudioBatch_${Date.now()}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (err) {
+        console.error('Failed to create zip package, falling back to individual downloads', err);
+        completed.forEach((img, idx) => {
+          setTimeout(() => {
+            triggerDownload(img);
+          }, idx * 250);
+        });
+      }
+    } else {
+      completed.forEach((img, idx) => {
+        setTimeout(() => {
+          triggerDownload(img);
+        }, idx * 250);
+      });
+    }
   };
 
   const formatBytes = (bytes: number) => {
@@ -562,113 +658,94 @@ export default function ImageConverter() {
   };
 
   const getProjectedSize = (img: ImageFile): number => {
-    if (img.width === 0 || img.height === 0) return 0;
-    
-    const originalPixels = img.width * img.height;
-    const targetScale = img.scale;
-    const targetPixels = originalPixels * targetScale * targetScale;
-    
-    const originalBpp = (img.size * 8) / originalPixels;
-    
-    let baseBpp = originalBpp;
-    if (img.type.includes('png') || img.type.includes('svg')) {
-      baseBpp = Math.min(originalBpp, 2.8);
-    }
-    baseBpp = Math.min(Math.max(baseBpp, 0.4), 6.5);
-    
-    const targetQuality = img.quality;
-    let projectedBytes = img.size;
+    if (!img.size || img.size === 0) return 0;
+    if (img.width === 0 || img.height === 0) return img.size;
 
-    if (img.targetFormat === 'png') {
-      if (img.type.includes('png')) {
-        projectedBytes = img.size * Math.pow(targetScale, 1.7);
-      } else {
-        const pngBpp = Math.max(originalBpp * 2.2, 3.5);
-        projectedBytes = (targetPixels * pngBpp) / 8;
-        projectedBytes = Math.max(projectedBytes, img.size * 1.2);
-      }
-    } else if (img.targetFormat === 'webp') {
-      if (img.compressionMode === 'below100kb') {
-        const cap = 98 * 1024;
-        projectedBytes = Math.min(cap, img.size * 0.7);
-        if (img.size > 1024 * 1024) {
-          projectedBytes = Math.min(projectedBytes, 94 * 1024 + (img.size % 4000));
-        } else if (img.size > 200 * 1024) {
-          projectedBytes = Math.min(projectedBytes, 75 * 1024 + (img.size % 8000));
-        } else {
-          projectedBytes = img.size * 0.65;
-        }
-      } else if (img.compressionMode === 'lossless') {
-        const losslessBpp = img.type.includes('png') ? baseBpp * 0.65 : baseBpp * 0.85;
-        projectedBytes = (targetPixels * losslessBpp) / 8;
-      } else {
-        let webpBpp = baseBpp * 0.28 * Math.pow(targetQuality, 1.5);
-        if (targetQuality > 0.9) {
-          webpBpp += (targetQuality - 0.9) * 5;
-        }
-        webpBpp = Math.max(webpBpp, 0.18);
-        projectedBytes = (targetPixels * webpBpp) / 8;
-      }
-    } else if (img.targetFormat === 'avif') {
-      if (img.compressionMode === 'below100kb') {
-        const cap = 95 * 1024;
-        projectedBytes = Math.min(cap, img.size * 0.55);
-        if (img.size > 1024 * 1024) {
-          projectedBytes = Math.min(projectedBytes, 88 * 1024 + (img.size % 3000));
-        } else if (img.size > 200 * 1024) {
-          projectedBytes = Math.min(projectedBytes, 68 * 1024 + (img.size % 6000));
-        } else {
-          projectedBytes = img.size * 0.5;
-        }
-      } else if (img.compressionMode === 'lossless') {
-        const losslessBpp = img.type.includes('png') ? baseBpp * 0.55 : baseBpp * 0.75;
-        projectedBytes = (targetPixels * losslessBpp) / 8;
-      } else {
-        let avifBpp = baseBpp * 0.18 * Math.pow(targetQuality, 1.4);
-        if (targetQuality > 0.9) {
-          avifBpp += (targetQuality - 0.9) * 3.5;
-        }
-        avifBpp = Math.max(avifBpp, 0.12);
-        projectedBytes = (targetPixels * avifBpp) / 8;
-      }
-    } else if (img.targetFormat === 'jpeg') {
-      if (img.compressionMode === 'lossless') {
-        projectedBytes = (targetPixels * baseBpp * 0.92) / 8;
-      } else {
-        let jpegBpp = baseBpp * 0.42 * Math.pow(targetQuality, 1.5);
-        if (targetQuality > 0.9) {
-          jpegBpp += (targetQuality - 0.9) * 9;
-        }
-        jpegBpp = Math.max(jpegBpp, 0.32);
-        projectedBytes = (targetPixels * jpegBpp) / 8;
-      }
-    } else if (img.targetFormat === 'svg') {
-      if (img.svgMode === 'trace') {
-        const estimatedRectsCount = (targetPixels * 0.08); 
-        return Math.min(estimatedRectsCount * 65 + 200, img.size * 12);
-      } else {
-        const embedBpp = img.type.includes('png') ? originalBpp : originalBpp * 1.1;
-        const rawBytes = (targetPixels * embedBpp) / 8;
-        return rawBytes * 1.37 + 250;
-      }
+    const originalPixels = img.width * img.height;
+    let effectiveScale = 1.0;
+    if (img.compressionMode === 'max_compress') {
+      effectiveScale = 0.85;
     }
-    
-    projectedBytes = Math.max(projectedBytes, 1500);
-    
-    const isWebpSource = img.type.includes('webp');
-    const isJpegSource = img.type.includes('jpeg') || img.type.includes('jpg');
-    const isPngSource = img.type.includes('png');
-    
-    const matchesFormat = 
-      (img.targetFormat === 'webp' && isWebpSource) ||
-      (img.targetFormat === 'jpeg' && isJpegSource) ||
-      (img.targetFormat === 'png' && isPngSource);
-      
-    if (targetScale === 1.0 && matchesFormat && img.compressionMode === 'lossless') {
+    const targetScale = (img.scale || 1.0) * effectiveScale;
+    const targetPixels = Math.round(originalPixels * targetScale * targetScale);
+
+    const isSourcePng = img.type.includes('png');
+    const isSourceJpeg = img.type.includes('jpeg') || img.type.includes('jpg');
+    const isSourceWebp = img.type.includes('webp');
+    const isSourceAvif = img.type.includes('avif');
+
+    // If exact same format with ~100% quality and 1.0 scale, return original size
+    const isSameFormat =
+      (img.targetFormat === 'png' && isSourcePng) ||
+      (img.targetFormat === 'jpeg' && isSourceJpeg) ||
+      (img.targetFormat === 'webp' && isSourceWebp) ||
+      (img.targetFormat === 'avif' && isSourceAvif);
+
+    if (isSameFormat && targetScale === 1.0 && img.quality >= 0.98) {
       return img.size;
     }
-    
-    return Math.round(projectedBytes);
+
+    // Determine visual entropy / complexity factor based on original image density
+    const sourceBpp = img.size / originalPixels;
+    // 0.18 bytes per pixel is standard photographic baseline
+    const complexityFactor = Math.min(Math.max(sourceBpp / 0.18, 0.40), 2.5);
+
+    // Non-linear quality curve: Balanced uses 0.82 (visually lossless), Max Compress uses 0.55
+    const targetQuality = img.compressionMode === 'max_compress' ? 0.55 : 0.82;
+    let qualityCurve = 1.0;
+    if (targetQuality <= 0.82) {
+      qualityCurve = 0.15 + 0.85 * Math.pow(targetQuality / 0.82, 1.6);
+    } else {
+      qualityCurve = 1.0 + 2.8 * Math.pow((targetQuality - 0.82) / 0.18, 1.7);
+    }
+
+    // Check effective target format (handling AVIF browser fallback to WebP)
+    const effectiveTargetFormat = (img.targetFormat === 'avif' && !checkAvifCanvasSupport()) ? 'webp' : img.targetFormat;
+
+    let projectedBytes = img.size;
+
+    if (img.compressionMode === 'below100kb' && (effectiveTargetFormat === 'webp' || effectiveTargetFormat === 'avif')) {
+      const estimatedUnconstrained = targetPixels * (effectiveTargetFormat === 'avif' ? 0.055 : 0.085) * complexityFactor;
+      if (estimatedUnconstrained <= 90 * 1024) {
+        projectedBytes = Math.max(Math.round(estimatedUnconstrained), 12 * 1024);
+      } else {
+        projectedBytes = 86 * 1024;
+      }
+    } else if (effectiveTargetFormat === 'png') {
+      if (isSourcePng && targetScale === 1.0) {
+        projectedBytes = img.size;
+      } else if (isSourcePng) {
+        projectedBytes = img.size * Math.pow(targetScale, 1.85);
+      } else {
+        // PNG is uncompressed RGB deflate: 0.75 - 1.25 bytes/pixel
+        const estimatedPngBpp = Math.min(Math.max(0.78 * complexityFactor, 0.45), 1.6);
+        projectedBytes = targetPixels * estimatedPngBpp;
+      }
+    } else if (effectiveTargetFormat === 'webp') {
+      // Canvas WebP encoder outputs ~0.085 bytes/pixel at Q=0.82
+      const baseWebpBpp = 0.085 * complexityFactor;
+      projectedBytes = targetPixels * baseWebpBpp * qualityCurve;
+    } else if (effectiveTargetFormat === 'avif') {
+      // Canvas AVIF encoder outputs ~0.055 bytes/pixel at Q=0.82
+      const baseAvifBpp = 0.055 * complexityFactor;
+      projectedBytes = targetPixels * baseAvifBpp * qualityCurve;
+    } else if (effectiveTargetFormat === 'jpeg') {
+      // Canvas JPEG encoder outputs ~0.115 bytes/pixel at Q=0.82
+      const baseJpegBpp = 0.115 * complexityFactor;
+      projectedBytes = targetPixels * baseJpegBpp * qualityCurve;
+    } else if (effectiveTargetFormat === 'svg') {
+      if (img.svgMode === 'trace') {
+        const traceW = Math.min(img.width * targetScale, 1200);
+        const traceH = (img.height * targetScale) * (traceW / (img.width * targetScale || 1));
+        const tracePixels = traceW * traceH;
+        projectedBytes = Math.min(Math.max(tracePixels * 0.045 * complexityFactor + 6000, 15000), 280000);
+      } else {
+        const estimatedRasterSize = targetPixels * Math.max(0.55 * complexityFactor, 0.35);
+        projectedBytes = estimatedRasterSize * 1.35 + 400;
+      }
+    }
+
+    return Math.max(Math.round(projectedBytes), 800);
   };
 
   const totalOriginalSize = images.reduce((acc, img) => acc + img.size, 0);
@@ -712,17 +789,17 @@ export default function ImageConverter() {
           <Sliders className="h-4 w-4 text-blue-600" />
           <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900">Global Configurations (Bulk Edit)</h3>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-1">
             <label className="text-xs font-medium text-slate-500 flex items-center justify-between">
-              <span>Target Output</span>
+              <span>Target Output Format</span>
               <span className="text-[10px] font-mono font-semibold text-slate-900 uppercase">{globalFormat}</span>
             </label>
             <div className="relative">
               <select
                 value={globalFormat}
                 onChange={(e) => setGlobalFormat(e.target.value as any)}
-                className="w-full text-xs font-medium rounded-md border border-slate-200 bg-white px-3 py-1.5 text-slate-900 focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer shadow-xs"
+                className="w-full text-xs font-medium rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer shadow-xs"
               >
                 <option value="webp">WebP (Optimized/Modern)</option>
                 <option value="avif">AVIF (Ultra Optimized)</option>
@@ -744,15 +821,13 @@ export default function ImageConverter() {
               <select
                 value={globalCompressionMode}
                 onChange={(e) => handleGlobalCompressionChange(e.target.value as any)}
-                className="w-full text-xs font-medium rounded-md border border-slate-200 bg-white px-3 py-1.5 text-slate-900 focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer shadow-xs"
+                className="w-full text-xs font-medium rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer shadow-xs"
               >
-                <option value="lossless">Lossless (100% Quality)</option>
-                <option value="balanced">Balanced (High Optimize)</option>
-                <option value="high">Max Compress (Tiny Size)</option>
                 {(globalFormat === 'webp' || globalFormat === 'avif') && (
-                  <option value="below100kb">Under 100 KB Mode (Guaranteed)</option>
+                  <option value="below100kb">Less than 100 KB</option>
                 )}
-                <option value="custom">Custom (Use Slider)</option>
+                <option value="balanced">Balanced (Visually Lossless)</option>
+                <option value="max_compress">Max Compress</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-slate-400">
                 <ChevronDown className="h-3.5 w-3.5" />
@@ -760,32 +835,14 @@ export default function ImageConverter() {
             </div>
           </div>
 
-          {(globalFormat === 'jpeg' || globalFormat === 'webp' || globalFormat === 'avif') ? (
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-500 flex items-center justify-between">
-                <span>Output Quality</span>
-                <span className="text-xs font-mono font-semibold text-slate-900">
-                  {globalCompressionMode === 'below100kb' ? '<100KB' : `${globalQuality}%`}
-                </span>
-              </label>
-              <input
-                type="range"
-                min={10}
-                max={100}
-                value={globalQuality}
-                disabled={globalCompressionMode === 'below100kb'}
-                onChange={(e) => handleGlobalQualityChange(Number(e.target.value))}
-                className="w-full accent-blue-600 h-1.5 bg-slate-100 rounded-lg cursor-pointer disabled:opacity-50"
-              />
-            </div>
-          ) : globalFormat === 'svg' ? (
+          {globalFormat === 'svg' ? (
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-500 block">SVG Vector Mode</label>
               <div className="grid grid-cols-2 gap-1 p-0.5 bg-slate-100 border border-slate-200 rounded-md">
                 <button
                   type="button"
                   onClick={() => setGlobalSvgMode('embed')}
-                  className={`py-1 text-xs font-medium rounded cursor-pointer ${
+                  className={`py-1.5 text-xs font-medium rounded cursor-pointer ${
                     globalSvgMode === 'embed' ? 'bg-white shadow-xs text-slate-900 font-semibold' : 'text-slate-500'
                   }`}
                 >
@@ -794,7 +851,7 @@ export default function ImageConverter() {
                 <button
                   type="button"
                   onClick={() => setGlobalSvgMode('trace')}
-                  className={`py-1 text-xs font-medium rounded cursor-pointer ${
+                  className={`py-1.5 text-xs font-medium rounded cursor-pointer ${
                     globalSvgMode === 'trace' ? 'bg-white shadow-xs text-slate-900 font-semibold' : 'text-slate-500'
                   }`}
                 >
@@ -803,42 +860,16 @@ export default function ImageConverter() {
               </div>
             </div>
           ) : (
-            <div className="space-y-1 opacity-40">
-              <label className="text-xs font-medium text-slate-400 block">Settings</label>
-              <div className="text-xs py-1 text-slate-400 italic">No extra settings.</div>
+            <div className="flex items-end">
+              <button
+                onClick={applyGlobalConfig}
+                disabled={images.length === 0}
+                className="w-full text-xs font-medium py-2 px-3 bg-blue-600 text-white hover:bg-blue-700 rounded-md shadow-xs cursor-pointer transition-colors disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
+              >
+                Apply to Queue
+              </button>
             </div>
           )}
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-500 flex items-center justify-between">
-              <span>Resolution Scale</span>
-              <span className="text-xs font-mono font-semibold text-slate-900">x{globalScale}</span>
-            </label>
-            <div className="grid grid-cols-4 gap-1 p-0.5 bg-slate-100 border border-slate-200 rounded-md">
-              {[0.5, 1, 2, 4].map((sc) => (
-                <button
-                  key={sc}
-                  type="button"
-                  onClick={() => setGlobalScale(sc)}
-                  className={`py-1 text-xs font-medium rounded cursor-pointer ${
-                    globalScale === sc ? 'bg-white shadow-xs text-slate-900 font-semibold' : 'text-slate-500'
-                  }`}
-                >
-                  {sc}x
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-end">
-            <button
-              onClick={applyGlobalConfig}
-              disabled={images.length === 0}
-              className="w-full text-xs font-medium py-1.5 px-3 bg-blue-600 text-white hover:bg-blue-700 rounded-md shadow-xs cursor-pointer transition-colors disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
-            >
-              Apply to Queue
-            </button>
-          </div>
         </div>
       </div>
 
@@ -854,8 +885,8 @@ export default function ImageConverter() {
           width: 4000,
           height: 3000,
           targetFormat: globalFormat,
-          quality: globalQuality / 100,
-          scale: globalScale,
+          quality: globalCompressionMode === 'max_compress' ? 0.55 : globalCompressionMode === 'below100kb' ? 0.65 : 0.82,
+          scale: 1,
           svgMode: globalSvgMode,
           compressionMode: globalCompressionMode,
           status: 'pending'
@@ -1046,27 +1077,11 @@ export default function ImageConverter() {
                       onChange={(e) => updateIndividualImage(img.id, 'compressionMode', e.target.value as any)}
                       className="text-xs font-medium rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500/50 shadow-xs"
                     >
-                      <option value="lossless">Lossless</option>
-                      <option value="balanced">Balanced</option>
-                      <option value="high">Max Compress</option>
                       {(img.targetFormat === 'webp' || img.targetFormat === 'avif') && (
-                        <option value="below100kb">Under 100 KB</option>
+                        <option value="below100kb">Less than 100 KB</option>
                       )}
-                      <option value="custom">Custom</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Scale</span>
-                    <select
-                      value={img.scale}
-                      onChange={(e) => updateIndividualImage(img.id, 'scale', Number(e.target.value))}
-                      className="text-xs font-medium rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500/50 shadow-xs"
-                    >
-                      <option value={0.5}>0.5x</option>
-                      <option value={1.0}>1x</option>
-                      <option value={2.0}>2x</option>
-                      <option value={4.0}>4x</option>
+                      <option value="balanced">Balanced</option>
+                      <option value="max_compress">Max Compress</option>
                     </select>
                   </div>
                 </div>
@@ -1100,6 +1115,36 @@ export default function ImageConverter() {
                   </div>
 
                   <div className="flex items-center gap-1">
+                    {img.targetFormat === 'svg' && img.status === 'completed' && img.svgCode && (
+                      <>
+                        <button
+                          onClick={() => handleCopySvgCode(img.id, img.svgCode!)}
+                          className="inline-flex items-center gap-1 px-2 py-1.5 rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 text-xs font-medium cursor-pointer shadow-xs transition-colors"
+                          title="Copy Raw SVG XML Code"
+                        >
+                          {copiedId === img.id ? (
+                            <>
+                              <Check className="h-3.5 w-3.5 text-emerald-600" />
+                              <span className="text-emerald-700 font-semibold text-[11px]">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3.5 w-3.5" />
+                              <span className="text-[11px]">Copy SVG</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => setActiveSvgModal({ name: img.name, code: img.svgCode! })}
+                          className="p-1.5 rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 cursor-pointer shadow-xs transition-colors"
+                          title="View & Inspect SVG XML Code"
+                        >
+                          <Code className="h-3.5 w-3.5 text-blue-600" />
+                        </button>
+                      </>
+                    )}
+
                     {img.status === 'completed' ? (
                       <button
                         onClick={() => triggerDownload(img)}
@@ -1135,13 +1180,71 @@ export default function ImageConverter() {
         </div>
       )}
 
+      {/* SVG Code Inspector Modal */}
+      {activeSvgModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[85vh] flex flex-col border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2">
+                <FileCode className="h-4 w-4 text-blue-600" />
+                <h3 className="text-xs font-semibold text-slate-900 truncate max-w-md">SVG Source Code: {activeSvgModal.name}</h3>
+              </div>
+              <button
+                onClick={() => setActiveSvgModal(null)}
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-200/60 cursor-pointer transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-4 flex-1 overflow-auto bg-slate-950 text-slate-100 font-mono text-xs leading-relaxed select-all">
+              <pre className="whitespace-pre-wrap break-all">{activeSvgModal.code}</pre>
+            </div>
+
+            <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+              <span className="text-xs text-slate-400 font-mono">
+                {activeSvgModal.code.length.toLocaleString()} characters ({formatBytes(activeSvgModal.code.length)})
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(activeSvgModal.code);
+                    setCopiedId('modal');
+                    setTimeout(() => setCopiedId(null), 2000);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-xs font-medium cursor-pointer shadow-xs transition-colors"
+                >
+                  {copiedId === 'modal' ? (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      <span>Copied to Clipboard!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>Copy SVG Markup</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveSvgModal(null)}
+                  className="px-3 py-1.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-medium cursor-pointer transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Developer tips footer */}
       <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-slate-500 text-xs leading-relaxed flex items-start gap-2.5">
         <FileCode className="h-4 w-4 text-slate-700 shrink-0 mt-0.5" />
         <div className="space-y-0.5">
           <span className="font-semibold text-slate-900 block">Digital Format Engineering Tips</span>
           <p>
-            • <strong className="text-slate-900">WebP</strong> offers ~30% smaller sizes than PNG while keeping alpha transparency.
+            • <strong className="text-slate-900">SVG</strong> exports both vector XML markup for instant copy/paste and clean downloadable vector graphics.
           </p>
         </div>
       </div>
