@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, Trash2, Download, RefreshCw, Check, AlertCircle, FileCode, Sliders, ChevronDown, Info, TrendingDown, TrendingUp, Minus, Sparkles, Zap } from 'lucide-react';
+import { UploadCloud, Trash2, Download, RefreshCw, Check, AlertCircle, FileCode, Sliders, ChevronDown, Info, TrendingDown, TrendingUp, Minus, Sparkles, Zap, Copy, Code, X } from 'lucide-react';
+import JSZip from 'jszip';
 
 export type CompressionMode = 'below100kb' | 'balanced' | 'high';
 
@@ -25,6 +26,7 @@ interface ImageFile {
   status: 'pending' | 'processing' | 'completed' | 'error';
   convertedDataUrl?: string;
   convertedSize?: number;
+  svgCode?: string;
   errorMessage?: string;
 }
 
@@ -33,8 +35,18 @@ export default function ImageConverter() {
   const [globalFormat, setGlobalFormat] = useState<'png' | 'jpeg' | 'webp' | 'svg' | 'avif'>('webp');
   const [globalCompressionMode, setGlobalCompressionMode] = useState<CompressionMode>('balanced');
   const [globalSvgMode, setGlobalSvgMode] = useState<'embed' | 'trace'>('embed');
+  const [activeSvgModal, setActiveSvgModal] = useState<{ name: string; code: string } | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCopySvgCode = (id: string, code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedId(id);
+    setTimeout(() => {
+      setCopiedId((prev) => (prev === id ? null : prev));
+    }, 2000);
+  };
 
   const handleGlobalCompressionChange = (mode: CompressionMode) => {
     setGlobalCompressionMode(mode);
@@ -334,7 +346,8 @@ export default function ImageConverter() {
                 ...imgFile,
                 status: 'completed',
                 convertedDataUrl: url,
-                convertedSize: blob.size
+                convertedSize: blob.size,
+                svgCode: svgText
               });
             } else {
               const base64Url = canvas.toDataURL(imgFile.type || 'image/png');
@@ -348,7 +361,8 @@ export default function ImageConverter() {
                 ...imgFile,
                 status: 'completed',
                 convertedDataUrl: url,
-                convertedSize: blob.size
+                convertedSize: blob.size,
+                svgCode: svgContent
               });
             }
           } else {
@@ -509,6 +523,32 @@ export default function ImageConverter() {
 
     const completed = listToProcess.filter((img) => img.status === 'completed');
     if (completed.length === 0) return;
+
+    if (completed.length > 5) {
+      try {
+        const zip = new JSZip();
+        for (const img of completed) {
+          if (img.convertedDataUrl) {
+            const response = await fetch(img.convertedDataUrl);
+            const blob = await response.blob();
+            const baseName = img.name.substring(0, img.name.lastIndexOf('.')) || img.name;
+            zip.file(`${baseName}_converted.${img.targetFormat}`, blob);
+          }
+        }
+        const zipContent = await zip.generateAsync({ type: 'blob' });
+        const zipUrl = URL.createObjectURL(zipContent);
+        const link = document.createElement('a');
+        link.href = zipUrl;
+        link.download = `converted_images_${Date.now()}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(zipUrl);
+        return;
+      } catch (err) {
+        console.error('ZIP generation failed, downloading individually', err);
+      }
+    }
 
     completed.forEach((img, idx) => {
       setTimeout(() => {
