@@ -889,7 +889,7 @@ export default function ImageConverter() {
               <div key={img.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
                 
                 {/* Visual File Preview Column */}
-                <div className="flex items-center gap-3 min-w-[220px] max-w-sm">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="h-12 w-12 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-100 flex items-center justify-center relative">
                     <img
                       src={img.previewUrl}
@@ -898,7 +898,7 @@ export default function ImageConverter() {
                       className="h-full w-full object-cover"
                     />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <span className="text-xs font-semibold text-slate-900 block truncate" title={img.name}>
                       {img.name}
                     </span>
@@ -910,14 +910,14 @@ export default function ImageConverter() {
                   </div>
                 </div>
 
-                {/* Settings Block for this item */}
-                <div className="flex flex-wrap items-center gap-3 flex-1">
+                {/* Right Side: Format, Mode, Size & Actions */}
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4 shrink-0 justify-end">
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-slate-400 block uppercase font-medium">Format</span>
                     <select
                       value={img.targetFormat}
                       onChange={(e) => updateIndividualImage(img.id, 'targetFormat', e.target.value as any)}
-                      className="text-xs font-medium rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500/50 shadow-xs"
+                      className="text-xs font-medium rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500/50 shadow-xs cursor-pointer"
                     >
                       <option value="webp">WebP</option>
                       <option value="avif">AVIF</option>
@@ -932,44 +932,44 @@ export default function ImageConverter() {
                     <select
                       value={img.compressionMode}
                       onChange={(e) => updateIndividualImage(img.id, 'compressionMode', e.target.value as any)}
-                      className="text-xs font-medium rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500/50 shadow-xs"
+                      className="text-xs font-medium rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500/50 shadow-xs cursor-pointer"
                     >
                       <option value="below100kb">Under 100 KB</option>
                       <option value="balanced">Balanced</option>
                       <option value="high">Max Compress</option>
                     </select>
                   </div>
-                </div>
 
-                {/* Status & Actions */}
-                <div className="flex items-center gap-3 shrink-0 justify-end">
-                  <div className="text-right">
-                    {img.status === 'pending' && (
-                      <span className="text-xs font-mono text-slate-400">
-                        ~{formatBytes(getProjectedSize(img))}
-                      </span>
-                    )}
-                    {img.status === 'processing' && (
-                      <span className="inline-flex items-center gap-1 text-xs text-slate-900 font-medium">
-                        <RefreshCw className="h-3 w-3 animate-spin text-slate-900" />
-                        Converting...
-                      </span>
-                    )}
-                    {img.status === 'completed' && (
-                      <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-semibold">
-                        <Check className="h-3 w-3" />
-                        {img.convertedSize && formatBytes(img.convertedSize)}
-                      </span>
-                    )}
-                    {img.status === 'error' && (
-                      <span className="inline-flex items-center gap-1 text-xs text-rose-600 font-medium">
-                        <AlertCircle className="h-3 w-3" />
-                        Failed
-                      </span>
-                    )}
+                  <div className="space-y-0.5 text-right min-w-[70px]">
+                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Size</span>
+                    <div>
+                      {img.status === 'pending' && (
+                        <span className="text-xs font-mono text-slate-500">
+                          ~{formatBytes(getProjectedSize(img))}
+                        </span>
+                      )}
+                      {img.status === 'processing' && (
+                        <span className="inline-flex items-center gap-1 text-xs text-blue-600 font-medium">
+                          <RefreshCw className="h-3 w-3 animate-spin text-blue-600" />
+                          Converting...
+                        </span>
+                      )}
+                      {img.status === 'completed' && (
+                        <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-semibold font-mono">
+                          <Check className="h-3 w-3" />
+                          {img.convertedSize && formatBytes(img.convertedSize)}
+                        </span>
+                      )}
+                      {img.status === 'error' && (
+                        <span className="inline-flex items-center gap-1 text-xs text-rose-600 font-medium">
+                          <AlertCircle className="h-3 w-3" />
+                          Failed
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 pt-3.5 sm:pt-3">
                     {img.status === 'completed' ? (
                       <button
                         onClick={() => triggerDownload(img)}
