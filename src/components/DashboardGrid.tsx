@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileImage, Paintbrush, Key, ArrowRight, Heart, Sparkles, Terminal, Search, ShieldCheck, Zap, Activity, FileCode } from 'lucide-react';
+import { FileImage, Paintbrush, Key, ArrowRight, Heart, Sparkles, Terminal, Search, ShieldCheck, Zap, Activity, FileCode, MonitorSmartphone } from 'lucide-react';
 import { motion } from 'motion/react';
 import { prefetchTool } from '../App';
 
@@ -41,6 +41,18 @@ export default function DashboardGrid({
       iconBg: 'bg-gradient-to-br from-slate-800 to-black text-white shadow-slate-300/50',
       hoverBorder: 'hover:border-slate-400 hover:shadow-slate-200/50',
       stats: 'Visual QA'
+    },
+    {
+      id: 'responsive-preview',
+      name: 'Responsive Preview',
+      description: 'Preview websites across mobile, tablet, laptop, desktop, and custom viewports simultaneously with interactive horizontal overflow inspection.',
+      category: 'AI & Quality Assurance',
+      icon: MonitorSmartphone,
+      badge: 'Device Lab',
+      badgeStyle: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      iconBg: 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-emerald-200/50',
+      hoverBorder: 'hover:border-emerald-300 hover:shadow-emerald-100/50',
+      stats: 'Multi-Device'
     },
     {
       id: 'html-cleaner',

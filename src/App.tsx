@@ -12,12 +12,14 @@ const toolsMap: Record<string, () => Promise<any>> = {
   'gradient': () => import('./components/tools/GradientGenerator'),
   'password': () => import('./components/tools/PasswordGenerator'),
   'content-checker': () => import('./components/tools/ContentChecker'),
+  'responsive-preview': () => import('./components/tools/ResponsivePreview'),
 };
 
 const ImageConverter = lazy(toolsMap['image']);
 const GradientGenerator = lazy(toolsMap['gradient']);
 const PasswordGenerator = lazy(toolsMap['password']);
 const ContentChecker = lazy(toolsMap['content-checker']);
+const ResponsivePreview = lazy(toolsMap['responsive-preview']);
 const SeoChecker = lazy(toolsMap['seo-checker']);
 const HtmlCleaner = lazy(toolsMap['html-cleaner']);
 
@@ -85,6 +87,8 @@ export default function App() {
         return <PasswordGenerator />;
       case 'content-checker':
         return <ContentChecker />;
+      case 'responsive-preview':
+        return <ResponsivePreview />;
       default:
         return (
           <DashboardGrid
@@ -113,6 +117,8 @@ export default function App() {
         return 'Cryptographic Key & Password Generator';
       case 'content-checker':
         return 'Content Audit';
+      case 'responsive-preview':
+        return 'Responsive Device Preview';
       default:
         return 'Utility Tool Manager Workspace';
     }
