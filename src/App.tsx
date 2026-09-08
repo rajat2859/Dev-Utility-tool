@@ -124,8 +124,19 @@ export default function App() {
     }
   };
 
+  // Keyboard navigation: Escape key returns to dashboard
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && activeView !== 'dashboard') {
+        setActiveView('dashboard');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeView]);
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950 font-sans antialiased flex selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-canvas-pattern text-slate-900 font-sans antialiased flex selection:bg-blue-600 selection:text-white">
       <Sidebar
         currentView={activeView}
         onSelectView={(id) => {
@@ -137,59 +148,75 @@ export default function App() {
       />
 
       <div className="flex-1 md:pl-64 flex flex-col min-w-0 pt-14 md:pt-0">
-        <header className="sticky top-14 md:top-0 z-20 h-14 bg-white/90 backdrop-blur-md border-b border-slate-200/90 px-3 sm:px-6 md:px-8 flex items-center justify-between shadow-2xs min-w-0">
+        <header className="sticky top-14 md:top-0 z-20 h-14 bg-white/85 backdrop-blur-xl border-b border-slate-200/80 px-4 sm:px-6 md:px-8 flex items-center justify-between shadow-2xs min-w-0 transition-all">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {activeView !== 'dashboard' && (
               <motion.button
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
-                whileHover={{ scale: 1.05 }}
+                whileHover={{ scale: 1.05, x: -2 }}
                 whileTap={{ scale: 0.95 }}
+                transition={{ duration: 0.12 }}
                 onClick={() => setActiveView('dashboard')}
-                className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-950 cursor-pointer transition-colors shadow-2xs shrink-0"
-                title="Return to Dashboard"
+                className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-slate-200/90 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-950 cursor-pointer transition-colors shadow-2xs shrink-0"
+                title="Return to Dashboard (Esc)"
               >
                 <ArrowLeft className="h-4 w-4" />
               </motion.button>
             )}
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xs font-semibold text-slate-400 hidden sm:inline uppercase tracking-wider shrink-0">Utility Tool Manager</span>
-              {activeView !== 'dashboard' && <span className="text-slate-300 hidden sm:inline shrink-0">/</span>}
-              <h1 className="font-bold text-xs sm:text-sm tracking-tight text-slate-900 truncate">
-                {getToolTitle()}
-              </h1>
+            <div className="flex items-center gap-2 min-w-0 text-xs">
+              <button
+                onClick={() => setActiveView('dashboard')}
+                className="font-semibold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-wider shrink-0 cursor-pointer"
+              >
+                Workspace
+              </button>
+              {activeView !== 'dashboard' && (
+                <>
+                  <span className="text-slate-300 shrink-0">/</span>
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50/80 border border-blue-200/60 min-w-0">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-600 shrink-0 animate-pulse" />
+                    <h1 className="font-bold text-xs sm:text-sm tracking-tight text-blue-900 truncate">
+                      {getToolTitle()}
+                    </h1>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="inline-flex text-xs bg-blue-50 text-blue-700 border border-blue-200/80 px-2 sm:px-2.5 py-1 rounded-md font-semibold items-center gap-1.5 shadow-2xs">
-              <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0 animate-pulse" />
-              <span className="hidden sm:inline font-mono">Instant Turbo Engine</span>
-              <span className="sm:hidden font-mono text-[11px]">Turbo</span>
-            </span>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="inline-flex text-xs bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-800 border border-blue-200/90 px-2.5 py-1 rounded-full font-semibold items-center gap-1.5 shadow-2xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="font-mono text-[11px] sm:text-xs">Fast Engine · Active</span>
+            </div>
           </div>
         </header>
 
-        <main className="flex-1 p-3.5 sm:p-6 md:p-8 max-w-7xl w-full mx-auto min-w-0">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto min-w-0">
           <Suspense fallback={
             <div className="space-y-6 animate-pulse">
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-3">
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-3">
                 <div className="h-5 bg-slate-200 rounded-md w-1/4"></div>
                 <div className="h-4 bg-slate-100 rounded-md w-1/2"></div>
               </div>
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4">
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-4">
                 <div className="h-10 bg-slate-100 rounded-xl w-full"></div>
-                <div className="h-28 bg-slate-50 border border-slate-200 rounded-xl w-full"></div>
+                <div className="h-28 bg-slate-50 border border-slate-200/80 rounded-xl w-full"></div>
               </div>
             </div>
           }>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeView}
-                initial={{ opacity: 0, y: 4 }}
+                initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.1, ease: 'easeOut' }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
+                className="gpu-layer"
               >
                 {renderActiveTool()}
               </motion.div>
