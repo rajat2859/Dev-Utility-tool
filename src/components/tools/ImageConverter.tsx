@@ -2,6 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { UploadCloud, Trash2, Download, RefreshCw, Check, AlertCircle, FileCode, Sliders, ChevronDown, Info, TrendingDown, TrendingUp, Minus, Sparkles, Zap, Copy, Code, X } from 'lucide-react';
 import JSZip from 'jszip';
 
+export type CompressionMode = 'below100kb' | 'balanced' | 'high';
+
+export const MODE_QUALITIES: Record<CompressionMode, number> = {
+  below100kb: 0.65,
+  balanced: 0.82,
+  high: 0.55,
+};
+
 interface ImageFile {
   id: string;
   file: File;
@@ -302,7 +310,6 @@ const checkAvifCanvasSupport = (): boolean => {
     }
 
     let bestBlob: Blob | null = null;
-    let bestScale = scale;
     let bestQuality = quality;
 
     // 1-2 fast iterations resolve >99% of images in milliseconds
@@ -338,7 +345,6 @@ const checkAvifCanvasSupport = (): boolean => {
 
       if (!bestBlob || blob.size < bestBlob.size) {
         bestBlob = blob;
-        bestScale = scale;
         bestQuality = quality;
       }
 
@@ -356,7 +362,6 @@ const checkAvifCanvasSupport = (): boolean => {
 
     return {
       blob: bestBlob!,
-      finalScale: bestScale,
       finalQuality: bestQuality,
     };
   };
