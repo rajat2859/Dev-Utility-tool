@@ -8,13 +8,11 @@ import {
   Trash2,
   Sparkles,
   Eye,
-  SlidersHorizontal,
   FileText,
   CheckCircle2,
   Info,
   Upload,
   Replace,
-  FileSpreadsheet,
   Zap,
   Globe,
   ShieldAlert,
@@ -24,14 +22,20 @@ import {
   Table as TableIcon,
   Bold,
   Italic,
+  Underline,
+  Strikethrough,
   Heading1,
   Heading2,
+  Heading3,
   List,
   ListOrdered,
+  Quote,
   Eraser,
   Layers,
   Wrench,
-  RefreshCw
+  RefreshCw,
+  Table,
+  FileSpreadsheet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -78,7 +82,7 @@ const DEFAULT_OPTIONS: CleanOptions = {
   replaceTablesWithDivs: false,
   removeComments: true,
   removeAriaAttributes: true,
-  setNewLinesAndIndents: false,
+  setNewLinesAndIndents: true,
 
   stripScripts: true,
   stripStyles: true,
@@ -103,9 +107,13 @@ const MAIN_CLEANING_OPTIONS = [
   { key: 'removeLinks', label: 'Remove links', icon: Link2 },
   { key: 'removeTables', label: 'Remove tables', icon: TableIcon },
   { key: 'replaceTablesWithDivs', label: 'Replace table tags with <div>s', icon: Code },
-  { key: 'removeComments', label: 'Remove comments', icon: Info },
-  { key: 'removeAriaAttributes', label: 'Remove ARIA attributes (e.g. aria-level)', icon: ShieldAlert },
-  { key: 'setNewLinesAndIndents', label: 'Set new lines and text indents', icon: ListFilter },
+  { key: 'removeComments', label: 'Remove comments & MSO tags', icon: Info },
+  { key: 'removeAriaAttributes', label: 'Remove ARIA attributes', icon: ShieldAlert },
+  { key: 'setNewLinesAndIndents', label: 'Set new lines and indents', icon: ListFilter },
+  { key: 'stripScripts', label: 'Remove scripts & embeds', icon: ShieldAlert },
+  { key: 'stripStyles', label: 'Remove <style> blocks', icon: FileCode },
+  { key: 'convertSemanticTags', label: 'Convert b/i to strong/em', icon: Sparkles },
+  { key: 'fixSmartQuotes', label: 'Normalize smart quotes', icon: Sparkles },
 ] as const;
 
 const SAMPLE_HTML_WORD_DOC = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
@@ -130,11 +138,11 @@ const SAMPLE_HTML_WORD_DOC = `<html xmlns:o="urn:schemas-microsoft-com:office:of
           It contains redundant <span class="GramE" style="color:red;">inline styles</span>, mso tags, and tracking scripts.
         </span>
       </p>
-      <p class="MsoNormal"></p>
+      <p class="MsoNormal">&nbsp;</p>
       <script type="text/javascript">
         console.log("Tracking script should be stripped automatically!");
       </script>
-      <table border="1" style="width:100%; border-collapse:collapse;">
+      <table border="1" cellpadding="5" cellspacing="0" style="width:100%; border-collapse:collapse;">
         <tr>
           <td style="padding:8px; background-color:#f0f0f0;"><b>Feature</b></td>
           <td style="padding:8px; background-color:#f0f0f0;"><b>Status</b></td>
@@ -184,9 +192,193 @@ const SAMPLE_HTML_SCRAPED = `<div id="article-body-9912" class="post-content ent
   </div>
 </div>`;
 
+const SAMPLE_HTML_TABLE = `<table border="1" cellpadding="6" cellspacing="0" style="width:100%; border-collapse:collapse; font-family:sans-serif;" bgcolor="#ffffff">
+  <thead>
+    <tr bgcolor="#2563eb" style="color:#ffffff;">
+      <th style="padding:10px; text-align:left;">Utility Name</th>
+      <th style="padding:10px; text-align:left;">Category</th>
+      <th style="padding:10px; text-align:center;">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding:8px;">HTML Cleaner & Visual Studio</td>
+      <td style="padding:8px;"><span style="color:#2563eb;">Code & Markup</span></td>
+      <td style="padding:8px; text-align:center;"><b>Ready</b></td>
+    </tr>
+    <tr bgcolor="#f8fafc">
+      <td style="padding:8px;">Bulk Image Converter</td>
+      <td style="padding:8px;"><span style="color:#059669;">Graphics</span></td>
+      <td style="padding:8px; text-align:center;"><b>Ready</b></td>
+    </tr>
+    <tr>
+      <td style="padding:8px;">Responsive Device Preview</td>
+      <td style="padding:8px;"><span style="color:#7c3aed;">UI Testing</span></td>
+      <td style="padding:8px; text-align:center;"><b>Ready</b></td>
+    </tr>
+  </tbody>
+</table>`;
+
+// Format bytes helper
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+// Convert HTML to clean Markdown
+function htmlToMarkdown(html: string): string {
+  if (!html.trim()) return '';
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  const processNode = (node: Node): string => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.nodeValue || '';
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+    const el = node as HTMLElement;
+    const tag = el.tagName.toLowerCase();
+    const childrenText = Array.from(el.childNodes).map(processNode).join('');
+
+    switch (tag) {
+      case 'h1': return `\n\n# ${childrenText.trim()}\n\n`;
+      case 'h2': return `\n\n## ${childrenText.trim()}\n\n`;
+      case 'h3': return `\n\n### ${childrenText.trim()}\n\n`;
+      case 'h4': return `\n\n#### ${childrenText.trim()}\n\n`;
+      case 'h5': return `\n\n##### ${childrenText.trim()}\n\n`;
+      case 'h6': return `\n\n###### ${childrenText.trim()}\n\n`;
+      case 'p': return `\n\n${childrenText.trim()}\n\n`;
+      case 'strong':
+      case 'b':
+        return childrenText.trim() ? `**${childrenText.trim()}**` : '';
+      case 'em':
+      case 'i':
+        return childrenText.trim() ? `*${childrenText.trim()}*` : '';
+      case 's':
+      case 'strike':
+      case 'del':
+        return childrenText.trim() ? `~~${childrenText.trim()}~~` : '';
+      case 'code':
+        if (el.parentElement?.tagName.toLowerCase() === 'pre') {
+          return childrenText;
+        }
+        return `\`${childrenText}\``;
+      case 'pre':
+        return `\n\n\`\`\`\n${el.textContent || childrenText}\n\`\`\`\n\n`;
+      case 'blockquote':
+        return `\n\n> ${childrenText.trim().replace(/\n/g, '\n> ')}\n\n`;
+      case 'a': {
+        const href = el.getAttribute('href') || '#';
+        return `[${childrenText.trim() || href}](${href})`;
+      }
+      case 'img': {
+        const src = el.getAttribute('src') || '';
+        const alt = el.getAttribute('alt') || 'image';
+        return `![${alt}](${src})`;
+      }
+      case 'hr': return '\n\n---\n\n';
+      case 'br': return '  \n';
+      case 'ul': {
+        const items = Array.from(el.children)
+          .filter((c) => c.tagName.toLowerCase() === 'li')
+          .map((c) => `- ${Array.from(c.childNodes).map(processNode).join('').trim()}`)
+          .join('\n');
+        return `\n\n${items}\n\n`;
+      }
+      case 'ol': {
+        const items = Array.from(el.children)
+          .filter((c) => c.tagName.toLowerCase() === 'li')
+          .map((c, i) => `${i + 1}. ${Array.from(c.childNodes).map(processNode).join('').trim()}`)
+          .join('\n');
+        return `\n\n${items}\n\n`;
+      }
+      case 'table': {
+        const rows = Array.from(el.querySelectorAll('tr'));
+        if (rows.length === 0) return '';
+        let tableMd = '\n\n';
+        rows.forEach((row, idx) => {
+          const cells = Array.from(row.querySelectorAll('th, td')).map((c) =>
+            Array.from(c.childNodes).map(processNode).join('').replace(/\|/g, '\\|').trim()
+          );
+          tableMd += `| ${cells.join(' | ')} |\n`;
+          if (idx === 0) {
+            tableMd += `| ${cells.map(() => '---').join(' | ')} |\n`;
+          }
+        });
+        return tableMd + '\n';
+      }
+      default:
+        return childrenText;
+    }
+  };
+
+  return processNode(doc.body).replace(/\n{3,}/g, '\n\n').trim();
+}
+
+// Pretty print HTML DOM tree preserving inline elements and indenting blocks
+function prettyPrintDom(node: Node, indentLevel = 0): string {
+  const indent = '  '.repeat(indentLevel);
+  const blockTags = new Set([
+    'div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li',
+    'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'blockquote',
+    'header', 'footer', 'nav', 'section', 'article', 'aside', 'main', 'figure', 'figcaption', 'hr'
+  ]);
+  const voidTags = new Set(['img', 'br', 'hr', 'input', 'meta', 'link', 'source', 'track', 'wbr']);
+
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.nodeValue?.replace(/\s+/g, ' ') || '';
+  }
+  if (node.nodeType === Node.COMMENT_NODE) {
+    return `\n${indent}<!--${node.nodeValue}-->`;
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+  const el = node as HTMLElement;
+  const tag = el.tagName.toLowerCase();
+
+  // If <pre> tag, preserve exact innerHTML
+  if (tag === 'pre') {
+    return `\n${indent}<pre>${el.innerHTML}</pre>`;
+  }
+
+  const isBlock = blockTags.has(tag);
+  const isVoid = voidTags.has(tag);
+
+  let attrs = '';
+  for (let i = 0; i < el.attributes.length; i++) {
+    const attr = el.attributes[i];
+    attrs += ` ${attr.name}="${attr.value}"`;
+  }
+
+  if (isVoid) {
+    return isBlock ? `\n${indent}<${tag}${attrs} />` : `<${tag}${attrs} />`;
+  }
+
+  const hasBlockChildren = Array.from(el.childNodes).some(
+    (c) => c.nodeType === Node.ELEMENT_NODE && blockTags.has((c as HTMLElement).tagName.toLowerCase())
+  );
+
+  if (!hasBlockChildren) {
+    const inner = Array.from(el.childNodes).map((c) => prettyPrintDom(c, 0)).join('').trim();
+    if (!inner) return `<${tag}${attrs}></${tag}>`;
+    return isBlock ? `\n${indent}<${tag}${attrs}>${inner}</${tag}>` : `<${tag}${attrs}>${inner}</${tag}>`;
+  }
+
+  const childrenFormatted = Array.from(el.childNodes)
+    .map((c) => prettyPrintDom(c, indentLevel + 1))
+    .join('');
+
+  return `\n${indent}<${tag}${attrs}>${childrenFormatted}\n${indent}</${tag}>`;
+}
+
 export default function HtmlCleaner() {
   const [inputHtml, setInputHtml] = useState<string>(SAMPLE_HTML_WORD_DOC);
   const [options, setOptions] = useState<CleanOptions>(DEFAULT_OPTIONS);
+  const [activeView, setActiveView] = useState<'html' | 'markdown' | 'text'>('html');
   const [copied, setCopied] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [findText, setFindText] = useState<string>('');
@@ -198,14 +390,14 @@ export default function HtmlCleaner() {
   const wysiwygRef = useRef<HTMLDivElement>(null);
   const rightTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Sync WYSIWYG editor content when inputHtml changes
+  // Sync WYSIWYG editor content when inputHtml changes externally
   useEffect(() => {
     if (wysiwygRef.current && document.activeElement !== wysiwygRef.current) {
       wysiwygRef.current.innerHTML = inputHtml;
     }
   }, [inputHtml]);
 
-  // Clean HTML according to exact options
+  // Clean HTML according to exact options with multi-pass DOM stabilization
   const cleanedResult = useMemo(() => {
     if (!inputHtml.trim()) {
       return {
@@ -218,7 +410,7 @@ export default function HtmlCleaner() {
 
     let processedHtml = inputHtml;
 
-    // Find and Replace
+    // Apply active Find and Replace in preview
     if (findText) {
       try {
         const regex = new RegExp(findText, 'gi');
@@ -228,12 +420,29 @@ export default function HtmlCleaner() {
       }
     }
 
+    // 1. String Pre-Clean: strip XML namespaces, MSO conditionals & Google Docs artifacts
+    processedHtml = processedHtml
+      .replace(/<\?xml[^>]*\?>/gi, '')
+      .replace(/<!\[if !?[^\]]*\]>/gi, '')
+      .replace(/<!\[endif\]>/gi, '')
+      .replace(/<\/?o:p[^>]*>/gi, '')
+      .replace(/<\/?w:[^>]*>/gi, '')
+      .replace(/<\/?m:[^>]*>/gi, '')
+      .replace(/<\/?v:[^>]*>/gi, '');
+
+    // Unwrap Google Docs normal bold wrapper: <b id="docs-internal-guid-..." style="font-weight:normal;">...</b>
+    processedHtml = processedHtml.replace(
+      /<b\s+[^>]*id="docs-internal-guid-[^"]*"[^>]*style="[^"]*font-weight:\s*normal[^"]*"[^>]*>(.*?)<\/b>/gis,
+      '$1'
+    );
+
     let tagsRemoved = 0;
     let attrsRemoved = 0;
 
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(processedHtml, 'text/html');
+      const body = doc.body;
 
       const allowedTagSet = new Set(
         options.allowedTags
@@ -243,11 +452,23 @@ export default function HtmlCleaner() {
           .filter(Boolean)
       );
 
-      // Recursive node cleaning
+      // Safe DOM unwrap helper
+      const unwrapElement = (el: HTMLElement) => {
+        const parent = el.parentNode;
+        if (!parent) return;
+        while (el.firstChild) {
+          parent.insertBefore(el.firstChild, el);
+        }
+        parent.removeChild(el);
+        tagsRemoved++;
+      };
+
+      // Node cleaner function
       const cleanNode = (node: Node): boolean => {
         // Comment Node
         if (node.nodeType === Node.COMMENT_NODE) {
           if (options.removeComments) {
+            node.parentNode?.removeChild(node);
             tagsRemoved++;
             return false;
           }
@@ -274,22 +495,23 @@ export default function HtmlCleaner() {
 
         // Element Node
         if (node.nodeType === Node.ELEMENT_NODE) {
-          const el = node as HTMLElement;
+          let el = node as HTMLElement;
           const tagName = el.tagName.toUpperCase();
           const lowerTagName = el.tagName.toLowerCase();
 
-          // 1. Script / Style removals
+          // 1. Script / Style / Object removals
           if (
-            (options.stripScripts && (tagName === 'SCRIPT' || tagName === 'NOSCRIPT')) ||
-            (options.stripStyles && tagName === 'STYLE') ||
-            (tagName === 'IFRAME' || tagName === 'EMBED' || tagName === 'OBJECT' || tagName === 'APPLET')
+            (options.stripScripts && ['SCRIPT', 'NOSCRIPT', 'IFRAME', 'EMBED', 'OBJECT', 'APPLET'].includes(tagName)) ||
+            (options.stripStyles && tagName === 'STYLE')
           ) {
+            el.parentNode?.removeChild(el);
             tagsRemoved++;
             return false;
           }
 
           // 2. Remove Images
           if (options.removeImages && tagName === 'IMG') {
+            el.parentNode?.removeChild(el);
             tagsRemoved++;
             return false;
           }
@@ -297,33 +519,59 @@ export default function HtmlCleaner() {
           // 3. Convert deprecated / non-semantic tags
           if (options.convertSemanticTags) {
             if (tagName === 'B') {
+              const fw = el.style.fontWeight;
+              if (fw === 'normal' || fw === '400') {
+                unwrapElement(el);
+                return false;
+              }
               const strong = doc.createElement('strong');
               while (el.firstChild) strong.appendChild(el.firstChild);
               el.parentNode?.replaceChild(strong, el);
-              return cleanNode(strong);
-            }
-            if (tagName === 'I') {
+              el = strong;
+            } else if (tagName === 'I') {
               const em = doc.createElement('em');
               while (el.firstChild) em.appendChild(el.firstChild);
               el.parentNode?.replaceChild(em, el);
-              return cleanNode(em);
+              el = em;
+            } else if (tagName === 'STRIKE' || tagName === 'S') {
+              const del = doc.createElement('del');
+              while (el.firstChild) del.appendChild(el.firstChild);
+              el.parentNode?.replaceChild(del, el);
+              el = del;
+            } else if (tagName === 'FONT') {
+              unwrapElement(el);
+              return false;
+            } else if (tagName === 'CENTER') {
+              const div = doc.createElement('div');
+              while (el.firstChild) div.appendChild(el.firstChild);
+              el.parentNode?.replaceChild(div, el);
+              el = div;
             }
           }
 
-          // 4. Replace table tags with <div>s
-          if (options.replaceTablesWithDivs && ['TABLE', 'THEAD', 'TBODY', 'TR', 'TD', 'TH'].includes(tagName)) {
-            const div = doc.createElement('div');
-            while (el.firstChild) div.appendChild(el.firstChild);
-            el.parentNode?.replaceChild(div, el);
-            return cleanNode(div);
+          // 4. Replace table tags with <div>s or <p>s
+          if (options.replaceTablesWithDivs && ['TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TD', 'TH'].includes(tagName)) {
+            const replacementTag = (tagName === 'TD' || tagName === 'TH') ? 'p' : 'div';
+            const rep = doc.createElement(replacementTag);
+            while (el.firstChild) rep.appendChild(el.firstChild);
+            el.parentNode?.replaceChild(rep, el);
+            el = rep;
           }
 
           // 5. Attributes cleaning
           if (options.stripTagAttributes) {
             const attrs = Array.from(el.attributes);
             for (const attr of attrs) {
-              if (tagName === 'A' && attr.name.toLowerCase() === 'href') continue;
-              if (tagName === 'IMG' && (attr.name.toLowerCase() === 'src' || attr.name.toLowerCase() === 'alt')) continue;
+              const attrName = attr.name.toLowerCase();
+              if (tagName === 'A' && attrName === 'href') {
+                if (attr.value.toLowerCase().trim().startsWith('javascript:')) {
+                  el.removeAttribute(attr.name);
+                  attrsRemoved++;
+                }
+                continue;
+              }
+              if (tagName === 'IMG' && (attrName === 'src' || attrName === 'alt' || attrName === 'title')) continue;
+              if ((tagName === 'TD' || tagName === 'TH') && (attrName === 'colspan' || attrName === 'rowspan')) continue;
               el.removeAttribute(attr.name);
               attrsRemoved++;
             }
@@ -331,22 +579,27 @@ export default function HtmlCleaner() {
             const attrs = Array.from(el.attributes);
             for (const attr of attrs) {
               const attrName = attr.name.toLowerCase();
+              const attrVal = attr.value.toLowerCase().trim();
 
               if (options.stripInlineStyles && attrName === 'style') {
                 el.removeAttribute(attr.name);
                 attrsRemoved++;
+                continue;
               }
               if (options.stripClassesAndIds && (attrName === 'class' || attrName === 'id')) {
                 el.removeAttribute(attr.name);
                 attrsRemoved++;
+                continue;
               }
-              if (attrName.startsWith('on') || attr.value.toLowerCase().trim().startsWith('javascript:')) {
+              if (attrName.startsWith('on') || attrVal.startsWith('javascript:')) {
                 el.removeAttribute(attr.name);
                 attrsRemoved++;
+                continue;
               }
               if (options.removeAriaAttributes && (attrName.startsWith('aria-') || attrName === 'role')) {
                 el.removeAttribute(attr.name);
                 attrsRemoved++;
+                continue;
               }
               if (
                 attrName.startsWith('xmlns') ||
@@ -354,18 +607,7 @@ export default function HtmlCleaner() {
                 attrName.startsWith('v:') ||
                 attrName.startsWith('o:') ||
                 attrName.startsWith('data-') ||
-                attrName === 'dir' ||
-                attrName === 'align' ||
-                attrName === 'lang' ||
-                attrName === 'valign' ||
-                attrName === 'border' ||
-                attrName === 'cellpadding' ||
-                attrName === 'cellspacing' ||
-                attrName === 'bgcolor' ||
-                attrName === 'width' ||
-                attrName === 'height' ||
-                attrName === 'frame' ||
-                attrName === 'rules'
+                ['dir', 'align', 'valign', 'border', 'cellpadding', 'cellspacing', 'bgcolor', 'width', 'height', 'frame', 'rules'].includes(attrName)
               ) {
                 el.removeAttribute(attr.name);
                 attrsRemoved++;
@@ -376,91 +618,66 @@ export default function HtmlCleaner() {
           // 6. Clean children first recursively
           const children = Array.from(el.childNodes);
           for (const child of children) {
-            const keep = cleanNode(child);
-            if (!keep) {
-              el.removeChild(child);
-            }
+            cleanNode(child);
           }
 
           // 7. Whitelist check
           if (options.tagWhitelistMode && !allowedTagSet.has(lowerTagName)) {
-            tagsRemoved++;
-            const parent = el.parentNode;
-            if (parent) {
-              while (el.firstChild) {
-                parent.insertBefore(el.firstChild, el);
-              }
-            }
+            unwrapElement(el);
             return false;
           }
 
           // 8. Tag unwraps
           if (options.removeAllTags) {
-            tagsRemoved++;
-            const parent = el.parentNode;
-            if (parent) {
-              while (el.firstChild) parent.insertBefore(el.firstChild, el);
+            unwrapElement(el);
+            return false;
+          }
+
+          if (options.removeSpanTags && el.tagName.toUpperCase() === 'SPAN') {
+            unwrapElement(el);
+            return false;
+          }
+
+          if (options.removeDivTags && el.tagName.toUpperCase() === 'DIV') {
+            unwrapElement(el);
+            return false;
+          }
+
+          if (options.removeLinks && el.tagName.toUpperCase() === 'A') {
+            unwrapElement(el);
+            return false;
+          }
+
+          if (options.removeTables && ['TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TD', 'TH'].includes(el.tagName.toUpperCase())) {
+            unwrapElement(el);
+            return false;
+          }
+
+          // 9. Remove tags with one &nbsp; (protect table cells unless removeTables active)
+          const currentTag = el.tagName.toUpperCase();
+          const isTableCol = ['TD', 'TH'].includes(currentTag);
+          const isVoid = ['IMG', 'BR', 'HR', 'INPUT', 'META', 'LINK', 'SOURCE', 'TRACK', 'WBR'].includes(currentTag);
+
+          if (options.removeTagsWithOneNbsp && !isVoid && !isTableCol) {
+            const inner = el.innerHTML.trim();
+            const text = el.textContent || '';
+            const isOnlyNbsp = text.replace(/\u00A0/g, ' ').trim() === '' && (inner.includes('&nbsp;') || inner.includes('\u00A0'));
+            if (isOnlyNbsp) {
+              el.parentNode?.removeChild(el);
+              tagsRemoved++;
+              return false;
             }
-            return false;
           }
 
-          if (options.removeSpanTags && tagName === 'SPAN') {
-            tagsRemoved++;
-            const parent = el.parentNode;
-            if (parent) {
-              while (el.firstChild) parent.insertBefore(el.firstChild, el);
+          // 10. Remove empty tags (protect table cells & media)
+          if (options.removeEmptyTags && !isVoid && !isTableCol) {
+            const hasMedia = el.querySelector('img, br, hr, input, iframe, svg, canvas, video, audio') !== null;
+            const text = el.textContent?.replace(/\u00A0/g, ' ').trim();
+            if (!hasMedia && !text) {
+              el.parentNode?.removeChild(el);
+              tagsRemoved++;
+              return false;
             }
-            return false;
-          }
-
-          if (options.removeDivTags && tagName === 'DIV') {
-            tagsRemoved++;
-            const parent = el.parentNode;
-            if (parent) {
-              while (el.firstChild) parent.insertBefore(el.firstChild, el);
-            }
-            return false;
-          }
-
-          if (options.removeLinks && tagName === 'A') {
-            tagsRemoved++;
-            const parent = el.parentNode;
-            if (parent) {
-              while (el.firstChild) parent.insertBefore(el.firstChild, el);
-            }
-            return false;
-          }
-
-          if (options.removeTables && ['TABLE', 'THEAD', 'TBODY', 'TR', 'TD', 'TH'].includes(tagName)) {
-            tagsRemoved++;
-            const parent = el.parentNode;
-            if (parent) {
-              while (el.firstChild) parent.insertBefore(el.firstChild, el);
-            }
-            return false;
-          }
-
-          // 9. Remove tags with one &nbsp;
-          const selfClosing = ['IMG', 'BR', 'HR', 'INPUT', 'META', 'LINK'];
-          const textContent = el.textContent || '';
-          const isOnlyNbsp = textContent.replace(/\u00A0/g, ' ').trim() === '' && (el.innerHTML.includes('&nbsp;') || el.innerHTML.includes('\u00A0'));
-
-          if (options.removeTagsWithOneNbsp && isOnlyNbsp && !selfClosing.includes(tagName)) {
-            tagsRemoved++;
-            return false;
-          }
-
-          // 10. Remove empty tags
-          const normalizedText = textContent.replace(/\u00A0/g, ' ').trim();
-          const hasMediaOrEmbeds = el.querySelectorAll('img, br, hr, input, iframe, svg, canvas, video, audio').length > 0;
-          if (
-            options.removeEmptyTags &&
-            !selfClosing.includes(tagName) &&
-            !normalizedText &&
-            !hasMediaOrEmbeds
-          ) {
-            tagsRemoved++;
-            return false;
           }
 
           return true;
@@ -469,33 +686,34 @@ export default function HtmlCleaner() {
         return true;
       };
 
-      const body = doc.body;
-      for (let pass = 0; pass < 3; pass++) {
+      // Run multiple stabilization passes until DOM reaches equilibrium
+      for (let pass = 0; pass < 6; pass++) {
+        const initialCount = body.querySelectorAll('*').length;
         const childNodes = Array.from(body.childNodes);
-        let removedInPass = false;
         for (const child of childNodes) {
-          const keep = cleanNode(child);
-          if (!keep) {
-            body.removeChild(child);
-            removedInPass = true;
-          }
+          cleanNode(child);
         }
-        if (!removedInPass) break;
+        const finalCount = body.querySelectorAll('*').length;
+        if (initialCount === finalCount) break;
       }
 
-      let rawCleaned = body.innerHTML;
+      const rawCleaned = body.innerHTML;
 
-      // Extract plain text
+      // Generate Plain Text and Markdown
       const plainText = (body.textContent || '').replace(/\n\s*\n/g, '\n\n').trim();
+      const markdownText = htmlToMarkdown(rawCleaned);
 
-      // Formatting HTML Output
+      // Format HTML Output
       let finalHtml = rawCleaned;
-      if (options.setNewLinesAndIndents || options.formatting === 'pretty') {
-        finalHtml = formatHtmlString(rawCleaned);
-      } else if (options.formatting === 'minify') {
+      if (options.formatting === 'minify') {
         finalHtml = rawCleaned
           .replace(/>\s+</g, '><')
           .replace(/\s+/g, ' ')
+          .trim();
+      } else if (options.formatting === 'pretty' || options.setNewLinesAndIndents) {
+        finalHtml = Array.from(body.childNodes)
+          .map((n) => prettyPrintDom(n, 0))
+          .join('\n')
           .trim();
       } else {
         finalHtml = rawCleaned.trim();
@@ -508,7 +726,7 @@ export default function HtmlCleaner() {
 
       return {
         html: finalHtml,
-        markdown: '',
+        markdown: markdownText,
         text: plainText,
         stats: {
           inputBytes,
@@ -536,40 +754,43 @@ export default function HtmlCleaner() {
     }
   }, [cleanedResult.html]);
 
+  // Handle direct code edits in right textarea
   const handleRightCodeChange = (newVal: string) => {
     setRightCodeHtml(newVal);
     setInputHtml(newVal);
   };
 
-  // Helper formatting function for pretty HTML
-  function formatHtmlString(html: string): string {
-    let formatted = '';
-    let indent = '';
-    const tab = '  ';
-    const tokens = html.split(/(<[^>]+>)/g).filter(Boolean);
-
-    for (let token of tokens) {
-      token = token.trim();
-      if (!token) continue;
-
-      if (token.startsWith('</')) {
-        indent = indent.substring(tab.length);
-        formatted += `\n${indent}${token}`;
-      } else if (token.startsWith('<') && !token.startsWith('<!--') && !token.endsWith('/>') && !token.startsWith('<!')) {
-        const isSelfClosing = /<(img|br|hr|input|meta|link|source|track)[^>]*>/i.test(token);
-        formatted += `\n${indent}${token}`;
-        if (!isSelfClosing) {
-          indent += tab;
-        }
-      } else if (token.startsWith('<')) {
-        formatted += `\n${indent}${token}`;
-      } else {
-        formatted += `${token}`;
-      }
+  // Find & Replace match counter
+  const matchCount = useMemo(() => {
+    if (!findText) return 0;
+    try {
+      const regex = new RegExp(findText, 'gi');
+      const matches = inputHtml.match(regex);
+      return matches ? matches.length : 0;
+    } catch {
+      return inputHtml.split(findText).length - 1;
     }
+  }, [inputHtml, findText]);
 
-    return formatted.trim();
-  }
+  // Apply replacement permanently to inputHtml
+  const handleApplyReplace = () => {
+    if (!findText) return;
+    try {
+      const regex = new RegExp(findText, 'gi');
+      setInputHtml((prev) => prev.replace(regex, replaceText));
+    } catch {
+      setInputHtml((prev) => prev.split(findText).join(replaceText));
+    }
+    setFindText('');
+    setReplaceText('');
+  };
+
+  // Determine current active content to display/copy/export based on activeView
+  const currentViewContent = useMemo(() => {
+    if (activeView === 'markdown') return cleanedResult.markdown;
+    if (activeView === 'text') return cleanedResult.text;
+    return rightCodeHtml || cleanedResult.html;
+  }, [activeView, cleanedResult, rightCodeHtml]);
 
   // Copy handler
   const handleCopy = (text: string) => {
@@ -578,14 +799,15 @@ export default function HtmlCleaner() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Download handler
+  // Export / Download handler
   const handleDownload = () => {
-    const content = rightCodeHtml || cleanedResult.html;
-    const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
+    const ext = activeView === 'markdown' ? 'md' : activeView === 'text' ? 'txt' : 'html';
+    const mime = activeView === 'markdown' ? 'text/markdown' : activeView === 'text' ? 'text/plain' : 'text/html';
+    const blob = new Blob([currentViewContent], { type: `${mime};charset=utf-8` });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'cleaned-content.html';
+    link.download = `cleaned-content.${ext}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -594,7 +816,13 @@ export default function HtmlCleaner() {
 
   // Exec WYSIWYG command
   const execWysiwygCommand = (command: string, value: string | undefined = undefined) => {
-    document.execCommand(command, false, value);
+    if (command === 'createLink') {
+      const url = prompt('Enter Web Link URL (e.g. https://example.com):', 'https://');
+      if (!url) return;
+      document.execCommand('createLink', false, url);
+    } else {
+      document.execCommand(command, false, value);
+    }
     if (wysiwygRef.current) {
       setInputHtml(wysiwygRef.current.innerHTML);
     }
@@ -614,7 +842,7 @@ export default function HtmlCleaner() {
     }
   };
 
-  // Check if master checkbox is checked
+  // Master checkbox toggle
   const isMasterChecked = MAIN_CLEANING_OPTIONS.every(
     (opt) => options[opt.key as keyof CleanOptions] as boolean
   );
@@ -626,6 +854,47 @@ export default function HtmlCleaner() {
       (updated as any)[opt.key] = targetVal;
     });
     setOptions(updated);
+  };
+
+  // Presets
+  const applyWordCleanPreset = () => {
+    setOptions({
+      ...DEFAULT_OPTIONS,
+      stripTagAttributes: false,
+      stripInlineStyles: true,
+      stripClassesAndIds: true,
+      removeComments: true,
+      removeSuccessiveNbsp: true,
+      removeTagsWithOneNbsp: true,
+      removeEmptyTags: true,
+      removeSpanTags: true,
+      removeDivTags: true,
+      convertSemanticTags: true,
+      fixSmartQuotes: true,
+      stripScripts: true,
+      stripStyles: true,
+      formatting: 'pretty',
+    });
+  };
+
+  const applySafeHtml5Preset = () => {
+    setOptions({
+      ...DEFAULT_OPTIONS,
+      stripTagAttributes: false,
+      stripInlineStyles: false,
+      stripClassesAndIds: false,
+      removeComments: true,
+      stripScripts: true,
+      stripStyles: true,
+      removeAriaAttributes: true,
+      convertSemanticTags: true,
+      removeEmptyTags: true,
+      removeSpanTags: false,
+      removeDivTags: false,
+      removeTables: false,
+      replaceTablesWithDivs: false,
+      formatting: 'pretty',
+    });
   };
 
   return (
@@ -650,25 +919,59 @@ export default function HtmlCleaner() {
             <button
               onClick={() => setOptions(DEFAULT_OPTIONS)}
               className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200/80 cursor-pointer transition-colors flex items-center gap-1.5 shadow-2xs"
-              title="Reset to default screenshot options"
+              title="Reset to default options"
             >
               <RefreshCw className="h-3.5 w-3.5 text-blue-600" />
               <span>Default Options</span>
             </button>
+
+            <button
+              onClick={applyWordCleanPreset}
+              className="px-2 py-1.5 text-xs font-medium rounded-lg text-slate-700 hover:text-blue-700 hover:bg-blue-50/60 border border-slate-200 cursor-pointer transition-colors flex items-center gap-1"
+              title="Preset optimized for Microsoft Word and Google Docs"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 text-blue-500" />
+              <span>Word Clean</span>
+            </button>
+
+            <button
+              onClick={applySafeHtml5Preset}
+              className="px-2 py-1.5 text-xs font-medium rounded-lg text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/60 border border-slate-200 cursor-pointer transition-colors flex items-center gap-1"
+              title="Preset for clean semantic HTML5"
+            >
+              <ShieldAlert className="h-3.5 w-3.5 text-emerald-500" />
+              <span>Safe HTML5</span>
+            </button>
+
+            <div className="h-4 w-px bg-slate-200 mx-0.5 hidden sm:block" />
+
             <button
               onClick={() => setInputHtml(SAMPLE_HTML_WORD_DOC)}
               className="px-2 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer transition-colors flex items-center gap-1"
+              title="Load MS Word sample markup"
             >
               <FileCode className="h-3.5 w-3.5 text-slate-400" />
               <span>Word Sample</span>
             </button>
+
             <button
               onClick={() => setInputHtml(SAMPLE_HTML_SCRAPED)}
               className="px-2 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer transition-colors flex items-center gap-1"
+              title="Load scraped web page markup"
             >
               <Globe className="h-3.5 w-3.5 text-slate-400" />
               <span>Web Sample</span>
             </button>
+
+            <button
+              onClick={() => setInputHtml(SAMPLE_HTML_TABLE)}
+              className="px-2 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer transition-colors flex items-center gap-1"
+              title="Load dirty table markup"
+            >
+              <Table className="h-3.5 w-3.5 text-slate-400" />
+              <span>Table Sample</span>
+            </button>
+
             <button
               onClick={() => setShowReplaceBar(!showReplaceBar)}
               className={`p-1.5 rounded-lg border text-xs cursor-pointer transition-colors ${
@@ -678,6 +981,7 @@ export default function HtmlCleaner() {
             >
               <Replace className="h-4 w-4" />
             </button>
+
             <button
               onClick={() => { setInputHtml(''); setFindText(''); setReplaceText(''); }}
               className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
@@ -697,13 +1001,21 @@ export default function HtmlCleaner() {
               exit={{ opacity: 0, height: 0 }}
               className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 overflow-hidden"
             >
-              <input
-                type="text"
-                placeholder="Find (text or regex)..."
-                value={findText}
-                onChange={(e) => setFindText(e.target.value)}
-                className="flex-1 min-w-[180px] px-3 py-1.5 text-xs font-mono rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="relative flex-1 min-w-[180px]">
+                <input
+                  type="text"
+                  placeholder="Find (text or regex)..."
+                  value={findText}
+                  onChange={(e) => setFindText(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs font-mono rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-16"
+                />
+                {findText && (
+                  <span className="absolute right-2.5 top-1.5 text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">
+                    {matchCount} {matchCount === 1 ? 'match' : 'matches'}
+                  </span>
+                )}
+              </div>
+
               <input
                 type="text"
                 placeholder="Replace with..."
@@ -711,6 +1023,14 @@ export default function HtmlCleaner() {
                 onChange={(e) => setReplaceText(e.target.value)}
                 className="flex-1 min-w-[180px] px-3 py-1.5 text-xs font-mono rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+
+              <button
+                onClick={handleApplyReplace}
+                disabled={!findText || matchCount === 0}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+              >
+                Replace All
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -731,7 +1051,7 @@ export default function HtmlCleaner() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                title="Upload File"
+                title="Upload HTML or Text File"
               >
                 <Upload className="h-3 w-3" />
                 <span>Upload</span>
@@ -771,7 +1091,23 @@ export default function HtmlCleaner() {
             >
               <Italic className="h-3.5 w-3.5" />
             </button>
+            <button
+              onClick={() => execWysiwygCommand('underline')}
+              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
+              title="Underline"
+            >
+              <Underline className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => execWysiwygCommand('strikeThrough')}
+              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
+              title="Strikethrough"
+            >
+              <Strikethrough className="h-3.5 w-3.5" />
+            </button>
+
             <div className="h-3.5 w-px bg-slate-300 mx-0.5" />
+
             <button
               onClick={() => execWysiwygCommand('formatBlock', '<h1>')}
               className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
@@ -786,7 +1122,16 @@ export default function HtmlCleaner() {
             >
               <Heading2 className="h-3.5 w-3.5" />
             </button>
+            <button
+              onClick={() => execWysiwygCommand('formatBlock', '<h3>')}
+              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
+              title="Heading 3"
+            >
+              <Heading3 className="h-3.5 w-3.5" />
+            </button>
+
             <div className="h-3.5 w-px bg-slate-300 mx-0.5" />
+
             <button
               onClick={() => execWysiwygCommand('insertUnorderedList')}
               className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
@@ -801,7 +1146,23 @@ export default function HtmlCleaner() {
             >
               <ListOrdered className="h-3.5 w-3.5" />
             </button>
+            <button
+              onClick={() => execWysiwygCommand('formatBlock', '<blockquote>')}
+              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
+              title="Quote Block"
+            >
+              <Quote className="h-3.5 w-3.5" />
+            </button>
+
             <div className="h-3.5 w-px bg-slate-300 mx-0.5" />
+
+            <button
+              onClick={() => execWysiwygCommand('createLink')}
+              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
+              title="Insert Link"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+            </button>
             <button
               onClick={() => execWysiwygCommand('removeFormat')}
               className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 text-rose-600 cursor-pointer"
@@ -829,21 +1190,71 @@ export default function HtmlCleaner() {
           </div>
         </div>
 
-        {/* WINDOW 2: HTML CODE EDITOR (Editable Code) */}
+        {/* WINDOW 2: HTML CODE EDITOR (Editable Code with HTML / Markdown / Text Views) */}
         <div className="bg-slate-950 rounded-2xl border border-slate-800 shadow-2xs overflow-hidden flex flex-col h-full min-h-0 text-slate-100">
           {/* Window Header */}
           <div className="bg-slate-900 px-3.5 py-2.5 flex items-center justify-between gap-2 border-b border-slate-800">
             <div className="flex items-center gap-2">
               <Code className="h-4 w-4 text-emerald-400 shrink-0" />
-              <span className="font-bold text-xs tracking-tight text-white">HTML Code</span>
+              
+              {/* Segmented View Switcher */}
+              <div className="flex items-center gap-0.5 bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60">
+                <button
+                  onClick={() => setActiveView('html')}
+                  className={`px-2 py-0.5 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
+                    activeView === 'html' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  HTML
+                </button>
+                <button
+                  onClick={() => setActiveView('markdown')}
+                  className={`px-2 py-0.5 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
+                    activeView === 'markdown' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Markdown
+                </button>
+                <button
+                  onClick={() => setActiveView('text')}
+                  className={`px-2 py-0.5 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
+                    activeView === 'text' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Text
+                </button>
+              </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* Action & Formatting Controls */}
             <div className="flex items-center gap-1.5">
+              {activeView === 'html' && (
+                <div className="hidden sm:flex items-center gap-0.5 bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 text-[10px] mr-1">
+                  <button
+                    onClick={() => setOptions({ ...options, formatting: 'pretty' })}
+                    className={`px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+                      options.formatting === 'pretty' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Format with clean indentation"
+                  >
+                    Pretty
+                  </button>
+                  <button
+                    onClick={() => setOptions({ ...options, formatting: 'minify' })}
+                    className={`px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+                      options.formatting === 'minify' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Minify HTML"
+                  >
+                    Minify
+                  </button>
+                </div>
+              )}
+
               <button
-                onClick={() => handleCopy(rightCodeHtml || cleanedResult.html)}
+                onClick={() => handleCopy(currentViewContent)}
                 className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 flex items-center gap-1 cursor-pointer transition-colors"
-                title="Copy Clean Code"
+                title={`Copy Clean ${activeView.toUpperCase()}`}
               >
                 {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                 <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -852,7 +1263,7 @@ export default function HtmlCleaner() {
               <button
                 onClick={handleDownload}
                 className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
-                title="Download Clean File"
+                title={`Download Clean ${activeView.toUpperCase()} File`}
               >
                 <Download className="h-3.5 w-3.5" />
                 <span>Export</span>
@@ -860,13 +1271,18 @@ export default function HtmlCleaner() {
             </div>
           </div>
 
-          {/* Editable HTML Code Area */}
+          {/* Editable HTML / Markdown / Text Code Area */}
           <div className="flex-1 flex flex-col bg-slate-950 overflow-hidden min-h-0">
             <textarea
               ref={rightTextareaRef}
-              value={rightCodeHtml}
-              onChange={(e) => handleRightCodeChange(e.target.value)}
-              placeholder="Cleaned HTML code will appear here (live editable)..."
+              value={currentViewContent}
+              readOnly={activeView !== 'html'}
+              onChange={(e) => {
+                if (activeView === 'html') {
+                  handleRightCodeChange(e.target.value);
+                }
+              }}
+              placeholder={`Cleaned ${activeView.toUpperCase()} code will appear here (live editable)...`}
               className="w-full flex-1 p-4 font-mono text-xs text-slate-200 bg-transparent focus:outline-none resize-none leading-relaxed selection:bg-blue-600 focus:ring-1 focus:ring-blue-500/50 min-h-0 overflow-y-auto"
               spellCheck={false}
             />
@@ -892,7 +1308,7 @@ export default function HtmlCleaner() {
           </div>
         </div>
 
-        {/* 14 Checklist Options rendered in a multi-column grid below the windows */}
+        {/* 20 Checklist Options rendered in a multi-column grid below the windows */}
         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 bg-white">
           {MAIN_CLEANING_OPTIONS.map(({ key, label, icon: Icon }) => {
             const isChecked = options[key as keyof CleanOptions] as boolean;
@@ -917,9 +1333,21 @@ export default function HtmlCleaner() {
         </div>
 
         {/* Summary Footer */}
-        <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex items-center justify-between">
-          <span>Toggle options above to customize real-time cleaning rules</span>
-          <span className="font-bold font-mono text-emerald-600">{cleanedResult.stats.reductionPct}% smaller</span>
+        <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <span>Toggle options above to customize real-time cleaning rules</span>
+            <span className="hidden sm:inline text-slate-300">•</span>
+            <span className="hidden sm:inline font-mono text-slate-600">
+              {formatBytes(cleanedResult.stats.inputBytes)} → {formatBytes(cleanedResult.stats.outputBytes)}
+            </span>
+            <span className="hidden sm:inline text-slate-300">•</span>
+            <span className="hidden sm:inline text-slate-600 font-mono">
+              {cleanedResult.stats.wordCount} words
+            </span>
+          </div>
+          <span className="font-bold font-mono text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+            {cleanedResult.stats.reductionPct}% smaller
+          </span>
         </div>
       </div>
     </div>
