@@ -20,7 +20,7 @@ import {
   ChevronRight,
   ShieldCheck
 } from 'lucide-react';
-import { normalizeUrl } from '../../lib/utils';
+import { copyText, normalizeUrl } from '../../lib/utils';
 
 interface SchemaIssue {
   type: 'error' | 'warning' | 'info';
@@ -453,9 +453,11 @@ HEADINGS & IMAGES:
 - H1 Tags: ${seoAuditData.headings.h1Count} (${seoAuditData.headings.h1Texts.join(', ') || 'None'})
 - Total Images: ${seoAuditData.images.total} (Missing Alt: ${seoAuditData.images.missingAltCount})
 `;
-    navigator.clipboard.writeText(summaryText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    copyText(summaryText).then((ok) => {
+      if (!ok) return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   return (
