@@ -1,12 +1,17 @@
 import React from 'react';
-import { LayoutDashboard, FileImage, Paintbrush, Key, X, Menu, ShieldCheck, Wrench, Zap, FileCode, Search, MonitorSmartphone } from 'lucide-react';
+import { LayoutDashboard, FileImage, Paintbrush, Key, X, Menu, PanelLeftClose, ShieldCheck, Wrench, Zap, FileCode, Search, MonitorSmartphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { prefetchTool } from '../App';
 
 interface SidebarProps {
   currentView: string;
   onSelectView: (view: string) => void;
+  /** Mobile drawer state. */
   isOpen: boolean;
+  /** Desktop collapse state, remembered across sessions. */
+  collapsed: boolean;
+  /** Whether the panel is actually on screen at the current breakpoint. */
+  visible: boolean;
   onToggleOpen: () => void;
 }
 
@@ -22,6 +27,8 @@ export default function Sidebar({
   currentView,
   onSelectView,
   isOpen,
+  collapsed,
+  visible,
   onToggleOpen,
 }: SidebarProps) {
   const menuItems: MenuItem[] = [
@@ -70,12 +77,15 @@ export default function Sidebar({
 
       {/* Sidebar container */}
       <aside
-        className={`fixed inset-y-0 left-0 w-64 bg-[#090d16] text-slate-100 border-r border-slate-800/70 flex flex-col z-50 transition-transform duration-200 ease-out md:translate-x-0 ${
+        inert={!visible}
+        aria-hidden={!visible}
+        aria-label="Tools navigation"
+        className={`fixed inset-y-0 left-0 w-64 bg-[#090d16] text-slate-100 border-r border-slate-800/70 flex flex-col z-50 will-change-transform transition-transform duration-200 ease-out motion-reduce:transition-none ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        } ${collapsed ? 'md:-translate-x-full' : 'md:translate-x-0'}`}
       >
         {/* Header Branding */}
-        <div className="h-16 px-5 border-b border-slate-800/70 flex items-center gap-3 bg-slate-950/40">
+        <div className="h-16 px-4 border-b border-slate-800/70 flex items-center gap-2.5 bg-slate-950/40">
           <div className="relative">
             <div className="h-9 w-9 bg-gradient-to-tr from-blue-600 via-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md shadow-blue-500/20 ring-1 ring-white/20">
               <Wrench className="h-4 w-4 text-white" />
@@ -89,10 +99,18 @@ export default function Sidebar({
             <span className="font-bold text-sm tracking-tight text-white block leading-tight truncate">
               Utility Tool Manager
             </span>
-            <span className="text-[10px] text-slate-400 font-medium tracking-wide block">
+            <span className="text-[10px] text-slate-400 font-medium tracking-wide block truncate">
               Developer Precision Suite
             </span>
           </div>
+          <button
+            onClick={onToggleOpen}
+            className="shrink-0 p-1.5 rounded-lg text-slate-400 hover:bg-slate-800/70 hover:text-white cursor-pointer transition-colors"
+            title="Hide sidebar"
+            aria-label="Hide sidebar"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Navigation items */}

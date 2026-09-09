@@ -1,7 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import DashboardGrid from './components/DashboardGrid';
-import { ArrowLeft, Zap, Wrench, Sparkles } from 'lucide-react';
+import { ArrowLeft, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Tool component imports with prefetching support
@@ -30,10 +30,52 @@ export const prefetchTool = (toolId: string) => {
   }
 };
 
+const SIDEBAR_STORAGE_KEY = 'util_hub_sidebar_collapsed';
+const DESKTOP_QUERY = '(min-width: 768px)';
+
 export default function App() {
   const [activeView, setActiveView] = useState<string>('dashboard');
   const [favorites, setFavorites] = useState<string[]>([]);
+  // Two independent things: the mobile drawer (transient) and the desktop
+  // collapse (sticky, remembered). One button drives whichever applies.
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_STORAGE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia(DESKTOP_QUERY).matches);
+
+  // The breakpoint decides which toggle the button drives and whether the
+  // off-screen sidebar should still be reachable by Tab, so JS has to know it
+  // too - CSS variants alone can't answer that.
+  useEffect(() => {
+    const query = window.matchMedia(DESKTOP_QUERY);
+    const onChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches);
+      // Otherwise a drawer left open on a narrow window reappears the next time
+      // the viewport drops back below the breakpoint.
+      if (event.matches) setSidebarOpen(false);
+    };
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
+
+  const toggleSidebar = () => {
+    if (!isDesktop) {
+      setSidebarOpen((value) => !value);
+      return;
+    }
+    setSidebarCollapsed((value) => {
+      const next = !value;
+      try { localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? '1' : '0'); } catch { /* no-op */ }
+      return next;
+    });
+  };
+
+  const sidebarVisible = isDesktop ? !sidebarCollapsed : sidebarOpen;
 
   useEffect(() => {
     const savedFavs = localStorage.getItem('util_hub_favorites');
@@ -127,13 +169,19 @@ export default function App() {
   // Keyboard navigation: Escape key returns to dashboard
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && activeView !== 'dashboard') {
+      // No modifier shortcut for the sidebar: Ctrl/Cmd+B belongs to Bold in the
+      // HTML Cleaner's visual editor. Escape closes the mobile drawer first so
+      // it doesn't also navigate away underneath it.
+      if (e.key !== 'Escape') return;
+      if (sidebarOpen) {
+        setSidebarOpen(false);
+      } else if (activeView !== 'dashboard') {
         setActiveView('dashboard');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeView]);
+  }, [activeView, sidebarOpen]);
 
   return (
     <div className="min-h-screen bg-canvas-pattern text-slate-900 font-sans antialiased flex selection:bg-blue-600 selection:text-white">
@@ -144,12 +192,27 @@ export default function App() {
           setActiveView(id);
         }}
         isOpen={sidebarOpen}
-        onToggleOpen={() => setSidebarOpen(!sidebarOpen)}
+        collapsed={sidebarCollapsed}
+        visible={sidebarVisible}
+        onToggleOpen={toggleSidebar}
       />
 
-      <div className="flex-1 md:pl-64 flex flex-col min-w-0 pt-14 md:pt-0">
+      <div
+        className={`flex-1 flex flex-col min-w-0 pt-14 md:pt-0 transition-[padding-left] duration-200 ease-out motion-reduce:transition-none ${
+          sidebarCollapsed ? 'md:pl-0' : 'md:pl-64'
+        }`}
+      >
         <header className="sticky top-14 md:top-0 z-20 h-14 bg-white/85 backdrop-blur-xl border-b border-slate-200/80 px-4 sm:px-6 md:px-8 flex items-center justify-between shadow-2xs min-w-0 transition-all">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <button
+              onClick={toggleSidebar}
+              className="hidden md:inline-flex items-center justify-center h-8 w-8 rounded-lg border border-slate-200/90 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-950 cursor-pointer transition-colors shadow-2xs shrink-0"
+              title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+              aria-label={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+              aria-expanded={!sidebarCollapsed}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            </button>
             {activeView !== 'dashboard' && (
               <motion.button
                 initial={{ opacity: 0, scale: 0.85 }}
