@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Copy, Check, RefreshCw, Key, Eye, EyeOff, Sparkles, ListPlus, History, Trash2 } from 'lucide-react';
+import { copyText, randomInt, shuffled } from '../../lib/utils';
 
 const WORDS_POOL = [
   'apple', 'banana', 'cherry', 'durian', 'elder', 'fig', 'grape', 'honey', 'iron', 'joker',
@@ -34,145 +35,52 @@ export default function PasswordGenerator() {
   const [batchPasswords, setBatchPasswords] = useState<string[]>([]);
   const [history, setHistory] = useState<string[]>([]);
 
-  // Password Generator Core function
+  const UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const LOWERCASE = 'abcdefghijklmnopqrstuvwxyz';
+  const NUMBERS = '0123456789';
+  const SYMBOLS = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+  // Ambiguous glyphs, both cases - the old list dropped uppercase I and L.
+  const SIMILAR = /[iIlL1oO0]/g;
+
+  const pick = (pool: string) => pool[randomInt(pool.length)];
+
+  const buildPassphrase = () => {
+    const words = Array.from({ length: wordCount }, () => {
+      const word = WORDS_POOL[randomInt(WORDS_POOL.length)];
+      return capitalizeWords ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+    });
+    const phrase = words.join(separator);
+    return includeNumberPass ? phrase + randomInt(10) + randomInt(10) : phrase;
+  };
+
+  const buildRandomKey = () => {
+    const trim = (pool: string) => (excludeSimilar ? pool.replace(SIMILAR, '') : pool);
+    const pools = [
+      useUppercase && trim(UPPERCASE),
+      useLowercase && trim(LOWERCASE),
+      useNumbers && trim(NUMBERS),
+      useSymbols && SYMBOLS,
+    ].filter((pool): pool is string => Boolean(pool) && (pool as string).length > 0);
+
+    if (pools.length === 0) return '';
+
+    const allowed = pools.join('');
+    // One guaranteed character per selected class, then fill. Truncated rather
+    // than padded when length < class count, so `length` is always honoured.
+    const mandatory = pools.map(pick).slice(0, length);
+    const rest = Array.from({ length: Math.max(0, length - mandatory.length) }, () => pick(allowed));
+    return shuffled([...mandatory, ...rest]).join('');
+  };
+
   const generatePassword = () => {
-    if (passwordMode === 'passphrase') {
-      let selectedWords = [];
-      for (let i = 0; i < wordCount; i++) {
-        const randomIndex = Math.floor(Math.random() * WORDS_POOL.length);
-        let word = WORDS_POOL[randomIndex];
-        if (capitalizeWords) {
-          word = word.charAt(0).toUpperCase() + word.slice(1);
-        }
-        selectedWords.push(word);
-      }
-      let finalPass = selectedWords.join(separator);
-      if (includeNumberPass) {
-        finalPass += Math.floor(Math.random() * 10).toString() + Math.floor(Math.random() * 10).toString();
-      }
-      setPassword(finalPass);
-      setHistory(prev => [finalPass, ...prev.slice(0, 19)]);
-      return;
-    }
-
-    const uppercaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lowercaseChars = 'abcdefghijklmnopqrstuvwxyz';
-    const numberChars = '0123456789';
-    const symbolChars = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-
-    let allowedChars = '';
-    if (useUppercase) allowedChars += uppercaseChars;
-    if (useLowercase) allowedChars += lowercaseChars;
-    if (useNumbers) allowedChars += numberChars;
-    if (useSymbols) allowedChars += symbolChars;
-
-    if (excludeSimilar) {
-      allowedChars = allowedChars.replace(/[il1o0O]/g, '');
-    }
-
-    if (!allowedChars) {
-      setPassword('');
-      return;
-    }
-
-    let generated = '';
-    const mandatoryChars: string[] = [];
-    if (useUppercase) {
-      let pool = excludeSimilar ? uppercaseChars.replace(/[O]/g, '') : uppercaseChars;
-      mandatoryChars.push(pool[Math.floor(Math.random() * pool.length)]);
-    }
-    if (useLowercase) {
-      let pool = excludeSimilar ? lowercaseChars.replace(/[il]/g, '') : lowercaseChars;
-      mandatoryChars.push(pool[Math.floor(Math.random() * pool.length)]);
-    }
-    if (useNumbers) {
-      let pool = excludeSimilar ? numberChars.replace(/[01]/g, '') : numberChars;
-      mandatoryChars.push(pool[Math.floor(Math.random() * pool.length)]);
-    }
-    if (useSymbols) {
-      mandatoryChars.push(symbolChars[Math.floor(Math.random() * symbolChars.length)]);
-    }
-
-    for (let i = generated.length; i < length; i++) {
-      if (mandatoryChars.length > 0 && i < mandatoryChars.length) {
-        generated += mandatoryChars[i];
-      } else {
-        const randomIndex = Math.floor(Math.random() * allowedChars.length);
-        generated += allowedChars[randomIndex];
-      }
-    }
-
-    const shuffled = generated.split('').sort(() => Math.random() - 0.5).join('');
-    setPassword(shuffled);
-    setHistory(prev => [shuffled, ...prev.slice(0, 19)]);
+    const next = passwordMode === 'passphrase' ? buildPassphrase() : buildRandomKey();
+    setPassword(next);
+    if (next) setHistory(prev => [next, ...prev.slice(0, 19)]);
   };
 
   const generateBatch = () => {
-    const list: string[] = [];
-    const uppercaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lowercaseChars = 'abcdefghijklmnopqrstuvwxyz';
-    const numberChars = '0123456789';
-    const symbolChars = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-
-    for (let count = 0; count < batchCount; count++) {
-      if (passwordMode === 'passphrase') {
-        let selectedWords = [];
-        for (let i = 0; i < wordCount; i++) {
-          const randomIndex = Math.floor(Math.random() * WORDS_POOL.length);
-          let word = WORDS_POOL[randomIndex];
-          if (capitalizeWords) {
-            word = word.charAt(0).toUpperCase() + word.slice(1);
-          }
-          selectedWords.push(word);
-        }
-        let finalPass = selectedWords.join(separator);
-        if (includeNumberPass) {
-          finalPass += Math.floor(Math.random() * 10).toString() + Math.floor(Math.random() * 10).toString();
-        }
-        list.push(finalPass);
-      } else {
-        let allowedChars = '';
-        if (useUppercase) allowedChars += uppercaseChars;
-        if (useLowercase) allowedChars += lowercaseChars;
-        if (useNumbers) allowedChars += numberChars;
-        if (useSymbols) allowedChars += symbolChars;
-
-        if (excludeSimilar) {
-          allowedChars = allowedChars.replace(/[il1o0O]/g, '');
-        }
-
-        if (!allowedChars) continue;
-
-        let generated = '';
-        const mandatory: string[] = [];
-        if (useUppercase) {
-          let pool = excludeSimilar ? uppercaseChars.replace(/[O]/g, '') : uppercaseChars;
-          mandatory.push(pool[Math.floor(Math.random() * pool.length)]);
-        }
-        if (useLowercase) {
-          let pool = excludeSimilar ? lowercaseChars.replace(/[il]/g, '') : lowercaseChars;
-          mandatory.push(pool[Math.floor(Math.random() * pool.length)]);
-        }
-        if (useNumbers) {
-          let pool = excludeSimilar ? numberChars.replace(/[01]/g, '') : numberChars;
-          mandatory.push(pool[Math.floor(Math.random() * pool.length)]);
-        }
-        if (useSymbols) {
-          mandatory.push(symbolChars[Math.floor(Math.random() * symbolChars.length)]);
-        }
-
-        for (let i = 0; i < length; i++) {
-          if (mandatory.length > 0 && i < mandatory.length) {
-            generated += mandatory[i];
-          } else {
-            const randomIndex = Math.floor(Math.random() * allowedChars.length);
-            generated += allowedChars[randomIndex];
-          }
-        }
-        list.push(generated.split('').sort(() => Math.random() - 0.5).join(''));
-      }
-    }
-    setBatchPasswords(list);
+    const build = passwordMode === 'passphrase' ? buildPassphrase : buildRandomKey;
+    setBatchPasswords(Array.from({ length: batchCount }, build).filter(Boolean));
   };
 
   useEffect(() => {
@@ -214,10 +122,11 @@ export default function PasswordGenerator() {
   const strength = getPasswordStrength(password);
 
   const copyToClipboard = (text: string) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    copyText(text).then((ok) => {
+      if (!ok) return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   return (
@@ -386,7 +295,7 @@ export default function PasswordGenerator() {
               />
               <div>
                 <h4 className="text-xs font-semibold text-slate-900 leading-tight">Exclude Similar Characters</h4>
-                <p className="text-[11px] text-slate-500 font-normal">Omit ambiguous characters like <code className="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-800">i, l, 1, o, 0, O</code></p>
+                <p className="text-[11px] text-slate-500 font-normal">Omit ambiguous characters like <code className="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-800">i, I, l, L, 1, o, O, 0</code></p>
               </div>
             </div>
           </div>
