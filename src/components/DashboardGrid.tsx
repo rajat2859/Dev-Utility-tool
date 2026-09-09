@@ -229,7 +229,7 @@ export default function DashboardGrid({
         </div>
 
         {/* Category Tabs */}
-        <div className="flex items-center gap-1 bg-slate-200/60 p-1 rounded-xl border border-slate-300/60 overflow-x-auto shrink-0 shadow-2xs">
+        <div className="flex items-center gap-1 bg-slate-200/60 p-1 rounded-xl border border-slate-300/60 overflow-x-auto min-w-0 shadow-2xs">
           {categories.map((cat) => (
             <button
               key={cat.id}
@@ -248,7 +248,7 @@ export default function DashboardGrid({
                 />
               )}
               <span className="relative z-10">{cat.label}</span>
-              <span className={`relative z-10 text-[10px] font-mono px-1.5 py-0.2 rounded-full transition-colors ${
+              <span className={`relative z-10 text-[10px] font-mono px-1.5 py-0.5 rounded-full transition-colors ${
                 selectedCategory === cat.id
                   ? 'bg-blue-100 text-blue-800 font-bold'
                   : 'bg-slate-300/70 text-slate-600'
