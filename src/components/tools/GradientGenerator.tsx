@@ -25,6 +25,7 @@ import {
   Upload,
   X
 } from 'lucide-react';
+import { copyText } from '../../lib/utils';
 
 interface ColorStop {
   id: string;
@@ -533,6 +534,7 @@ ${layers}
 
   const handleDistributeEvenly = () => {
     const n = stops.length;
+    if (n < 2) return;
     const sorted = [...stops].sort((a, b) => a.stop - b.stop);
     const distributed = sorted.map((s, idx) => ({
       ...s,
@@ -675,9 +677,11 @@ ${layers}
   };
 
   const copyToClipboard = (text: string, type: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedType(type);
-    setTimeout(() => setCopiedType(null), 2000);
+    copyText(text).then((ok) => {
+      if (!ok) return;
+      setCopiedType(type);
+      setTimeout(() => setCopiedType(null), 2000);
+    });
   };
 
   const downloadAsPng = (width: number = 1920, height: number = 1080) => {
@@ -697,7 +701,7 @@ ${layers}
         const rad = (p.radius / 100) * Math.max(width, height);
         const grad = ctx.createRadialGradient(px, py, 0, px, py, rad);
         grad.addColorStop(0, p.color);
-        grad.addColorStop(1, 'transparent');
+        grad.addColorStop(1, hexToRgba(p.color, 0));
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, width, height);
       });
@@ -705,21 +709,23 @@ ${layers}
       let fillStyle: CanvasGradient;
 
       if (gradientType === 'linear') {
+        // CSS angles run clockwise from "to top", so the direction vector is
+        // (sin, -cos) in screen coordinates - not (cos, sin), which exported
+        // every gradient rotated 90 degrees and mirrored against the preview.
         const angleRad = (angle * Math.PI) / 180;
-        const r = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2)) / 2;
-        const x1 = width / 2 - r * Math.cos(angleRad);
-        const y1 = height / 2 - r * Math.sin(angleRad);
-        const x2 = width / 2 + r * Math.cos(angleRad);
-        const y2 = height / 2 + r * Math.sin(angleRad);
-        fillStyle = ctx.createLinearGradient(x1, y1, x2, y2);
+        const dx = Math.sin(angleRad), dy = -Math.cos(angleRad);
+        const r = Math.sqrt(width * width + height * height) / 2;
+        fillStyle = ctx.createLinearGradient(
+          width / 2 - dx * r, height / 2 - dy * r,
+          width / 2 + dx * r, height / 2 + dy * r
+        );
       } else {
-        let px = width / 2;
-        let py = height / 2;
-        if (radialPosition.includes('top')) py = 0;
-        if (radialPosition.includes('bottom')) py = height;
-        if (radialPosition.includes('left')) px = 0;
-        if (radialPosition.includes('right')) px = width;
-        fillStyle = ctx.createRadialGradient(px, py, 10, px, py, Math.max(width, height));
+        const [xPct, yPct] = radialPosition === 'custom'
+          ? [radialX, radialY]
+          : (POSITION_KEYWORD_MAP[radialPosition] || [50, 50]);
+        const px = (xPct / 100) * width;
+        const py = (yPct / 100) * height;
+        fillStyle = ctx.createRadialGradient(px, py, 0, px, py, Math.max(width, height));
       }
 
       sortedStops.forEach(s => {
@@ -884,7 +890,7 @@ ${layers}
               onChange={(e) => setAngle(Number(e.target.value))}
               className="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
             />
-            <div className="flex items-center gap-1 pt-1 justify-between text-[11px] font-semibold text-slate-600">
+            <div className="flex flex-wrap items-center gap-1 pt-1 justify-between text-[11px] font-semibold text-slate-600">
               {[0, 45, 90, 135, 180, 225, 270, 315].map(a => (
                 <button
                   key={a}
@@ -1083,7 +1089,7 @@ ${layers}
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
-                      value={activeStop.color}
+                      value={/^#[0-9a-f]{6}$/i.test(activeStop.color) ? activeStop.color : '#000000'}
                       onChange={(e) => handleUpdateColor(activeStop.id, e.target.value)}
                       className="w-9 h-9 rounded-lg border border-slate-200 cursor-pointer bg-white p-0.5 shrink-0"
                     />
@@ -1144,11 +1150,11 @@ ${layers}
 
         {/* Export Formats */}
         <div className="space-y-3 pt-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
               Code & Asset Exporter
             </label>
-            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 max-w-full overflow-x-auto">
               {(['css', 'tailwind', 'svg', 'react', 'animated'] as const).map(fmt => (
                 <button
                   key={fmt}
@@ -1199,12 +1205,12 @@ ${layers}
         
         {/* Interactive Sandbox card */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
               <Eye className="h-4 w-4 text-blue-600" />
               <span>Live Mockup Sandbox</span>
             </span>
-            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 max-w-full overflow-x-auto">
               {(['full', 'card', 'text', 'button', 'phone'] as const).map(style => (
                 <button
                   key={style}

@@ -4,6 +4,7 @@ import {
   Monitor, RefreshCw, RotateCw, Ruler, Share2, Smartphone, Tablet, Trash2, X, ZoomIn,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { copyText } from '../../lib/utils';
 
 type Group = 'mobile' | 'tablet' | 'desktop' | 'custom';
 type Brand = 'apple' | 'samsung' | 'google' | 'microsoft' | 'windows';
@@ -523,7 +524,8 @@ export default function ResponsivePreview() {
   useEffect(() => {
     try {
       const savedUrls = localStorage.getItem(RECENT_STORAGE_KEY);
-      if (savedUrls) setRecentUrls(JSON.parse(savedUrls));
+      const parsed = savedUrls ? JSON.parse(savedUrls) : null;
+      if (Array.isArray(parsed)) setRecentUrls(parsed.filter((item): item is string => typeof item === 'string'));
     } catch {
       // Ignore malformed or unavailable local storage.
     }
@@ -606,7 +608,18 @@ export default function ResponsivePreview() {
 
   const removeCustomDevice = (id: string) => {
     setCustomDevices((current) => current.filter((item) => item.id !== id));
-    if (deviceId === id) setDeviceId(DEFAULT_DEVICE_ID);
+    if (deviceId !== id) return;
+    const nextCustom = customDevices.find((item) => item.id !== id);
+    if (nextCustom) {
+      setDeviceId(nextCustom.id);
+    } else {
+      // No custom sizes left, so follow the fallback device out of the tab too.
+      const fallback = DEVICE_LIBRARY.find((item) => item.id === DEFAULT_DEVICE_ID)!;
+      setDeviceId(fallback.id);
+      setCategory(fallback.group);
+      setBrand(fallback.brand ?? 'apple');
+    }
+    setRotated(false);
   };
 
   const removeRecent = (url: string) => {
@@ -623,20 +636,18 @@ export default function ResponsivePreview() {
   };
 
   const handleShare = () => {
-    try {
-      navigator.clipboard.writeText(previewUrl);
+    copyText(previewUrl).then((ok) => {
+      if (!ok) return;
       setCopied(true);
       if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
       copiedTimerRef.current = setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard may be unavailable in insecure contexts.
-    }
+    });
   };
 
   const CategoryIcon = GROUP_META[category].icon;
 
   return (
-    <div className="tool-workspace space-y-2.5 pb-3">
+    <div className="space-y-2.5 pb-3">
       <div ref={controlsRef} className="space-y-2.5">
       {serviceReady === false && (
         <section role="alert" className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3">

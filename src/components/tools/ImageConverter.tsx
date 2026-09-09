@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UploadCloud, Trash2, Download, RefreshCw, Check, AlertCircle, FileCode, Sliders, ChevronDown, Info, TrendingDown, TrendingUp, Minus, Sparkles, Zap, Copy, Code, X } from 'lucide-react';
 import JSZip from 'jszip';
+import { copyText } from '../../lib/utils';
 
 export type CompressionMode = 'below100kb' | 'balanced' | 'high';
 
@@ -41,27 +42,29 @@ export default function ImageConverter() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCopySvgCode = (id: string, code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedId(id);
-    setTimeout(() => {
-      setCopiedId((prev) => (prev === id ? null : prev));
-    }, 2000);
+    copyText(code).then((ok) => {
+      if (!ok) return;
+      setCopiedId(id);
+      setTimeout(() => {
+        setCopiedId((prev) => (prev === id ? null : prev));
+      }, 2000);
+    });
   };
 
   const handleGlobalCompressionChange = (mode: CompressionMode) => {
     setGlobalCompressionMode(mode);
   };
 
-  useEffect(() => {
-    return () => {
-      images.forEach((img) => {
-        URL.revokeObjectURL(img.previewUrl);
-        if (img.convertedDataUrl && img.convertedDataUrl.startsWith('blob:')) {
-          URL.revokeObjectURL(img.convertedDataUrl);
-        }
-      });
-    };
-  }, []);
+  const revokeUrls = (img: Pick<ImageFile, 'previewUrl' | 'convertedDataUrl'>) => {
+    if (img.previewUrl.startsWith('blob:')) URL.revokeObjectURL(img.previewUrl);
+    if (img.convertedDataUrl?.startsWith('blob:')) URL.revokeObjectURL(img.convertedDataUrl);
+  };
+
+  // A ref, because the unmount cleanup would otherwise read the empty array
+  // captured at mount and leak every object URL the session created.
+  const imagesRef = useRef<ImageFile[]>([]);
+  useEffect(() => { imagesRef.current = images; }, [images]);
+  useEffect(() => () => { imagesRef.current.forEach(revokeUrls); }, []);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -140,39 +143,32 @@ export default function ImageConverter() {
   const removeImage = (id: string) => {
     setImages((prev) => {
       const target = prev.find((img) => img.id === id);
-      if (target) {
-        URL.revokeObjectURL(target.previewUrl);
-        if (target.convertedDataUrl && target.convertedDataUrl.startsWith('blob:')) {
-          URL.revokeObjectURL(target.convertedDataUrl);
-        }
-      }
+      if (target) revokeUrls(target);
       return prev.filter((img) => img.id !== id);
     });
   };
 
   const clearAll = () => {
-    images.forEach((img) => {
-      URL.revokeObjectURL(img.previewUrl);
-      if (img.convertedDataUrl && img.convertedDataUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(img.convertedDataUrl);
-      }
-    });
+    images.forEach(revokeUrls);
     setImages([]);
   };
 
   const applyGlobalConfig = () => {
     setImages((prev) =>
-      prev.map((img) => ({
-        ...img,
-        targetFormat: globalFormat,
-        compressionMode: globalCompressionMode,
-        quality: MODE_QUALITIES[globalCompressionMode],
-        svgMode: globalSvgMode,
-        status: 'pending',
-        convertedDataUrl: undefined,
-        convertedSize: undefined,
-        errorMessage: undefined
-      }))
+      prev.map((img) => {
+        if (img.convertedDataUrl?.startsWith('blob:')) URL.revokeObjectURL(img.convertedDataUrl);
+        return {
+          ...img,
+          targetFormat: globalFormat,
+          compressionMode: globalCompressionMode,
+          quality: MODE_QUALITIES[globalCompressionMode],
+          svgMode: globalSvgMode,
+          status: 'pending' as const,
+          convertedDataUrl: undefined,
+          convertedSize: undefined,
+          errorMessage: undefined,
+        };
+      })
     );
   };
 
@@ -180,6 +176,7 @@ export default function ImageConverter() {
     setImages((prev) =>
       prev.map((img) => {
         if (img.id === id) {
+          if (img.convertedDataUrl?.startsWith('blob:')) URL.revokeObjectURL(img.convertedDataUrl);
           const updated = { ...img, [key]: value };
           if (key === 'compressionMode') {
             const mode = value as CompressionMode;
@@ -1009,7 +1006,37 @@ export default function ImageConverter() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 pt-3.5 sm:pt-3">
+                  <div className="flex flex-wrap items-center gap-1 pt-3.5 sm:pt-3">
+                    {img.targetFormat === 'svg' && img.status === 'completed' && img.svgCode && (
+                      <>
+                        <button
+                          onClick={() => handleCopySvgCode(img.id, img.svgCode!)}
+                          className="inline-flex items-center gap-1 px-2 py-1.5 rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 text-xs font-medium cursor-pointer shadow-xs transition-colors"
+                          title="Copy Raw SVG XML Code"
+                        >
+                          {copiedId === img.id ? (
+                            <>
+                              <Check className="h-3.5 w-3.5 text-emerald-600" />
+                              <span className="text-emerald-700 font-semibold text-[11px]">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3.5 w-3.5" />
+                              <span className="text-[11px]">Copy SVG</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => setActiveSvgModal({ name: img.name, code: img.svgCode! })}
+                          className="p-1.5 rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 cursor-pointer shadow-xs transition-colors"
+                          title="View & Inspect SVG XML Code"
+                        >
+                          <Code className="h-3.5 w-3.5 text-blue-600" />
+                        </button>
+                      </>
+                    )}
+
                     {img.status === 'completed' ? (
                       <button
                         onClick={() => triggerDownload(img)}
@@ -1041,6 +1068,61 @@ export default function ImageConverter() {
 
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* SVG Code Inspector Modal */}
+      {activeSvgModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs" onClick={() => setActiveSvgModal(null)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[85vh] flex flex-col border border-slate-200 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-2 bg-slate-50">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileCode className="h-4 w-4 text-blue-600 shrink-0" />
+                <h3 className="text-xs font-semibold text-slate-900 truncate">SVG Source Code: {activeSvgModal.name}</h3>
+              </div>
+              <button
+                onClick={() => setActiveSvgModal(null)}
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-200/60 cursor-pointer transition-colors shrink-0"
+                title="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-4 flex-1 overflow-auto bg-slate-950 text-slate-100 font-mono text-xs leading-relaxed select-all">
+              <pre className="whitespace-pre-wrap break-all">{activeSvgModal.code}</pre>
+            </div>
+
+            <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs text-slate-400 font-mono">
+                {activeSvgModal.code.length.toLocaleString()} characters ({formatBytes(activeSvgModal.code.length)})
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleCopySvgCode('modal', activeSvgModal.code)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-xs font-medium cursor-pointer shadow-xs transition-colors"
+                >
+                  {copiedId === 'modal' ? (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      <span>Copied to Clipboard!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>Copy SVG Markup</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveSvgModal(null)}
+                  className="px-3 py-1.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-medium cursor-pointer transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

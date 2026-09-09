@@ -27,6 +27,10 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Heading4,
+  Heading5,
+  Heading6,
+  Pilcrow,
   List,
   ListOrdered,
   Quote,
@@ -35,9 +39,11 @@ import {
   Wrench,
   RefreshCw,
   Table,
-  FileSpreadsheet
+  FileSpreadsheet,
+  ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { copyText, escapeHtml, semanticTagsForInlineStyle } from '../../lib/utils';
 
 export interface CleanOptions {
   stripTagAttributes: boolean;
@@ -72,7 +78,7 @@ const DEFAULT_OPTIONS: CleanOptions = {
   stripClassesAndIds: true,
   removeAllTags: false,
   removeSuccessiveNbsp: true,
-  removeEmptyTags: false,
+  removeEmptyTags: true,
   removeTagsWithOneNbsp: true,
   removeSpanTags: true,
   removeDivTags: true,
@@ -219,12 +225,52 @@ const SAMPLE_HTML_TABLE = `<table border="1" cellpadding="6" cellspacing="0" sty
   </tbody>
 </table>`;
 
+// One ancestor of the caret inside the visual editor, innermost last.
+type NodeCrumb = { tag: string; id: string; classes: string[] };
+
+type WysiwygTool = {
+  divider?: boolean;
+  command?: string;
+  /** formatBlock argument, e.g. '<h3>'. */
+  value?: string;
+  /** Block tag this button represents, used for the active state and to toggle back to <p>. */
+  block?: string;
+  label?: string;
+  icon?: React.ElementType;
+  danger?: boolean;
+};
+
+const WYSIWYG_TOOLS: WysiwygTool[] = [
+  { command: 'bold', label: 'Bold', icon: Bold },
+  { command: 'italic', label: 'Italic', icon: Italic },
+  { command: 'underline', label: 'Underline', icon: Underline },
+  { command: 'strikeThrough', label: 'Strikethrough', icon: Strikethrough },
+  { divider: true },
+  { command: 'formatBlock', value: '<p>', block: 'p', label: 'Paragraph', icon: Pilcrow },
+  { command: 'formatBlock', value: '<h1>', block: 'h1', label: 'Heading 1', icon: Heading1 },
+  { command: 'formatBlock', value: '<h2>', block: 'h2', label: 'Heading 2', icon: Heading2 },
+  { command: 'formatBlock', value: '<h3>', block: 'h3', label: 'Heading 3', icon: Heading3 },
+  { command: 'formatBlock', value: '<h4>', block: 'h4', label: 'Heading 4', icon: Heading4 },
+  { command: 'formatBlock', value: '<h5>', block: 'h5', label: 'Heading 5', icon: Heading5 },
+  { command: 'formatBlock', value: '<h6>', block: 'h6', label: 'Heading 6', icon: Heading6 },
+  { divider: true },
+  { command: 'insertUnorderedList', label: 'Bullet List', icon: List },
+  { command: 'insertOrderedList', label: 'Numbered List', icon: ListOrdered },
+  { command: 'formatBlock', value: '<blockquote>', block: 'blockquote', label: 'Quote Block', icon: Quote },
+  { divider: true },
+  { command: 'createLink', label: 'Insert Link', icon: Link2 },
+  { command: 'removeFormat', label: 'Clear Formatting', icon: Eraser, danger: true },
+];
+
+// Commands whose on/off state queryCommandState can report.
+const INLINE_STATE_COMMANDS = ['bold', 'italic', 'underline', 'strikeThrough', 'insertUnorderedList', 'insertOrderedList'];
+
 // Format bytes helper
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
@@ -330,7 +376,7 @@ function prettyPrintDom(node: Node, indentLevel = 0): string {
   const voidTags = new Set(['img', 'br', 'hr', 'input', 'meta', 'link', 'source', 'track', 'wbr']);
 
   if (node.nodeType === Node.TEXT_NODE) {
-    return node.nodeValue?.replace(/\s+/g, ' ') || '';
+    return escapeHtml(node.nodeValue?.replace(/\s+/g, ' ') || '');
   }
   if (node.nodeType === Node.COMMENT_NODE) {
     return `\n${indent}<!--${node.nodeValue}-->`;
@@ -351,7 +397,7 @@ function prettyPrintDom(node: Node, indentLevel = 0): string {
   let attrs = '';
   for (let i = 0; i < el.attributes.length; i++) {
     const attr = el.attributes[i];
-    attrs += ` ${attr.name}="${attr.value}"`;
+    attrs += ` ${attr.name}="${escapeHtml(attr.value)}"`;
   }
 
   if (isVoid) {
@@ -385,10 +431,49 @@ export default function HtmlCleaner() {
   const [replaceText, setReplaceText] = useState<string>('');
   const [showReplaceBar, setShowReplaceBar] = useState<boolean>(false);
   const [rightCodeHtml, setRightCodeHtml] = useState<string>('');
+  const [nodePath, setNodePath] = useState<NodeCrumb[]>([]);
+  const [formatState, setFormatState] = useState<{ inline: Record<string, boolean>; block: string }>({ inline: {}, block: '' });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wysiwygRef = useRef<HTMLDivElement>(null);
   const rightTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Walks from the caret (or a clicked node) up to the editor root so the footer
+  // can say which tag you are actually standing in.
+  const describeNode = (node: Node | null | undefined) => {
+    const root = wysiwygRef.current;
+    if (!root || !node) return;
+    let el = node.nodeType === Node.ELEMENT_NODE ? (node as HTMLElement) : node.parentElement;
+    if (!el || !root.contains(el)) return;
+
+    const crumbs: NodeCrumb[] = [];
+    while (el && el !== root) {
+      crumbs.unshift({ tag: el.tagName.toLowerCase(), id: el.id, classes: Array.from(el.classList) });
+      el = el.parentElement;
+    }
+    setNodePath(crumbs);
+
+    // Light up the toolbar for whatever the caret is actually inside. Without
+    // this the buttons look identical whether the selection is bold or not, so
+    // toggling reads as random even though the command itself works.
+    const inline: Record<string, boolean> = {};
+    for (const command of INLINE_STATE_COMMANDS) {
+      try { inline[command] = document.queryCommandState(command); } catch { inline[command] = false; }
+    }
+    let block = '';
+    try { block = String(document.queryCommandValue('formatBlock') || '').toLowerCase(); } catch { /* unsupported */ }
+    // Chrome reports '' for a bare text node directly under the editor.
+    if (!block) block = crumbs.find((crumb) => /^(p|h[1-6]|blockquote|pre|div)$/.test(crumb.tag))?.tag ?? '';
+    setFormatState({ inline, block });
+  };
+
+  // selectionchange is the one event that covers clicking, arrow keys and
+  // typing alike, so the readout follows the caret rather than only clicks.
+  useEffect(() => {
+    const onSelectionChange = () => describeNode(document.getSelection()?.anchorNode);
+    document.addEventListener('selectionchange', onSelectionChange);
+    return () => document.removeEventListener('selectionchange', onSelectionChange);
+  }, []);
 
   // Sync WYSIWYG editor content when inputHtml changes externally
   useEffect(() => {
@@ -451,6 +536,29 @@ export default function HtmlCleaner() {
           .map((t) => t.trim())
           .filter(Boolean)
       );
+
+      // Word, Google Docs and styled web pages carry bold/italic/strike as inline
+      // CSS on a <span>, not as tags. Stripping styles and unwrapping spans
+      // therefore threw that formatting away outright, so promote it to real
+      // tags first. Runs once, before any pass - re-running it per pass would
+      // nest <strong> inside <strong> on every stabilization loop.
+      if (options.convertSemanticTags) {
+        body.querySelectorAll<HTMLElement>('[style]').forEach((el) => {
+          if (!el.firstChild) return;
+          for (const tag of semanticTagsForInlineStyle(el.style)) {
+            // Already inside such a tag, or already wrapping one (which happens
+            // when cleaned output is fed back in through the code pane).
+            if (el.closest(tag)) continue;
+            const soleChild = el.childNodes.length === 1 ? el.firstChild : null;
+            if (soleChild?.nodeType === Node.ELEMENT_NODE
+              && (soleChild as HTMLElement).tagName.toLowerCase() === tag) continue;
+
+            const wrapper = doc.createElement(tag);
+            while (el.firstChild) wrapper.appendChild(el.firstChild);
+            el.appendChild(wrapper);
+          }
+        });
+      }
 
       // Safe DOM unwrap helper
       const unwrapElement = (el: HTMLElement) => {
@@ -710,7 +818,7 @@ export default function HtmlCleaner() {
           .replace(/>\s+</g, '><')
           .replace(/\s+/g, ' ')
           .trim();
-      } else if (options.formatting === 'pretty' || options.setNewLinesAndIndents) {
+      } else if (options.formatting === 'pretty' && options.setNewLinesAndIndents) {
         finalHtml = Array.from(body.childNodes)
           .map((n) => prettyPrintDom(n, 0))
           .join('\n')
@@ -794,9 +902,11 @@ export default function HtmlCleaner() {
 
   // Copy handler
   const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    copyText(text).then((ok) => {
+      if (!ok) return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   // Export / Download handler
@@ -815,17 +925,27 @@ export default function HtmlCleaner() {
   };
 
   // Exec WYSIWYG command
-  const execWysiwygCommand = (command: string, value: string | undefined = undefined) => {
+  const execWysiwygCommand = (command: string, value?: string, block?: string) => {
+    wysiwygRef.current?.focus();
+
     if (command === 'createLink') {
       const url = prompt('Enter Web Link URL (e.g. https://example.com):', 'https://');
       if (!url) return;
       document.execCommand('createLink', false, url);
+    } else if (block && formatState.block === block && block !== 'p') {
+      // Clicking the active heading drops back to a paragraph, so the block
+      // buttons toggle the same way bold does instead of being one-way.
+      document.execCommand('formatBlock', false, '<p>');
     } else {
       document.execCommand(command, false, value);
     }
+
     if (wysiwygRef.current) {
       setInputHtml(wysiwygRef.current.innerHTML);
     }
+    // The command changed the formatting under the caret but does not always
+    // fire selectionchange, so re-read rather than leaving the toolbar stale.
+    describeNode(document.getSelection()?.anchorNode);
   };
 
   // Drag and drop handlers
@@ -1037,9 +1157,9 @@ export default function HtmlCleaner() {
       </div>
 
       {/* DUAL EDITABLE WINDOWS WORKSPACE (Visual Content Editor on Left, HTML Code Editor on Right) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 h-[clamp(550px,70vh,820px)]">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:h-[clamp(550px,70vh,820px)]">
         {/* WINDOW 1: VISUAL CONTENT EDITOR (Editable Content) */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col h-full min-h-0">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col h-[70vh] md:h-full min-h-0">
           {/* Window Header */}
           <div className="bg-slate-900 text-slate-200 px-3.5 py-2.5 flex items-center justify-between gap-2 border-b border-slate-800">
             <div className="flex items-center gap-2">
@@ -1077,99 +1197,33 @@ export default function HtmlCleaner() {
 
           {/* WYSIWYG Formatting Toolbar */}
           <div className="p-1.5 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center gap-1 text-slate-700">
-            <button
-              onClick={() => execWysiwygCommand('bold')}
-              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
-              title="Bold"
-            >
-              <Bold className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => execWysiwygCommand('italic')}
-              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
-              title="Italic"
-            >
-              <Italic className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => execWysiwygCommand('underline')}
-              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
-              title="Underline"
-            >
-              <Underline className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => execWysiwygCommand('strikeThrough')}
-              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
-              title="Strikethrough"
-            >
-              <Strikethrough className="h-3.5 w-3.5" />
-            </button>
-
-            <div className="h-3.5 w-px bg-slate-300 mx-0.5" />
-
-            <button
-              onClick={() => execWysiwygCommand('formatBlock', '<h1>')}
-              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
-              title="Heading 1"
-            >
-              <Heading1 className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => execWysiwygCommand('formatBlock', '<h2>')}
-              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
-              title="Heading 2"
-            >
-              <Heading2 className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => execWysiwygCommand('formatBlock', '<h3>')}
-              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
-              title="Heading 3"
-            >
-              <Heading3 className="h-3.5 w-3.5" />
-            </button>
-
-            <div className="h-3.5 w-px bg-slate-300 mx-0.5" />
-
-            <button
-              onClick={() => execWysiwygCommand('insertUnorderedList')}
-              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
-              title="Bullet List"
-            >
-              <List className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => execWysiwygCommand('insertOrderedList')}
-              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
-              title="Numbered List"
-            >
-              <ListOrdered className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => execWysiwygCommand('formatBlock', '<blockquote>')}
-              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
-              title="Quote Block"
-            >
-              <Quote className="h-3.5 w-3.5" />
-            </button>
-
-            <div className="h-3.5 w-px bg-slate-300 mx-0.5" />
-
-            <button
-              onClick={() => execWysiwygCommand('createLink')}
-              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 cursor-pointer"
-              title="Insert Link"
-            >
-              <Link2 className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => execWysiwygCommand('removeFormat')}
-              className="p-1 hover:bg-white rounded border border-transparent hover:border-slate-300 text-rose-600 cursor-pointer"
-              title="Clear Formatting"
-            >
-              <Eraser className="h-3.5 w-3.5" />
-            </button>
+            {WYSIWYG_TOOLS.map((tool, index) => {
+              if (tool.divider) {
+                return <div key={`div-${index}`} className="h-3.5 w-px bg-slate-300 mx-0.5" />;
+              }
+              const Icon = tool.icon!;
+              const active = tool.block
+                ? formatState.block === tool.block
+                : Boolean(tool.command && formatState.inline[tool.command]);
+              return (
+                <button
+                  key={tool.label}
+                  // Without this, mousedown moves focus off the editor and the
+                  // selection the command is meant to act on can be lost.
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => execWysiwygCommand(tool.command!, tool.value, tool.block)}
+                  aria-pressed={active}
+                  className={`p-1 rounded border cursor-pointer transition-colors ${
+                    active
+                      ? 'bg-blue-600 border-blue-600 text-white'
+                      : `border-transparent hover:bg-white hover:border-slate-300 ${tool.danger ? 'text-rose-600' : ''}`
+                  }`}
+                  title={tool.label}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </button>
+              );
+            })}
           </div>
 
           {/* Editable Content Window Area */}
@@ -1185,13 +1239,52 @@ export default function HtmlCleaner() {
               ref={wysiwygRef}
               contentEditable
               onInput={(e) => setInputHtml((e.target as HTMLElement).innerHTML)}
+              onClick={(e) => describeNode(e.target as Node)}
               className="flex-1 p-4 font-sans text-xs text-slate-800 focus:outline-none overflow-y-auto leading-relaxed prose prose-slate max-w-none min-h-0"
             />
+          </div>
+
+          {/* Element readout: which tag the caret is in, and its ancestors. */}
+          <div className="shrink-0 border-t border-slate-200 bg-slate-50 px-3 py-2 flex items-center gap-2 overflow-x-auto">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Element</span>
+            {nodePath.length === 0 ? (
+              <span className="text-[11px] text-slate-400 whitespace-nowrap">
+                Click any text or element above to inspect its tag
+              </span>
+            ) : (
+              <div className="flex items-center gap-1 whitespace-nowrap">
+                {nodePath.map((crumb, index) => {
+                  const innermost = index === nodePath.length - 1;
+                  return (
+                    <React.Fragment key={`${index}-${crumb.tag}`}>
+                      {index > 0 && <ChevronRight className="h-3 w-3 text-slate-300 shrink-0" />}
+                      <code className={`font-mono text-[11px] rounded px-1.5 py-0.5 ${
+                        innermost
+                          ? 'bg-blue-600 text-white font-bold'
+                          : 'bg-white border border-slate-200 text-slate-500'
+                      }`}>
+                        &lt;{crumb.tag}&gt;
+                      </code>
+                    </React.Fragment>
+                  );
+                })}
+                {nodePath[nodePath.length - 1].id && (
+                  <code className="font-mono text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    #{nodePath[nodePath.length - 1].id}
+                  </code>
+                )}
+                {nodePath[nodePath.length - 1].classes.slice(0, 3).map((cls) => (
+                  <code key={cls} className="font-mono text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">
+                    .{cls}
+                  </code>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         {/* WINDOW 2: HTML CODE EDITOR (Editable Code with HTML / Markdown / Text Views) */}
-        <div className="bg-slate-950 rounded-2xl border border-slate-800 shadow-2xs overflow-hidden flex flex-col h-full min-h-0 text-slate-100">
+        <div className="bg-slate-950 rounded-2xl border border-slate-800 shadow-2xs overflow-hidden flex flex-col h-[70vh] md:h-full min-h-0 text-slate-100">
           {/* Window Header */}
           <div className="bg-slate-900 px-3.5 py-2.5 flex items-center justify-between gap-2 border-b border-slate-800">
             <div className="flex items-center gap-2">
