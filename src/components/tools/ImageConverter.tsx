@@ -31,6 +31,144 @@ interface ImageFile {
   errorMessage?: string;
 }
 
+type ImageSource = ImageBitmap | HTMLImageElement;
+
+const FORMAT_MIME: Record<string, string> = {
+  png: 'image/png',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  avif: 'image/avif',
+};
+
+// Safari blanks canvases past ~4096 on the short edge and every browser has a
+// total-area cap; clamp instead of silently producing a transparent image.
+const MAX_CANVAS_DIM = 4096;
+
+// Four at a time. Each conversion holds a full-resolution canvas, so firing the
+// whole queue through one Promise.all is what makes large batches kill the tab.
+const CONCURRENCY = 4;
+
+// Under-100 KB mode: a 12 MP source can never hit the target at a usable
+// quality, so cap the long edge up front — it also makes trial encodes cheap.
+const UNDER_TARGET_MAX_EDGE = 1600;
+
+// createImageBitmap decodes off the main thread and is several times faster than
+// an <img>; SVG sources with no intrinsic size still need the <img> path.
+async function decodeImage(file: File, url: string): Promise<ImageSource> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    if (bitmap.width && bitmap.height) return bitmap;
+    bitmap.close();
+  } catch {
+    /* fall through to the <img> decoder */
+  }
+  const el = new Image();
+  el.src = url;
+  await el.decode();
+  el.width = el.naturalWidth;
+  el.height = el.naturalHeight;
+  return el;
+}
+
+const releaseSource = (src: ImageSource | null) => {
+  if (src && 'close' in src) src.close();
+};
+
+const fitDimensions = (w: number, h: number, scale = 1): [number, number] => {
+  const s = Math.min(scale, MAX_CANVAS_DIM / Math.max(w, h, 1));
+  return [Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s))];
+};
+
+function render(src: ImageSource, w: number, h: number, opaque: boolean) {
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not create canvas context.');
+  ctx.imageSmoothingQuality = 'high';
+  if (opaque) {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, w, h);
+  }
+  ctx.drawImage(src, 0, 0, w, h);
+  return { canvas, ctx };
+}
+
+const toBlob = (canvas: HTMLCanvasElement, type: string, quality?: number) =>
+  new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+
+// Downscale first, then walk a quality ladder, then downscale again. Returns the
+// smallest blob produced; the caller compares blob.type to spot a format the
+// browser silently refused to encode.
+async function encodeUnderTarget(
+  src: ImageSource,
+  w: number,
+  h: number,
+  mimeType: string,
+  maxBytes = 100 * 1024
+): Promise<{ blob: Blob; quality: number } | null> {
+  // PNG ignores the quality argument, so scale is the only lever it has --
+  // give it more passes to make up for the ladder it can't walk.
+  const lossless = mimeType === 'image/png';
+  const ladder = lossless ? [1] : [0.8, 0.5, 0.3, 0.15];
+  let scale = Math.min(1, UNDER_TARGET_MAX_EDGE / Math.max(w, h, 1));
+  let best: { blob: Blob; quality: number } | null = null;
+
+  for (let pass = 0; pass < (lossless ? 7 : 4); pass++) {
+    const [cw, ch] = fitDimensions(w, h, scale);
+    const { canvas } = render(src, cw, ch, mimeType === 'image/jpeg');
+    for (const quality of ladder) {
+      const blob = await toBlob(canvas, mimeType, quality);
+      if (!blob) return best;
+      if (blob.type !== mimeType) return { blob, quality };
+      if (!best || blob.size < best.blob.size) best = { blob, quality };
+      if (blob.size <= maxBytes) return best;
+    }
+    if (Math.max(cw, ch) <= 64) break;
+    scale *= 0.6;
+  }
+  return best;
+}
+
+const EMBEDDABLE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+
+const buildEmbedSvg = (canvas: HTMLCanvasElement, w: number, h: number, sourceType: string) => {
+  const href = canvas.toDataURL(EMBEDDABLE_TYPES.has(sourceType) ? sourceType : 'image/png');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
+  <image width="${w}" height="${h}" xlink:href="${href}" />
+</svg>`;
+};
+
+const performSvgTrace = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): string => {
+  const { width, height } = canvas;
+  const data = ctx.getImageData(0, 0, width, height).data;
+  // One path segment per sampled dark pixel, so the grid has to stay coarse
+  // enough that a big photo can't build a multi-megabyte string and freeze the tab.
+  // ponytail: threshold trace, swap in a real vectorizer if quality matters.
+  const step = Math.max(4, Math.ceil(Math.sqrt((width * height) / 40000)));
+  const segments: string[] = [];
+
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      const idx = (y * width + x) * 4;
+      const luma = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+      if (data[idx + 3] > 128 && luma < 128) {
+        segments.push(`M${x},${y}h${step}v${step}h-${step}z`);
+      }
+    }
+  }
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
+  <rect width="100%" height="100%" fill="#FFFFFF"/>
+  <path d="${segments.join(' ')}" fill="#000000" />
+</svg>`;
+};
+
+const baseNameOf = (name: string) => name.substring(0, name.lastIndexOf('.')) || name;
+
+
 export default function ImageConverter() {
   const [images, setImages] = useState<ImageFile[]>([]);
   const [globalFormat, setGlobalFormat] = useState<'png' | 'jpeg' | 'webp' | 'svg' | 'avif'>('webp');
@@ -71,59 +209,51 @@ export default function ImageConverter() {
     setIsDragging(true);
   };
 
-  const handleDragLeave = () => {
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Dragging across a child fires dragleave on the parent; ignore those.
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
     setIsDragging(false);
   };
 
-  const processFiles = (files: FileList) => {
+  const processFiles = async (files: FileList) => {
     const validImageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
-    
-    validImageFiles.forEach((file) => {
-      const previewUrl = URL.createObjectURL(file);
-      const img = new Image();
-      
-      img.onload = () => {
-        const newImage: ImageFile = {
-          id: Math.random().toString(36).substring(2, 9),
-          file,
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          previewUrl,
-          width: img.width,
-          height: img.height,
-          targetFormat: globalFormat,
-          quality: MODE_QUALITIES[globalCompressionMode],
-          svgMode: globalSvgMode,
-          compressionMode: globalCompressionMode,
-          status: 'pending'
-        };
-        
-        setImages((prev) => [...prev, newImage]);
-      };
-      
-      img.onerror = () => {
-        const newImage: ImageFile = {
-          id: Math.random().toString(36).substring(2, 9),
-          file,
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          previewUrl,
-          width: 0,
-          height: 0,
-          targetFormat: globalFormat,
-          quality: MODE_QUALITIES[globalCompressionMode],
-          svgMode: globalSvgMode,
-          compressionMode: globalCompressionMode,
-          status: 'error',
-          errorMessage: 'Invalid image format or corrupted file.'
-        };
-        setImages((prev) => [...prev, newImage]);
-      };
+    if (validImageFiles.length === 0) return;
 
-      img.src = previewUrl;
-    });
+    const added = await Promise.all(
+      validImageFiles.map(async (file): Promise<ImageFile> => {
+        const previewUrl = URL.createObjectURL(file);
+        let width = 0;
+        let height = 0;
+        try {
+          const src = await decodeImage(file, previewUrl);
+          width = src.width;
+          height = src.height;
+          releaseSource(src);
+        } catch {
+          /* width/height stay 0 and the entry is flagged below */
+        }
+        const broken = !width || !height;
+        return {
+          id: Math.random().toString(36).substring(2, 9),
+          file,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          previewUrl,
+          width,
+          height,
+          targetFormat: globalFormat,
+          quality: MODE_QUALITIES[globalCompressionMode],
+          svgMode: globalSvgMode,
+          compressionMode: globalCompressionMode,
+          status: broken ? 'error' : 'pending',
+          errorMessage: broken ? 'Invalid image format or corrupted file.' : undefined,
+        };
+      })
+    );
+
+    // One state update keeps upload order stable instead of racing on decode time.
+    setImages((prev) => [...prev, ...added]);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -138,6 +268,8 @@ export default function ImageConverter() {
     if (e.target.files && e.target.files.length > 0) {
       processFiles(e.target.files);
     }
+    // Without this, picking the same file twice in a row fires no change event.
+    e.target.value = '';
   };
 
   const removeImage = (id: string) => {
@@ -195,343 +327,154 @@ export default function ImageConverter() {
     );
   };
 
-  const performSvgTrace = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): string => {
-    const width = canvas.width;
-    const height = canvas.height;
-    const imgData = ctx.getImageData(0, 0, width, height);
-    const data = imgData.data;
-
-    let pathD = '';
-    const step = 4;
-    
-    for (let y = 0; y < height; y += step) {
-      for (let x = 0; x < width; x += step) {
-        const idx = (y * width + x) * 4;
-        const r = data[idx];
-        const g = data[idx + 1];
-        const b = data[idx + 2];
-        const alpha = data[idx + 3];
-
-        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-
-        if (alpha > 128 && luma < 128) {
-          pathD += `M${x},${y}h${step}v${step}h-${step}z `;
-        }
-      }
-    }
-
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
-  <rect width="100%" height="100%" fill="#FFFFFF"/>
-  <path d="${pathD}" fill="#000000" />
-</svg>`;
-  };
-
-  const convertToBlobWithBelow100kb = async (
-    imgHtml: HTMLImageElement,
-    mimeType: string,
-    targetFormat: string,
-    maxSizeBytes: number = 100 * 1024
-  ): Promise<{ blob: Blob; finalQuality: number }> => {
-    let scale = 1.0;
-    let quality = 0.82;
-    let bestBlob: Blob | null = null;
-    let bestQuality = quality;
-
-    for (let attempt = 1; attempt <= 7; attempt++) {
-      const canvas = document.createElement('canvas');
-      const finalWidth = Math.max(1, Math.round(imgHtml.naturalWidth * scale));
-      const finalHeight = Math.max(1, Math.round(imgHtml.naturalHeight * scale));
-      canvas.width = finalWidth;
-      canvas.height = finalHeight;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) break;
-
-      if (targetFormat === 'jpeg') {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, finalWidth, finalHeight);
-      }
-
-      ctx.drawImage(imgHtml, 0, 0, finalWidth, finalHeight);
-
-      const blob = await new Promise<Blob | null>((resolveBlob) => {
-        canvas.toBlob((b) => resolveBlob(b), mimeType, quality);
-      });
-
-      if (!blob) break;
-
-      if (targetFormat === 'avif' && blob.type === 'image/png' && mimeType === 'image/avif') {
-        return convertToBlobWithBelow100kb(imgHtml, 'image/webp', 'webp', maxSizeBytes);
-      }
-
-      if (!bestBlob || blob.size < maxSizeBytes || (blob.size < bestBlob.size && bestBlob.size > maxSizeBytes)) {
-        bestBlob = blob;
-        bestQuality = quality;
-      }
-
-      if (blob.size < maxSizeBytes) {
-        break;
-      }
-
-      if (quality > 0.6) {
-        quality = 0.50;
-      } else if (quality > 0.3) {
-        quality = 0.25;
-      } else if (quality > 0.12) {
-        quality = 0.10;
-      } else {
-        scale = scale * 0.70;
-        quality = 0.65;
-      }
-
-      if (scale < 0.05) {
-        scale = 0.05;
-        break;
-      }
-    }
-
-    return {
-      blob: bestBlob!,
-      finalQuality: bestQuality,
-    };
-  };
-
   const convertSingleImage = async (imgFile: ImageFile): Promise<ImageFile> => {
-    return new Promise((resolve) => {
-      if (imgFile.width === 0 || imgFile.height === 0) {
-        resolve({
-          ...imgFile,
-          status: 'error',
-          errorMessage: 'Cannot process invalid dimensions.'
-        });
-        return;
+    const fail = (errorMessage: string): ImageFile => ({ ...imgFile, status: 'error', errorMessage });
+    const done = (blob: Blob, extra?: Partial<ImageFile>): ImageFile => ({
+      ...imgFile,
+      status: 'completed',
+      convertedDataUrl: URL.createObjectURL(blob),
+      convertedSize: blob.size,
+      errorMessage: undefined,
+      ...extra,
+    });
+
+    let src: ImageSource | null = null;
+    try {
+      src = await decodeImage(imgFile.file, imgFile.previewUrl);
+      const sw = src.width;
+      const sh = src.height;
+      if (!sw || !sh) return fail('Cannot process invalid dimensions.');
+
+      if (imgFile.targetFormat === 'svg') {
+        const [cw, ch] = fitDimensions(sw, sh);
+        const { canvas, ctx } = render(src, cw, ch, false);
+        const svgText =
+          imgFile.svgMode === 'trace'
+            ? performSvgTrace(canvas, ctx)
+            : buildEmbedSvg(canvas, cw, ch, imgFile.type);
+        return done(new Blob([svgText], { type: 'image/svg+xml' }), { svgCode: svgText });
       }
 
-      const imgHtml = new Image();
-      imgHtml.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          const finalWidth = imgFile.width;
-          const finalHeight = imgFile.height;
-          canvas.width = finalWidth;
-          canvas.height = finalHeight;
+      const mimeType = FORMAT_MIME[imgFile.targetFormat];
+      const unsupported = `${imgFile.targetFormat.toUpperCase()} is not supported by your browser; encoded as WebP instead.`;
 
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            resolve({
-              ...imgFile,
-              status: 'error',
-              errorMessage: 'Could not create canvas context.'
-            });
-            return;
-          }
+      if (imgFile.compressionMode === 'below100kb') {
+        const overshot = (blob: Blob) =>
+          blob.size > 100 * 1024
+            ? 'Could not reach 100 KB without destroying the image; this is the smallest usable result.'
+            : undefined;
 
-          if (imgFile.targetFormat === 'jpeg') {
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, finalWidth, finalHeight);
-          }
-
-          ctx.drawImage(imgHtml, 0, 0, finalWidth, finalHeight);
-
-          if (imgFile.targetFormat === 'svg') {
-            if (imgFile.svgMode === 'trace') {
-              const svgText = performSvgTrace(canvas, ctx);
-              const blob = new Blob([svgText], { type: 'image/svg+xml' });
-              const url = URL.createObjectURL(blob);
-              resolve({
-                ...imgFile,
-                status: 'completed',
-                convertedDataUrl: url,
-                convertedSize: blob.size,
-                svgCode: svgText
-              });
-            } else {
-              const base64Url = canvas.toDataURL(imgFile.type || 'image/png');
-              const svgContent = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${finalWidth} ${finalHeight}" width="${finalWidth}" height="${finalHeight}">
-  <image width="${finalWidth}" height="${finalHeight}" xlink:href="${base64Url}" />
-</svg>`;
-              const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-              const url = URL.createObjectURL(blob);
-              resolve({
-                ...imgFile,
-                status: 'completed',
-                convertedDataUrl: url,
-                convertedSize: blob.size,
-                svgCode: svgContent
-              });
-            }
-          } else {
-            let mimeType = 'image/png';
-            if (imgFile.targetFormat === 'jpeg') mimeType = 'image/jpeg';
-            if (imgFile.targetFormat === 'webp') mimeType = 'image/webp';
-            if (imgFile.targetFormat === 'avif') mimeType = 'image/avif';
-
-            if (imgFile.compressionMode === 'below100kb' && (imgFile.targetFormat === 'webp' || imgFile.targetFormat === 'avif' || imgFile.targetFormat === 'jpeg')) {
-              convertToBlobWithBelow100kb(imgHtml, mimeType, imgFile.targetFormat).then(({ blob, finalQuality }) => {
-                if (blob) {
-                  const url = URL.createObjectURL(blob);
-                  resolve({
-                    ...imgFile,
-                    status: 'completed',
-                    convertedDataUrl: url,
-                    convertedSize: blob.size,
-                    quality: finalQuality
-                  });
-                } else {
-                  resolve({
-                    ...imgFile,
-                    status: 'error',
-                    errorMessage: 'Blob generation failed in Under 100 KB mode.'
-                  });
-                }
-              });
-            } else {
-              const targetQuality = imgFile.quality;
-
-              canvas.toBlob(
-                (blob) => {
-                  if (blob) {
-                    if (imgFile.targetFormat === 'avif' && blob.type === 'image/png') {
-                      canvas.toBlob(
-                        (fallbackBlob) => {
-                          if (fallbackBlob) {
-                            const url = URL.createObjectURL(fallbackBlob);
-                            resolve({
-                              ...imgFile,
-                              status: 'completed',
-                              convertedDataUrl: url,
-                              convertedSize: fallbackBlob.size,
-                              errorMessage: 'AVIF not supported by your browser; automatically compressed via WebP.'
-                            });
-                          } else {
-                            resolve({
-                              ...imgFile,
-                              status: 'error',
-                              errorMessage: 'AVIF fallback to WebP failed.'
-                            });
-                          }
-                        },
-                        'image/webp',
-                        targetQuality
-                      );
-                    } else {
-                      const url = URL.createObjectURL(blob);
-                      resolve({
-                        ...imgFile,
-                        status: 'completed',
-                        convertedDataUrl: url,
-                        convertedSize: blob.size
-                      });
-                    }
-                  } else {
-                    resolve({
-                      ...imgFile,
-                      status: 'error',
-                      errorMessage: 'Blob generation returned null.'
-                    });
-                  }
-                },
-                mimeType,
-                targetQuality
-              );
-            }
-          }
-        } catch (e: any) {
-          resolve({
-            ...imgFile,
-            status: 'error',
-            errorMessage: e.message || 'Error occurred during rendering.'
-          });
+        const result = await encodeUnderTarget(src, sw, sh, mimeType);
+        if (!result) return fail('Blob generation failed in Under 100 KB mode.');
+        if (result.blob.type === mimeType) {
+          return done(result.blob, { quality: result.quality, errorMessage: overshot(result.blob) });
         }
-      };
 
-      imgHtml.onerror = () => {
-        resolve({
-          ...imgFile,
-          status: 'error',
-          errorMessage: 'Image could not be loaded into canvas.'
-        });
-      };
+        const fallback = mimeType === 'image/webp' ? null : await encodeUnderTarget(src, sw, sh, 'image/webp');
+        if (!fallback) return fail(`${imgFile.targetFormat.toUpperCase()} fallback to WebP failed.`);
+        return done(fallback.blob, { quality: fallback.quality, errorMessage: unsupported });
+      }
 
-      imgHtml.src = imgFile.previewUrl;
-    });
+      const [cw, ch] = fitDimensions(sw, sh);
+      const { canvas } = render(src, cw, ch, imgFile.targetFormat === 'jpeg');
+      const blob = await toBlob(canvas, mimeType, imgFile.quality);
+      if (!blob) return fail('Blob generation returned null.');
+      if (blob.type === mimeType || mimeType === 'image/webp') return done(blob);
+
+      // toBlob silently falls back to PNG for a format it can't encode (usually AVIF).
+      const fallback = await toBlob(canvas, 'image/webp', imgFile.quality);
+      if (!fallback) return fail(`${imgFile.targetFormat.toUpperCase()} fallback to WebP failed.`);
+      return done(fallback, { errorMessage: unsupported });
+    } catch (e: any) {
+      return fail(e?.message || 'Error occurred during rendering.');
+    } finally {
+      releaseSource(src);
+      // The replacement URL is already minted above, so the old one is dead.
+      if (imgFile.convertedDataUrl?.startsWith('blob:')) URL.revokeObjectURL(imgFile.convertedDataUrl);
+    }
   };
 
-  const handleConvertAll = async () => {
+  // Merges each result by id so files removed mid-run aren't resurrected by a
+  // stale snapshot, which is what writing the whole array back used to do.
+  const runQueue = async (targets: ImageFile[]): Promise<ImageFile[]> => {
+    const results: ImageFile[] = [];
+    let cursor = 0;
     await Promise.all(
-      images.map(async (current) => {
-        if (current.status === 'pending' || current.status === 'error' || current.status === 'processing') {
-          const result = await convertSingleImage({ ...current, status: 'processing' });
+      Array.from({ length: Math.min(CONCURRENCY, targets.length) }, async () => {
+        while (cursor < targets.length) {
+          const result = await convertSingleImage({ ...targets[cursor++], status: 'processing' });
+          results.push(result);
           setImages((prev) => prev.map((img) => (img.id === result.id ? result : img)));
         }
       })
     );
+    return results;
   };
 
-  const triggerDownload = (img: ImageFile) => {
+  const markProcessing = (ids: Set<string>) => {
+    setImages((prev) => prev.map((img) => (ids.has(img.id) ? { ...img, status: 'processing' } : img)));
+  };
+
+  const handleConvertAll = async () => {
+    const targets = images.filter((img) => img.status !== 'completed');
+    if (targets.length === 0) return;
+    markProcessing(new Set(targets.map((img) => img.id)));
+    await runQueue(targets);
+  };
+
+  const triggerDownload = (img: ImageFile, fileName?: string) => {
     if (!img.convertedDataUrl) return;
     const link = document.createElement('a');
     link.href = img.convertedDataUrl;
-    const baseName = img.name.substring(0, img.name.lastIndexOf('.')) || img.name;
-    link.download = `${baseName}_converted.${img.targetFormat}`;
+    link.download = fileName ?? `${baseNameOf(img.name)}_converted.${img.targetFormat}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   const handleDownloadSingle = async (img: ImageFile) => {
-    let activeImg = img;
-    if (img.status === 'pending' || img.status === 'error') {
-      setImages((prev) =>
-        prev.map((itm) => (itm.id === img.id ? { ...itm, status: 'processing' } : itm))
-      );
-      const result = await convertSingleImage({ ...img, status: 'processing' });
-      setImages((prev) =>
-        prev.map((itm) => (itm.id === img.id ? result : itm))
-      );
-      activeImg = result;
+    if (img.status === 'completed') {
+      triggerDownload(img);
+      return;
     }
-    
-    if (activeImg.status === 'completed') {
-      triggerDownload(activeImg);
-    }
+    if (img.status === 'processing') return;
+
+    markProcessing(new Set([img.id]));
+    const [result] = await runQueue([img]);
+    if (result?.status === 'completed') triggerDownload(result);
   };
 
   const handleDownloadAll = async () => {
-    let listToProcess = [...images];
-    const hasPendingOrError = listToProcess.some((img) => img.status === 'pending' || img.status === 'error');
+    const pending = images.filter((img) => img.status === 'pending' || img.status === 'error');
+    let completed = images.filter((img) => img.status === 'completed');
 
-    if (hasPendingOrError) {
-      setImages((prev) =>
-        prev.map((img) => (img.status === 'pending' || img.status === 'error' ? { ...img, status: 'processing' } : img))
-      );
-
-      listToProcess = await Promise.all(
-        listToProcess.map((img) =>
-          img.status === 'pending' || img.status === 'error' || img.status === 'processing'
-            ? convertSingleImage({ ...img, status: 'processing' })
-            : img
-        )
-      );
-      setImages(listToProcess);
+    if (pending.length > 0) {
+      markProcessing(new Set(pending.map((img) => img.id)));
+      const results = await runQueue(pending);
+      completed = [...completed, ...results.filter((img) => img.status === 'completed')];
     }
-
-    const completed = listToProcess.filter((img) => img.status === 'completed');
     if (completed.length === 0) return;
 
-    if (completed.length > 5) {
+    // Same source name twice would silently overwrite inside the zip.
+    const used = new Set<string>();
+    const uniqueName = (img: ImageFile) => {
+      const base = baseNameOf(img.name);
+      let name = `${base}_converted.${img.targetFormat}`;
+      for (let n = 2; used.has(name); n++) name = `${base}_converted_${n}.${img.targetFormat}`;
+      used.add(name);
+      return name;
+    };
+    const named = completed.map((img) => [img, uniqueName(img)] as const);
+
+    if (named.length > 5) {
       try {
         const zip = new JSZip();
-        for (const img of completed) {
-          if (img.convertedDataUrl) {
-            const response = await fetch(img.convertedDataUrl);
-            const blob = await response.blob();
-            const baseName = img.name.substring(0, img.name.lastIndexOf('.')) || img.name;
-            zip.file(`${baseName}_converted.${img.targetFormat}`, blob);
-          }
-        }
+        await Promise.all(
+          named.map(async ([img, name]) => {
+            const blob = await fetch(img.convertedDataUrl!).then((r) => r.blob());
+            zip.file(name, blob);
+          })
+        );
         const zipContent = await zip.generateAsync({ type: 'blob' });
         const zipUrl = URL.createObjectURL(zipContent);
         const link = document.createElement('a');
@@ -547,10 +490,8 @@ export default function ImageConverter() {
       }
     }
 
-    completed.forEach((img, idx) => {
-      setTimeout(() => {
-        triggerDownload(img);
-      }, idx * 250);
+    named.forEach(([img, name], idx) => {
+      setTimeout(() => triggerDownload(img, name), idx * 250);
     });
   };
 
@@ -1004,6 +945,16 @@ export default function ImageConverter() {
                         </span>
                       )}
                     </div>
+                    {img.errorMessage && img.status !== 'processing' && (
+                      <p
+                        className={`text-[10px] leading-snug mt-0.5 max-w-[180px] ${
+                          img.status === 'error' ? 'text-rose-500' : 'text-amber-600'
+                        }`}
+                        title={img.errorMessage}
+                      >
+                        {img.errorMessage}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1 pt-3.5 sm:pt-3">
