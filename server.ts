@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import Tesseract from "tesseract.js";
 import compression from "compression";
@@ -25,134 +24,6 @@ app.use(compression());
 // Increase body-parser limits for the base64 screenshot upload
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
-
-// Initialize Gemini Client lazily or at startup
-function getGeminiClient(): GoogleGenAI | null {
-  const currentKey = process.env.GEMINI_API_KEY;
-  if (!currentKey || currentKey.trim() === "") return null;
-  if (currentKey.startsWith("ya29.")) {
-    // Avoid sending unsupported OAuth tokens as standard API key headers
-    return null;
-  }
-  return new GoogleGenAI({
-    apiKey: currentKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'utility-tool-manager',
-      }
-    }
-  });
-}
-
-// Structured output schema for the analysis report
-const responseSchema = {
-  type: Type.OBJECT,
-  properties: {
-    seo: {
-      type: Type.OBJECT,
-      properties: {
-        urlMatches: { type: Type.BOOLEAN },
-        expectedUrl: { type: Type.STRING },
-        actualUrl: { type: Type.STRING },
-        urlDifference: { type: Type.STRING },
-        titleMatches: { type: Type.BOOLEAN },
-        expectedTitle: { type: Type.STRING },
-        actualTitle: { type: Type.STRING },
-        titleDifference: { type: Type.STRING },
-        descriptionMatches: { type: Type.BOOLEAN },
-        expectedDescription: { type: Type.STRING },
-        actualDescription: { type: Type.STRING },
-        descriptionDifference: { type: Type.STRING },
-        status: { type: Type.STRING }, // "match", "partial", "mismatch"
-        analysis: { type: Type.STRING }
-      },
-      required: [
-        "urlMatches", "expectedUrl", "actualUrl", "urlDifference",
-        "titleMatches", "expectedTitle", "actualTitle", "titleDifference",
-        "descriptionMatches", "expectedDescription", "actualDescription",
-        "descriptionDifference", "status", "analysis"
-      ]
-    },
-    headings: {
-      type: Type.OBJECT,
-      properties: {
-        status: { type: Type.STRING }, // "match", "partial", "mismatch"
-        matches: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              level: { type: Type.STRING }, // "h1", "h2", "h3", "h4"
-              expectedText: { type: Type.STRING },
-              actualText: { type: Type.STRING },
-              status: { type: Type.STRING }, // "match", "partial", "mismatch"
-              comment: { type: Type.STRING }
-            },
-            required: ["level", "expectedText", "actualText", "status", "comment"]
-          }
-        },
-        analysis: { type: Type.STRING }
-      },
-      required: ["status", "matches", "analysis"]
-    },
-    bodyContent: {
-      type: Type.OBJECT,
-      properties: {
-        status: { type: Type.STRING }, // "match", "partial", "mismatch"
-        mismatches: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              category: { type: Type.STRING },
-              expected: { type: Type.STRING },
-              actual: { type: Type.STRING },
-              severity: { type: Type.STRING }, // "high", "medium", "low"
-              comment: { type: Type.STRING }
-            },
-            required: ["category", "expected", "actual", "severity", "comment"]
-          }
-        },
-        matchesCount: { type: Type.INTEGER },
-        mismatchesCount: { type: Type.INTEGER },
-        analysis: { type: Type.STRING }
-      },
-      required: ["status", "mismatches", "matchesCount", "mismatchesCount", "analysis"]
-    },
-    faqSchema: {
-      type: Type.OBJECT,
-      properties: {
-        present: { type: Type.BOOLEAN },
-        rawJson: { type: Type.STRING },
-        status: { type: Type.STRING }, // "match", "mismatch", "missing", "not_present"
-        mismatchDetails: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING }
-        },
-        analysis: { type: Type.STRING }
-      },
-      required: ["present", "rawJson", "status", "mismatchDetails", "analysis"]
-    },
-    featureImage: {
-      type: Type.OBJECT,
-      properties: {
-        applicable: { type: Type.BOOLEAN },
-        expected: { type: Type.STRING },
-        actual: { type: Type.STRING },
-        matches: { type: Type.BOOLEAN },
-        analysis: { type: Type.STRING }
-      },
-      required: ["applicable", "expected", "actual", "matches", "analysis"]
-    },
-    overallScore: { type: Type.INTEGER }, // 0 to 100
-    summary: { type: Type.STRING },
-    recommendations: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING }
-    }
-  },
-  required: ["seo", "headings", "bodyContent", "faqSchema", "featureImage", "overallScore", "summary", "recommendations"]
-};
 
 // Shared HTML micro-parsing helpers (used by both parseFullSeoAndSchemas and parseHtml)
 const DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
@@ -1289,53 +1160,11 @@ async function buildLocalReport(
 
 // Express Endpoints
 app.get("/api/health", (req, res) => {
-  const hasGemini = !!process.env.GEMINI_API_KEY && !process.env.GEMINI_API_KEY.startsWith("ya29.");
-  const hasOpenRouter = !!process.env.OPENROUTER_API_KEY;
   res.json({
     status: "ok",
-    hasApiKey: hasGemini || hasOpenRouter,
-    provider: hasGemini ? "Gemini API" : (hasOpenRouter ? "OpenRouter API" : "Local OCR Engine")
+    provider: "Local OCR Engine"
   });
 });
-
-async function analyzeWithOpenRouter(openRouterKey: string, textPrompt: string, imageBase64: string): Promise<string | null> {
-  try {
-    const dataUrl = imageBase64.startsWith('data:') ? imageBase64 : `data:image/png;base64,${imageBase64}`;
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${openRouterKey.trim()}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": process.env.APP_URL || "https://utility-tool-manager.app",
-        "X-Title": "SEO Copy Auditor"
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "image_url", image_url: { url: dataUrl } },
-              { type: "text", text: textPrompt }
-            ]
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      console.log("OpenRouter API response status:", response.status, response.statusText);
-      return null;
-    }
-
-    const data = await response.json();
-    return data?.choices?.[0]?.message?.content || null;
-  } catch (err: any) {
-    console.log("OpenRouter API exception:", err?.message || err);
-    return null;
-  }
-}
 
 app.post("/api/content-checker/analyze", async (req, res) => {
   try {
@@ -1370,144 +1199,8 @@ app.post("/api/content-checker/analyze", async (req, res) => {
     // Parse extracted HTML content
     const parsedWebData = parseHtml(htmlContent);
 
-    // Attempt Gemini AI or OpenRouter AI Analysis if available
-    let reportText = "";
-    const textPrompt = `You are a strict QA and SEO Content Compliance Auditor.
-Your task is to perform an exact visual and textual OCR comparison between the Reference Document Screenshot provided and the Crawled Target Webpage HTML/text below.
-
-Crawled Target Webpage Information:
-- Target Source: ${targetUrlName}
-- Page <title>: "${parsedWebData.title || '[None found]'}"
-- Meta description: "${parsedWebData.description || '[None found]'}"
-- HTML Heading Hierarchy:
-${parsedWebData.headings.map(h => `  * <${h.level}>: "${h.text}"`).join("\n") || '  [No headings found]'}
-- Extracted Paragraphs (<p> tags in order):
-${parsedWebData.paragraphs.length > 0 ? parsedWebData.paragraphs.map((p, idx) => `  * <p> #${idx + 1}: "${p}"`).join("\n") : '  [No explicit <p> tags found]'}
-- Extracted Bullet/Numbered List Items (<li> tags in order):
-${parsedWebData.listItems.length > 0 ? parsedWebData.listItems.map((li, idx) => `  * <li> #${idx + 1}: "${li}"`).join("\n") : '  [No list items found]'}
-- Extracted HTML Tables (Headers & Rows):
-${parsedWebData.tables.length > 0 ? parsedWebData.tables.map((tbl, idx) => `  * Table #${idx + 1}:\n    - Headers: ${tbl.headers.join(' | ') || 'None'}\n    - Rows:\n${tbl.rows.map(r => `      [ ${r.join(' | ')} ]`).join('\n')}`).join("\n") : '  [No tables found]'}
-- Full Extracted Body Copy Text:
-"${parsedWebData.bodyText}"
-- Detected FAQPage Schema (JSON-LD) on the Crawled Webpage:
-${parsedWebData.faqSchema.present ? JSON.stringify(parsedWebData.faqSchema.raw, null, 2) : '[No FAQPage schema found on the webpage]'}
-- Detected Feature Image on the Crawled Webpage (og:image / twitter:image / first <img>): "${parsedWebData.featureImage || '[None found]'}"
-- Canonical URL declared in the Crawled Webpage's HTML source (<link rel="canonical"> / og:url): "${parsedWebData.canonicalUrl || '[None found]'}"
-
-CRITICAL COMPARISON MANDATE:
-1. Examine the Reference Document Screenshot image in high detail. Read every title, heading, paragraph (<p>), list item (<li>), table cell (<td>/<th>), and sentence shown in the document screenshot.
-2. Compare the text in the document screenshot word-for-word against the Crawled Target Webpage headings, paragraphs (<p>), list items (<li>), tables, and copy text provided above.
-3. ABSOLUTE ACCURACY IS REQUIRED FOR ALL ELEMENTS: Check every heading, paragraph (<p>), list item (<li>), and table cell. If any sentence, word, number, header, table cell, or bullet point in the webpage copy differs from what is shown in the reference screenshot (e.g., modified text, changed <p> or <li> tag contents, altered table data, missing words, extra sections, or rephrased copy), YOU MUST DETECT AND REPORT IT AS A MISMATCH.
-4. If there are ANY paragraph (<p>), list item (<li>), table, heading, or copy differences:
-   - Do NOT mark bodyContent.status as 'match'. Set it to 'mismatch' or 'partial'.
-   - List EVERY copy mismatch in 'bodyContent.mismatches', specifying:
-     * category: "Paragraph Copy Mismatch" (or "List Item Mismatch" / "Table Data Mismatch" / "Heading Mismatch" / "Title Mismatch")
-     * expected: The exact text as seen in the reference document screenshot
-     * actual: The actual text found on the webpage
-     * severity: "high" for altered or missing sentences/paragraphs/tables, "medium" for minor word/punctuation differences
-     * comment: Detailed description of what changed in the tag/cell/paragraph between the document screenshot and the webpage.
-   - Set 'bodyContent.mismatchesCount' to the number of discrepancies found.
-   - Lower the 'overallScore' proportionally (e.g. deduct 15-30 points per mismatch).
-   - NEVER give an overallScore of 100 if the webpage copy, paragraphs, list items, or tables do not match the document screenshot 100% exactly word-for-word!
-5. FAQ SCHEMA CHECK: Many reference documents now include an FAQ section (questions & answers) near the bottom.
-   - Set 'faqSchema.present' to whether the "Detected FAQPage Schema" section above shows a schema was found.
-   - Set 'faqSchema.rawJson' to that exact JSON text verbatim (or an empty string if none was found).
-   - If the reference screenshot shows an FAQ section: the schema must be present AND every question/answer pair in it must match the reference word-for-word. If the schema is missing, or any question/answer differs from the reference, set 'faqSchema.status' to "mismatch" (or "missing" if the schema is absent entirely) and explain each discrepancy in 'faqSchema.mismatchDetails'.
-   - If the reference screenshot shows no FAQ section: set 'faqSchema.status' to "not_present" regardless of what's on the webpage, and leave 'faqSchema.mismatchDetails' empty.
-   - If everything matches, set 'faqSchema.status' to "match".
-6. URL CHECK: If the reference screenshot specifies an intended publish URL (e.g. a "URL:" or "URL -" line), compare it against the Canonical URL declared in the Crawled Webpage's HTML source above (ignore protocol and trailing slash differences) — not the Target Source address, since that's just where the page was fetched from, not what its own source claims. Fall back to the Target Source "${targetUrlName}" only if no canonical/og:url was found. Set 'seo.urlMatches', 'seo.expectedUrl', 'seo.actualUrl', and 'seo.urlDifference' accordingly. If the reference specifies no URL, set 'seo.urlMatches' to true and 'seo.expectedUrl' to "No URL specified in the reference".
-7. FEATURE IMAGE CHECK: If the reference screenshot specifies a "Feature image" (e.g. a "Feature image:" or "Feature image -" line, or shows a distinct hero/featured image), compare it against the "Detected Feature Image" above.
-   - Set 'featureImage.applicable' to whether the reference specifies a feature image at all.
-   - Set 'featureImage.expected' and 'featureImage.actual' to the two image references/URLs being compared.
-   - Set 'featureImage.matches' to whether they refer to the same image (same file, allowing for different CDN/query-string wrapping).
-   - If the reference specifies no feature image, set 'applicable' to false and 'matches' to true.
-
-Calculate the Overall Compliance Score (0 to 100) based on strict copy alignment. Return your response strictly as a JSON object adhering to this schema:
-${JSON.stringify(responseSchema, null, 2)}
-`;
-
-    // 1. Try Gemini API if client available (vision comparison needs an actual screenshot;
-    // a Google Doc reference is plain text, so it skips AI vision and goes straight to the
-    // deterministic local text comparator below, which is actually a better fit for exact-text
-    // spec compliance than an LLM's vision reasoning).
-    const client = getGeminiClient();
-    if (client && image) {
-      try {
-        const base64Data = image.split(',')[1] || image;
-        let mimeType = "image/png";
-        const mimeMatch = image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
-        if (mimeMatch) {
-          mimeType = mimeMatch[1];
-        }
-
-        const imagePart = {
-          inlineData: {
-            mimeType,
-            data: base64Data
-          }
-        };
-
-        try {
-          const geminiRes = await client.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: { parts: [imagePart, { text: textPrompt }] },
-            config: {
-              responseMimeType: "application/json",
-              responseSchema: responseSchema,
-              temperature: 0.1
-            }
-          });
-          reportText = geminiRes.text || "";
-        } catch (modelErr: any) {
-          console.log("Gemini 2.5 Flash unavailable, trying 3.6 Flash fallback...");
-          try {
-            const fallbackRes = await client.models.generateContent({
-              model: "gemini-3.6-flash",
-              contents: { parts: [imagePart, { text: textPrompt }] },
-              config: {
-                responseMimeType: "application/json",
-                responseSchema: responseSchema,
-                temperature: 0.1
-              }
-            });
-            reportText = fallbackRes.text || "";
-          } catch (fallbackErr: any) {
-            console.log("Gemini API call note: proceeding to alternative providers/OCR engine.");
-          }
-        }
-      } catch (geminiError: any) {
-        console.log("Gemini API note: Executing fallback providers.");
-      }
-    }
-
-    // 2. Try OpenRouter API if GEMINI failed or was missing, and OPENROUTER_API_KEY is available
-    if (!reportText && image && process.env.OPENROUTER_API_KEY) {
-      console.log("Attempting OpenRouter AI analysis...");
-      const openRouterResult = await analyzeWithOpenRouter(process.env.OPENROUTER_API_KEY, textPrompt, image);
-      if (openRouterResult) {
-        reportText = openRouterResult;
-      }
-    }
-
-    // 3. Return structured AI report if any AI provider succeeded
-    if (reportText) {
-      try {
-        const parsedReport = JSON.parse(reportText.trim());
-        return res.json({
-          success: true,
-          report: parsedReport,
-          webpageData: {
-            title: parsedWebData.title,
-            description: parsedWebData.description,
-            headingsCount: parsedWebData.headings.length
-          }
-        });
-      } catch (e) {
-        console.log("AI response parsing note, falling back to OCR engine.");
-      }
-    }
-
-    // Fallback: compare against the Google Doc text directly, or OCR the screenshot
+    // Compare against the Google Doc text directly, or OCR the screenshot, using the
+    // deterministic local comparator (no AI/LLM calls in this feature).
     const localReferenceText = referenceText && referenceText.trim()
       ? referenceText.trim()
       : (image ? await performLocalOcr(image) : undefined);

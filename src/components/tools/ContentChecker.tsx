@@ -29,8 +29,8 @@ const CHECK_CATEGORIES = [
   { id: 'faq', label: 'FAQ Schema' },
 ] as const;
 
-// Maps a mismatch's free-text category (from either the local comparator or the AI prompt)
-// to one of the checkable groups above, so the UI can filter to only what the user asked for.
+// Maps a mismatch's free-text category (from the local comparator) to one of the
+// checkable groups above, so the UI can filter to only what the user asked for.
 function categoryGroup(category: string): string {
   const c = category.toLowerCase();
   if (c.includes('title')) return 'title';

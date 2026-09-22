@@ -13,7 +13,6 @@
     "test": "tsx src/lib/utils.test.ts"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "clsx": "^2.1.1",
