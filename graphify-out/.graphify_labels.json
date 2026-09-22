@@ -1,0 +1,21 @@
+{
+  "0": "server.ts",
+  "1": "ContentChecker.tsx",
+  "2": "package.json",
+  "3": "AuditReportBuilder.ts",
+  "4": "Responsive Device Preview Tool",
+  "5": "App.tsx",
+  "6": "Gradient Generator & Color Tools",
+  "7": "compilerOptions",
+  "8": "dependencies",
+  "9": "Development Dependencies",
+  "10": "page.ts",
+  "11": "Graphify Agent Rules & Workflows",
+  "12": "HTML Entrypoint & Bootstrap",
+  "13": "Core Type Definitions",
+  "14": "Apple Touch & PWA Branding",
+  "15": "Favicon & Visual Identity",
+  "16": "Git & Conventional Commits Rules",
+  "17": "GoogleDocParser.ts",
+  "18": "PageFetcher.ts"
+}

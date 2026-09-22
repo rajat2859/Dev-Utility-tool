@@ -85,3 +85,53 @@ export function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+const HTML_NAMED_ENTITIES: Record<string, string> = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+  rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“',
+  ndash: '–', mdash: '—', hellip: '…', copy: '©', reg: '®', trade: '™'
+};
+
+export function decodeHtmlEntities(text: string): string {
+  if (!text) return '';
+  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (match, entity) => {
+    if (entity[0] === '#') {
+      const code = entity[1].toLowerCase() === 'x' ? parseInt(entity.slice(2), 16) : parseInt(entity.slice(1), 10);
+      return Number.isNaN(code) ? match : String.fromCodePoint(code);
+    }
+    return HTML_NAMED_ENTITIES[entity.toLowerCase()] ?? match;
+  });
+}
+
+/**
+ * Bulletproof parser for Schema.org JSON-LD scripts found on live websites.
+ * Handles CDATA wrappers, JS line/block comments, trailing commas, and HTML entities.
+ */
+export function sanitizeAndParseJsonLd(rawJsonLd: string): any {
+  if (!rawJsonLd) return null;
+  // 1. Remove CDATA wrappers
+  let s = rawJsonLd
+    .replace(/^\s*\/\*\s*<!\[CDATA\[\s*\*\/|\/\*\s*\]\]>\s*\*\/$/gi, '')
+    .replace(/^\s*<!\[CDATA\[|\]\]>\s*$/gi, '')
+    .trim();
+
+  // 2. Strip JavaScript comments (block comments and line comments preserving urls)
+  s = s.replace(/\/\*[\s\S]*?\*\//g, '');
+  s = s.replace(/(^|[^\\:])\/\/.*$/gm, '$1').trim();
+
+  // 3. Try standard parse first (optimal performance)
+  try {
+    return JSON.parse(s);
+  } catch {
+    // 4. Try stripping trailing commas before closing braces/brackets
+    let fixed = s.replace(/,\s*([\]}])/g, '$1');
+    try {
+      return JSON.parse(fixed);
+    } catch {
+      // 5. Decode HTML entities (e.g. &quot;, &#34;) and retry
+      fixed = decodeHtmlEntities(fixed).replace(/,\s*([\]}])/g, '$1');
+      return JSON.parse(fixed);
+    }
+  }
+}
+

@@ -69,3 +69,39 @@ assert.equal(escapeHtml(''), '');
 assert.equal(escapeHtml('plain text'), 'plain text');
 
 console.log('escapeHtml: all checks passed');
+
+// --- sanitizeAndParseJsonLd ------------------------------------------------
+import { sanitizeAndParseJsonLd } from './utils';
+
+// Standard clean JSON
+assert.deepEqual(sanitizeAndParseJsonLd('{"@context": "https://schema.org", "@type": "WebSite"}'), {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite'
+});
+
+// CDATA wrapper (WordPress / older CMS pattern)
+assert.deepEqual(sanitizeAndParseJsonLd('/* <![CDATA[ */\n{"@context": "https://schema.org", "@type": "Organization"}\n/* ]]> */'), {
+  '@context': 'https://schema.org',
+  '@type': 'Organization'
+});
+
+// JS Comments (single-line and multi-line)
+assert.deepEqual(sanitizeAndParseJsonLd('// Yoast Schema Graph\n{\n  /* Header Comment */\n  "@type": "Article",\n  "headline": "Hello World"\n}'), {
+  '@type': 'Article',
+  'headline': 'Hello World'
+});
+
+// Trailing commas
+assert.deepEqual(sanitizeAndParseJsonLd('{"@type": "FAQPage", "name": "Questions",}'), {
+  '@type': 'FAQPage',
+  'name': 'Questions'
+});
+
+// HTML Entity escaped quotes inside script tag
+assert.deepEqual(sanitizeAndParseJsonLd('{&quot;@type&quot;: &quot;Product&quot;, &quot;name&quot;: &quot;Widget&quot;}'), {
+  '@type': 'Product',
+  'name': 'Widget'
+});
+
+console.log('sanitizeAndParseJsonLd: all checks passed');
+
