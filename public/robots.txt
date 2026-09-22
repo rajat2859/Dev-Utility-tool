@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Exclude internal build/analysis artifacts and backend endpoints
+Disallow: /api/
+Disallow: /graphify-out/
+
+Sitemap: /sitemap.xml

@@ -20,7 +20,7 @@ import {
   ChevronRight,
   ShieldCheck
 } from 'lucide-react';
-import { copyText, normalizeUrl } from '../../lib/utils';
+import { copyText, normalizeUrl, sanitizeAndParseJsonLd } from '../../lib/utils';
 
 interface SchemaIssue {
   type: 'error' | 'warning' | 'info';
@@ -30,7 +30,7 @@ interface SchemaIssue {
 
 interface DetectedSchema {
   schemaType: string;
-  source: 'json-ld' | 'microdata';
+  source: 'json-ld' | 'microdata' | 'rdfa';
   rawJson: any;
   issues: SchemaIssue[];
   valid: boolean;
@@ -140,12 +140,18 @@ function clientParseSeoAndSchemas(html: string, pageUrlStr?: string): SeoAuditDa
   const imagesWithoutAlt = imgEls.filter(img => !img.hasAttribute('alt') || !img.getAttribute('alt')?.trim()).map(img => img.src || 'Image without alt');
 
   const schemas: DetectedSchema[] = [];
-  const scriptEls = Array.from(doc.querySelectorAll('script[type="application/ld+json"]'));
+  const scriptEls = Array.from(doc.querySelectorAll('script')).filter(s => {
+    const t = (s.getAttribute('type') || '').toLowerCase().trim();
+    return t === 'application/ld+json' || t.startsWith('application/ld+json;') || t.includes('ld+json');
+  });
+
   scriptEls.forEach(script => {
     const rawContent = script.textContent?.trim();
     if (!rawContent) return;
     try {
-      const parsed = JSON.parse(rawContent);
+      const parsed = sanitizeAndParseJsonLd(rawContent);
+      if (!parsed) return;
+
       const processObj = (obj: any) => {
         if (!obj || typeof obj !== 'object') return;
         if (Array.isArray(obj['@graph'])) {
@@ -156,46 +162,70 @@ function clientParseSeoAndSchemas(html: string, pageUrlStr?: string): SeoAuditDa
           obj.forEach(item => processObj(item));
           return;
         }
-        const schemaType = obj['@type'] || obj['type'] || 'UnknownSchema';
-        const typeStr = Array.isArray(schemaType) ? schemaType.join(', ') : String(schemaType);
-        const issues: SchemaIssue[] = [];
+        const schemaType = obj['@type'] || obj['type'];
+        if (schemaType) {
+          const typeStr = Array.isArray(schemaType) ? schemaType.join(', ') : String(schemaType);
+          const issues: SchemaIssue[] = [];
 
-        if (typeStr.includes('Article') || typeStr.includes('BlogPosting') || typeStr.includes('NewsArticle')) {
-          if (!obj.headline && !obj.name) issues.push({ type: 'warning', message: 'Missing "headline" property.', field: 'headline' });
-          if (!obj.image) issues.push({ type: 'warning', message: 'Missing "image" property (recommended for Rich Snippets).', field: 'image' });
-          if (!obj.datePublished) issues.push({ type: 'info', message: 'Missing "datePublished" property.', field: 'datePublished' });
-          if (!obj.author) issues.push({ type: 'info', message: 'Missing "author" property.', field: 'author' });
-        } else if (typeStr.includes('Product')) {
-          if (!obj.name) issues.push({ type: 'error', message: 'Missing required "name" property.', field: 'name' });
-          if (!obj.image) issues.push({ type: 'warning', message: 'Missing "image" property.', field: 'image' });
-          if (!obj.offers && !obj.aggregateRating && !obj.review) {
-            issues.push({ type: 'warning', message: 'Missing "offers" or "aggregateRating" for Product rich results.', field: 'offers' });
+          if (typeStr.includes('Article') || typeStr.includes('BlogPosting') || typeStr.includes('NewsArticle')) {
+            if (!obj.headline && !obj.name) issues.push({ type: 'warning', message: 'Missing "headline" property.', field: 'headline' });
+            if (!obj.image) issues.push({ type: 'warning', message: 'Missing "image" property (recommended for Rich Snippets).', field: 'image' });
+            if (!obj.datePublished) issues.push({ type: 'info', message: 'Missing "datePublished" property.', field: 'datePublished' });
+            if (!obj.author) issues.push({ type: 'info', message: 'Missing "author" property.', field: 'author' });
+            if (!obj.publisher) issues.push({ type: 'info', message: 'Missing "publisher" property.', field: 'publisher' });
+          } else if (typeStr.includes('Product')) {
+            if (!obj.name) issues.push({ type: 'error', message: 'Missing required "name" property.', field: 'name' });
+            if (!obj.image) issues.push({ type: 'warning', message: 'Missing "image" property.', field: 'image' });
+            if (!obj.offers && !obj.aggregateRating && !obj.review) {
+              issues.push({ type: 'warning', message: 'Missing "offers" or "aggregateRating" for Product rich results.', field: 'offers' });
+            }
+          } else if (typeStr.includes('Organization') || typeStr.includes('LocalBusiness')) {
+            if (!obj.name) issues.push({ type: 'error', message: 'Missing required "name" property.', field: 'name' });
+            if (!obj.url) issues.push({ type: 'warning', message: 'Missing "url" property.', field: 'url' });
+            if (!obj.logo && !obj.image) issues.push({ type: 'info', message: 'Missing "logo" or "image" property.', field: 'logo' });
+          } else if (typeStr.includes('BreadcrumbList')) {
+            if (!obj.itemListElement || !Array.isArray(obj.itemListElement) || obj.itemListElement.length === 0) {
+              issues.push({ type: 'error', message: 'BreadcrumbList requires "itemListElement" array.', field: 'itemListElement' });
+            }
+          } else if (typeStr.includes('FAQPage')) {
+            if (!obj.mainEntity || !Array.isArray(obj.mainEntity)) {
+              issues.push({ type: 'error', message: 'FAQPage requires "mainEntity" array of Question/Answer items.', field: 'mainEntity' });
+            }
+          } else if (typeStr.includes('WebSite')) {
+            if (!obj.name && !obj.url) issues.push({ type: 'warning', message: 'WebSite schema should specify "name" and "url".', field: 'name' });
+          } else if (typeStr.includes('SoftwareApplication') || typeStr.includes('WebApplication')) {
+            if (!obj.name) issues.push({ type: 'error', message: 'Missing required "name" property.', field: 'name' });
+            if (!obj.applicationCategory) issues.push({ type: 'info', message: 'Missing "applicationCategory" property.', field: 'applicationCategory' });
           }
-        } else if (typeStr.includes('Organization') || typeStr.includes('LocalBusiness')) {
-          if (!obj.name) issues.push({ type: 'error', message: 'Missing required "name" property.', field: 'name' });
-          if (!obj.url) issues.push({ type: 'warning', message: 'Missing "url" property.', field: 'url' });
-          if (!obj.logo && !obj.image) issues.push({ type: 'info', message: 'Missing "logo" or "image" property.', field: 'logo' });
-        } else if (typeStr.includes('BreadcrumbList')) {
-          if (!obj.itemListElement || !Array.isArray(obj.itemListElement) || obj.itemListElement.length === 0) {
-            issues.push({ type: 'error', message: 'BreadcrumbList requires "itemListElement" array.', field: 'itemListElement' });
+
+          if (!obj['@type']) {
+            issues.push({ type: 'error', message: 'Missing @type property in JSON-LD object.' });
           }
-        } else if (typeStr.includes('FAQPage')) {
-          if (!obj.mainEntity || !Array.isArray(obj.mainEntity)) {
-            issues.push({ type: 'error', message: 'FAQPage requires "mainEntity" array of Question/Answer items.', field: 'mainEntity' });
-          }
+          schemas.push({
+            schemaType: typeStr,
+            source: 'json-ld',
+            rawJson: obj,
+            issues,
+            valid: issues.filter(i => i.type === 'error').length === 0
+          });
         }
 
-        if (!obj['@type']) {
-          issues.push({ type: 'error', message: 'Missing @type property in JSON-LD object.' });
+        // Recursively inspect nested objects for child entities (author, publisher, provider, etc.)
+        for (const [key, val] of Object.entries(obj)) {
+          if (key !== '@graph' && key !== '@context' && typeof val === 'object' && val !== null) {
+            if (Array.isArray(val)) {
+              val.forEach(item => {
+                if (typeof item === 'object' && item !== null && ((item as any)['@type'] || (item as any)['type'])) {
+                  processObj(item);
+                }
+              });
+            } else if ((val as any)['@type'] || (val as any)['type']) {
+              processObj(val);
+            }
+          }
         }
-        schemas.push({
-          schemaType: typeStr,
-          source: 'json-ld',
-          rawJson: obj,
-          issues,
-          valid: issues.filter(i => i.type === 'error').length === 0
-        });
       };
+
       processObj(parsed);
     } catch (e: any) {
       schemas.push({
@@ -208,13 +238,27 @@ function clientParseSeoAndSchemas(html: string, pageUrlStr?: string): SeoAuditDa
     }
   });
 
-  const itemScopes = Array.from(doc.querySelectorAll('[itemscope]'));
-  itemScopes.forEach(el => {
+  // Microdata and RDFa Semantic Entity Checks
+  const microdataRegexEls = Array.from(doc.querySelectorAll('[itemscope]'));
+  microdataRegexEls.forEach(el => {
     const itemType = el.getAttribute('itemtype') || 'MicrodataItem';
-    const typeName = itemType.split('/').pop() || itemType;
+    const typeName = itemType.split(/[\/#:]/).pop() || itemType;
     schemas.push({
       schemaType: typeName,
       source: 'microdata',
+      rawJson: { htmlTag: el.outerHTML.slice(0, 150) },
+      issues: [],
+      valid: true
+    });
+  });
+
+  const rdfaEls = Array.from(doc.querySelectorAll('[typeof]:not([itemscope])'));
+  rdfaEls.forEach(el => {
+    const itemType = el.getAttribute('typeof') || 'RDFaItem';
+    const typeName = itemType.split(/[\/#:]/).pop() || itemType;
+    schemas.push({
+      schemaType: typeName,
+      source: 'rdfa',
       rawJson: { htmlTag: el.outerHTML.slice(0, 150) },
       issues: [],
       valid: true
@@ -423,8 +467,41 @@ export default function SeoChecker() {
         console.warn("Client proxy 2 fetch error:", proxyErr2);
       }
 
+      // Proxy Attempt 3: CodeTabs
+      try {
+        const proxyUrl3 = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(sanitizedUrl)}`;
+        const res3 = await fetch(proxyUrl3);
+        if (res3.ok) {
+          const htmlText3 = await res3.text();
+          if (htmlText3 && htmlText3.trim().length > 10) {
+            const clientParsed = clientParseSeoAndSchemas(htmlText3, sanitizedUrl);
+            setSeoAuditData(clientParsed);
+            return;
+          }
+        }
+      } catch (proxyErr3) {
+        console.warn("Client proxy 3 fetch error:", proxyErr3);
+      }
+
+      // Proxy Attempt 4: ThingProxy
+      try {
+        const proxyUrl4 = `https://thingproxy.freeboard.io/fetch/${sanitizedUrl}`;
+        const res4 = await fetch(proxyUrl4);
+        if (res4.ok) {
+          const htmlText4 = await res4.text();
+          if (htmlText4 && htmlText4.trim().length > 10) {
+            const clientParsed = clientParseSeoAndSchemas(htmlText4, sanitizedUrl);
+            setSeoAuditData(clientParsed);
+            return;
+          }
+        }
+      } catch (proxyErr4) {
+        console.warn("Client proxy 4 fetch error:", proxyErr4);
+      }
+
+      setShowHtmlPaste(true);
       setSeoError(
-        `Could not fetch target webpage (${sanitizedUrl}). The target site may be blocking automated requests. Please try clicking "Paste Raw HTML" and pasting the page HTML source code directly.`
+        `Could not retrieve HTML from target site (${sanitizedUrl}) via direct or proxy gateways. High-security sites (e.g. Cloudflare / Bot protection) block automated requests. We have opened "Paste Raw HTML" below: view page source in your browser (Ctrl+U or right-click -> View Page Source), copy, and paste here to audit SEO & Schemas instantly!`
       );
     }
   };

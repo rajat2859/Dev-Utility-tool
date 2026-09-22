@@ -98,8 +98,8 @@ export default function App() {
 
   useEffect(() => {
     const title = activeView === 'dashboard' 
-      ? 'Utility Tool Manager' 
-      : `${getToolTitle()} - Utility Tool Manager`;
+      ? 'Utility Tool Manager | Developer & Web QA Toolkit' 
+      : `${getToolTitle()} | Utility Tool Manager`;
     document.title = title;
   }, [activeView]);
 
@@ -133,10 +133,10 @@ export default function App() {
         return <ResponsivePreview />;
       default:
         return (
-          <DashboardGrid
-            onSelectTool={(id) => {
-              prefetchTool(id);
-              setActiveView(id);
+          <DashboardGrid 
+            onSelectTool={(toolId) => {
+              setActiveView(toolId);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             favorites={favorites}
             onToggleFavorite={handleToggleFavorite}
@@ -148,21 +148,21 @@ export default function App() {
   const getToolTitle = () => {
     switch (activeView) {
       case 'seo-checker':
-        return 'SEO & Schema';
+        return 'SEO & Schema Validator';
       case 'html-cleaner':
-        return 'HTML Cleaner & Sanitizer';
+        return 'HTML Cleaner & Markdown Converter';
       case 'image':
-        return 'Bulk Image Format Converter';
+        return 'Image Format Converter';
       case 'gradient':
-        return 'Gradient Studio';
+        return 'CSS Gradient & Color Palette Studio';
       case 'password':
-        return 'Cryptographic Key & Password Generator';
+        return 'Cryptographic Password Generator';
       case 'content-checker':
-        return 'Content Audit';
+        return 'Content & Schema Audit QA';
       case 'responsive-preview':
-        return 'Responsive Device Preview';
+        return 'Responsive Multi-Device Preview';
       default:
-        return 'Utility Tool Manager Workspace';
+        return 'Developer & Web QA Utilities';
     }
   };
 

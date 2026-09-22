@@ -1,0 +1,23 @@
+{
+  "name": "Utility Tool Manager",
+  "short_name": "DevTools",
+  "description": "Professional Developer & Web QA Toolkit: SEO & Schema Audit, Responsive Preview, HTML Cleaner, and Utilities.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
