@@ -22,6 +22,7 @@ import {
   Heading
 } from 'lucide-react';
 import { normalizeUrl } from '../../lib/utils';
+import GoogleDocAuditView from './GoogleDocAuditView';
 
 const CHECK_CATEGORIES = [
   { id: 'title', label: 'URL, Title & Description' },
@@ -244,6 +245,7 @@ export default function ContentChecker() {
   const [url, setUrl] = useState<string>('');
   const [rawHtml, setRawHtml] = useState<string>('');
   const [showHtmlPaste, setShowHtmlPaste] = useState<boolean>(false);
+  const [auditMode, setAuditMode] = useState<'google-doc' | 'screenshot'>('google-doc');
 
   // Screenshot QA states
   const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
@@ -581,12 +583,47 @@ export default function ContentChecker() {
               Content Audit
             </h2>
             <p className="text-xs text-slate-500">
-              Audit live webpage content, copy accuracy, and heading structures against design reference screenshots.
+              Audit live webpage content, copy accuracy, and heading structures against Google Docs or design references.
             </p>
           </div>
         </div>
       </div>
 
+      {/* Mode Selector */}
+      <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-fit">
+        <button
+          type="button"
+          onClick={() => setAuditMode('google-doc')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            auditMode === 'google-doc'
+              ? 'bg-white text-slate-900 shadow-2xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <FileText className="h-3.5 w-3.5 text-blue-600" />
+          <span>Google Doc API Audit</span>
+          <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">
+            V1
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setAuditMode('screenshot')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            auditMode === 'screenshot'
+              ? 'bg-white text-slate-900 shadow-2xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <FileImage className="h-3.5 w-3.5 text-slate-500" />
+          <span>Screenshot / OCR QA</span>
+        </button>
+      </div>
+
+      {auditMode === 'google-doc' ? (
+        <GoogleDocAuditView />
+      ) : (
+        <>
       {/* Main Input Card */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
         {/* Webpage Input */}
@@ -1300,6 +1337,8 @@ export default function ContentChecker() {
         </div>
       );
     })()}
+        </>
+      )}
     </div>
   );
 }
