@@ -5,7 +5,6 @@ import dotenv from "dotenv";
 import Tesseract from "tesseract.js";
 import compression from "compression";
 import { contentAuditRouter } from "./server/content-auditor/routes/contentAuditRoutes";
-import { googleAuthRouter } from "./server/content-auditor/auth/googleAuthRoutes";
 
 dotenv.config();
 
@@ -652,7 +651,6 @@ app.post("/api/seo-checker/analyze", async (req, res) => {
 
 // Mount Content Auditor Router (modularized in server/content-auditor/)
 app.use("/api/content-checker", contentAuditRouter);
-app.use("/api/google", googleAuthRouter);
 
 // Express Endpoints
 app.get("/api/health", (req, res) => {

@@ -6,33 +6,92 @@ import type {
   ComparisonStatus,
   AuditSummary,
 } from '../types/normalized';
-
-/**
- * Normalizes text for comparison by lowercasing, collapsing whitespace,
- * and normalizing quotes and hyphens.
- */
-export function normalizeForComparison(str: string): string {
-  if (!str) return '';
-  return str
-    .toLowerCase()
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[–—]/g, '-')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+import { normalizeText, areTextsMatching } from '../utils/textNormalizer';
 
 /**
  * Checks if two text strings match after normalization.
  */
 export function isTextMatch(a: string, b: string): boolean {
-  const normA = normalizeForComparison(a);
-  const normB = normalizeForComparison(b);
-  if (normA === normB) return true;
+  if (areTextsMatching(a, b)) return true;
+  // Lowercase check
+  return normalizeText(a).toLowerCase() === normalizeText(b).toLowerCase();
+}
 
-  // Strip punctuation for a slightly more forgiving exact comparison
-  const stripPunct = (s: string) => s.replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, '').trim();
-  return stripPunct(normA) === stripPunct(normB);
+/**
+ * Detailed comparison for list items.
+ * Returns failure details if an item is missing, out of order, or text differs.
+ */
+export function compareListDetails(
+  refItems: string[],
+  webItems: string[]
+): { matches: boolean; detail: string } {
+  // Check for any missing reference item
+  for (let i = 0; i < refItems.length; i++) {
+    const item = refItems[i];
+    const found = webItems.some((w) => isTextMatch(item, w));
+    if (!found) {
+      return { matches: false, detail: `Missing list item: "${item}"` };
+    }
+  }
+
+  // Check count difference
+  if (refItems.length !== webItems.length) {
+    return {
+      matches: false,
+      detail: `List item count differs: expected ${refItems.length} items, found ${webItems.length}.`,
+    };
+  }
+
+  // Check item-by-item in order
+  for (let i = 0; i < refItems.length; i++) {
+    if (!isTextMatch(refItems[i], webItems[i])) {
+      return {
+        matches: false,
+        detail: `List item ${i + 1} mismatch: expected "${refItems[i]}", found "${webItems[i]}".`,
+      };
+    }
+  }
+
+  return { matches: true, detail: 'All list items match.' };
+}
+
+/**
+ * Detailed comparison for table rows and cells.
+ * Returns failure details with specific row and column numbers.
+ */
+export function compareTableDetails(
+  refRows: string[][],
+  webRows: string[][]
+): { matches: boolean; detail: string } {
+  if (refRows.length !== webRows.length) {
+    return {
+      matches: false,
+      detail: `Table row count differs: expected ${refRows.length} rows, found ${webRows.length}.`,
+    };
+  }
+
+  for (let r = 0; r < refRows.length; r++) {
+    const rRow = refRows[r] || [];
+    const wRow = webRows[r] || [];
+
+    if (rRow.length !== wRow.length) {
+      return {
+        matches: false,
+        detail: `Row ${r + 1} column count differs: expected ${rRow.length} cells, found ${wRow.length}.`,
+      };
+    }
+
+    for (let c = 0; c < rRow.length; c++) {
+      if (!isTextMatch(rRow[c], wRow[c])) {
+        return {
+          matches: false,
+          detail: `Row ${r + 1}, Cell ${c + 1} — Expected: "${rRow[c]}", Found: "${wRow[c]}"`,
+        };
+      }
+    }
+  }
+
+  return { matches: true, detail: 'All table rows and cells match.' };
 }
 
 /**
@@ -61,9 +120,8 @@ export function compareNormalizedTrees(
   for (let r = 0; r < refElements.length; r++) {
     const ref = refElements[r];
     const refOrder = r + 1;
-    const refNorm = normalizeForComparison(ref.text);
 
-    // 1. First, search for exact text match with same tag (PASS) within lookahead window
+    // 1. Search for exact text match with same tag (PASS) within lookahead window
     let foundWebIndex = -1;
     let isSameTag = false;
 
@@ -146,8 +204,7 @@ export function compareNormalizedTrees(
       continue;
     }
 
-    // 4. If no text match was found, inspect candidate at webCursor
-    // If the element at webCursor has the same tag, or if next ref elements don't match it:
+    // 4. If no exact text match was found, inspect candidate at webCursor for structural match
     let candidateWebIndex = -1;
     for (let w = webCursor; w < Math.min(webElements.length, webCursor + 3); w++) {
       if (!matchedWebIndices.has(w)) {
@@ -169,9 +226,48 @@ export function compareNormalizedTrees(
       }
 
       if (!matchesFutureRef && (candidateWeb.tag === ref.tag || candidateWeb.type === ref.type)) {
-        // Tag or type matches, but content differs -> CONTENT_MISMATCH
         matchedWebIndices.add(candidateWebIndex);
         webCursor = candidateWebIndex + 1;
+
+        let detailMsg = `Content differs from reference. Expected "${ref.text.slice(0, 60)}" but found "${candidateWeb.text.slice(0, 60)}".`;
+
+        // Check for specific list failure detail
+        if (ref.type === 'list' && candidateWeb.type === 'list') {
+          if (ref.tag !== candidateWeb.tag) {
+            results.push({
+              id: `comp-${refOrder}`,
+              order: refOrder,
+              status: 'WRONG_TAG',
+              reference: {
+                tag: ref.tag,
+                type: ref.type,
+                text: ref.text,
+                items: ref.items,
+              },
+              website: {
+                tag: candidateWeb.tag,
+                type: candidateWeb.type,
+                text: candidateWeb.text,
+                items: candidateWeb.items,
+              },
+              message: `List type differs: expected <${ref.tag}> but found <${candidateWeb.tag}>.`,
+            });
+            continue;
+          }
+
+          const listComp = compareListDetails(ref.items, candidateWeb.items);
+          if (!listComp.matches) {
+            detailMsg = listComp.detail;
+          }
+        }
+
+        // Check for specific table failure detail
+        if (ref.type === 'table' && candidateWeb.type === 'table') {
+          const tableComp = compareTableDetails(ref.rows, candidateWeb.rows);
+          if (!tableComp.matches) {
+            detailMsg = tableComp.detail;
+          }
+        }
 
         results.push({
           id: `comp-${refOrder}`,
@@ -191,7 +287,7 @@ export function compareNormalizedTrees(
             items: candidateWeb.type === 'list' ? candidateWeb.items : undefined,
             rows: candidateWeb.type === 'table' ? candidateWeb.rows : undefined,
           },
-          message: `Content differs from reference. Expected "${ref.text.slice(0, 60)}..." but found "${candidateWeb.text.slice(0, 60)}...".`,
+          message: detailMsg,
         });
         continue;
       }

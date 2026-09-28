@@ -5,8 +5,9 @@ import { extractPageAuditModel } from '../webpage/ContentExtractor';
 import { parseReference } from '../reference/ReferenceParser';
 import { buildContentAuditReport, type SelectedCheckOptions } from '../report/AuditReportBuilder';
 import { normalizeUrl } from '../../../src/lib/utils';
-import { getAuthStatus, getGoogleDocsClient } from '../auth/googleAuth';
-import { extractGoogleDocId, parseGoogleDoc } from '../reference/googleDocsParser';
+import { extractGoogleDocId } from '../google/GoogleDocUrl';
+import { fetchPublicGoogleDoc } from '../google/GoogleDocsService';
+import { parseGoogleDoc } from '../google/GoogleDocParser';
 import { extractWebsiteSemanticTree } from '../webpage/domContentExtractor';
 import { compareNormalizedTrees } from '../comparison/deterministicComparator';
 
@@ -356,28 +357,20 @@ contentAuditRouter.post('/analyze', async (req: Request, res: Response) => {
   }
 });
 
-// 4. Preview Google Doc Semantic Tree (V1 Google Docs API)
+// 4. Preview Google Doc Semantic Tree (Public Google Docs API)
 contentAuditRouter.post('/preview-doc', async (req: Request, res: Response) => {
   try {
-    const { docUrl } = req.body || {};
-    if (!docUrl || typeof docUrl !== 'string' || !docUrl.trim()) {
+    const rawDocUrl = req.body.googleDocUrl || req.body.docUrl;
+    if (!rawDocUrl || typeof rawDocUrl !== 'string' || !rawDocUrl.trim()) {
       return res.status(400).json({
         errorType: 'INPUT_INVALID',
         error: 'Google Doc URL is required.',
       });
     }
 
-    const auth = getAuthStatus();
-    if (!auth.authenticated) {
-      return res.status(401).json({
-        errorType: 'NOT_AUTHENTICATED',
-        error: 'Please sign in with Google to access this Google Doc.',
-      });
-    }
-
     let docId: string;
     try {
-      docId = extractGoogleDocId(docUrl);
+      docId = extractGoogleDocId(rawDocUrl);
     } catch (urlErr: any) {
       return res.status(400).json({
         errorType: 'INVALID_DOC_URL',
@@ -385,38 +378,9 @@ contentAuditRouter.post('/preview-doc', async (req: Request, res: Response) => {
       });
     }
 
-    const docs = getGoogleDocsClient();
-    let docRes;
-    try {
-      docRes = await docs.documents.get({ documentId: docId });
-    } catch (apiErr: any) {
-      const code = apiErr.code || apiErr.status;
-      if (code === 404) {
-        return res.status(404).json({
-          errorType: 'DOC_NOT_FOUND',
-          error: 'Google Doc not found. Please verify the URL and ensure the document exists.',
-        });
-      }
-      if (code === 403) {
-        return res.status(403).json({
-          errorType: 'PERMISSION_DENIED',
-          error:
-            'Permission denied. Your signed-in Google account does not have read access to this document.',
-        });
-      }
-      if (code === 401) {
-        return res.status(401).json({
-          errorType: 'AUTH_EXPIRED',
-          error: 'Google session has expired. Please sign in again.',
-        });
-      }
-      return res.status(400).json({
-        errorType: 'GOOGLE_API_ERROR',
-        error: apiErr.message || 'Failed to fetch document from Google Docs API.',
-      });
-    }
+    const docData = await fetchPublicGoogleDoc(docId);
+    const referenceTree = parseGoogleDoc(docData);
 
-    const referenceTree = parseGoogleDoc(docRes.data);
     return res.json({
       success: true,
       referenceTree,
@@ -429,41 +393,34 @@ contentAuditRouter.post('/preview-doc', async (req: Request, res: Response) => {
   }
 });
 
-// 5. Full End-to-End Content Audit (Google Doc API vs Website)
+// 5. Full End-to-End Content Audit (Public Google Doc vs Website)
 contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
   const auditId = `audit-doc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const startTime = Date.now();
 
   try {
-    const { docUrl, targetUrl, contentSelector } = req.body || {};
+    const rawDocUrl = req.body.googleDocUrl || req.body.docUrl;
+    const rawTargetUrl = req.body.targetUrl || req.body.url;
+    const contentSelector = req.body.contentSelector;
 
-    if (!docUrl || typeof docUrl !== 'string' || !docUrl.trim()) {
+    if (!rawDocUrl || typeof rawDocUrl !== 'string' || !rawDocUrl.trim()) {
       return res.status(400).json({
         errorType: 'INPUT_INVALID',
         error: 'Google Doc URL is required.',
       });
     }
 
-    if (!targetUrl || typeof targetUrl !== 'string' || !targetUrl.trim()) {
+    if (!rawTargetUrl || typeof rawTargetUrl !== 'string' || !rawTargetUrl.trim()) {
       return res.status(400).json({
         errorType: 'INPUT_INVALID',
         error: 'Target Website URL is required.',
       });
     }
 
-    // Step 1: Check Google authentication
-    const auth = getAuthStatus();
-    if (!auth.authenticated) {
-      return res.status(401).json({
-        errorType: 'NOT_AUTHENTICATED',
-        error: 'Please sign in with Google to access this Google Doc.',
-      });
-    }
-
-    // Step 2: Validate and extract document ID
+    // Step 1: Validate and extract document ID
     let docId: string;
     try {
-      docId = extractGoogleDocId(docUrl);
+      docId = extractGoogleDocId(rawDocUrl);
     } catch (urlErr: any) {
       return res.status(400).json({
         errorType: 'INVALID_DOC_URL',
@@ -471,42 +428,21 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
       });
     }
 
-    // Step 3: Fetch document via Google Docs API
-    const docs = getGoogleDocsClient();
-    let docRes;
+    // Step 2: Fetch public Google Doc via Google Docs API
+    let docData;
     try {
-      docRes = await docs.documents.get({ documentId: docId });
+      docData = await fetchPublicGoogleDoc(docId);
     } catch (apiErr: any) {
-      const code = apiErr.code || apiErr.status;
-      if (code === 404) {
-        return res.status(404).json({
-          errorType: 'DOC_NOT_FOUND',
-          error: 'Google Doc not found. Please verify the URL and ensure the document exists.',
-        });
-      }
-      if (code === 403) {
-        return res.status(403).json({
-          errorType: 'PERMISSION_DENIED',
-          error:
-            'Permission denied. Your signed-in Google account does not have read access to this document.',
-        });
-      }
-      if (code === 401) {
-        return res.status(401).json({
-          errorType: 'AUTH_EXPIRED',
-          error: 'Google session has expired. Please sign in again.',
-        });
-      }
       return res.status(400).json({
-        errorType: 'GOOGLE_API_ERROR',
-        error: apiErr.message || 'Failed to fetch document from Google Docs API.',
+        errorType: 'DOC_FETCH_FAILED',
+        error: apiErr.message || 'Failed to fetch public Google Doc.',
       });
     }
 
-    // Step 4: Parse Google Doc strictly starting from first HEADING_1
+    // Step 3: Parse Google Doc strictly starting from first HEADING_1
     let referenceTree;
     try {
-      referenceTree = parseGoogleDoc(docRes.data);
+      referenceTree = parseGoogleDoc(docData);
     } catch (parseErr: any) {
       return res.status(400).json({
         errorType: 'REFERENCE_PARSE_FAILED',
@@ -514,8 +450,8 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
       });
     }
 
-    // Step 5: Fetch target website
-    const sanitizedUrl = normalizeUrl(targetUrl);
+    // Step 4: Fetch target website
+    const sanitizedUrl = normalizeUrl(rawTargetUrl);
     let pageHtml = '';
     try {
       const fetched = await fetchWebpage(sanitizedUrl);
@@ -527,15 +463,15 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
       return res.status(400).json({ errorType, error: msg });
     }
 
-    // Step 6: Extract website semantic content tree starting from first <h1>
+    // Step 5: Extract website semantic content tree starting from first <h1>
     const websiteTree = extractWebsiteSemanticTree(pageHtml, { selector: contentSelector });
 
-    // Step 7: Deterministic comparison
+    // Step 6: Deterministic comparison
     const auditReport = compareNormalizedTrees(referenceTree, websiteTree);
 
     const duration = Date.now() - startTime;
     console.log(
-      `[ContentAuditor ${auditId}] Completed audit for "${sanitizeForLog(sanitizedUrl)}" in ${duration}ms. Status: ${auditReport.summary.status}. Total: ${auditReport.summary.total}. Passed: ${auditReport.summary.passed}.`
+      `[ContentAuditor ${auditId}] Completed public doc audit for "${sanitizeForLog(sanitizedUrl)}" in ${duration}ms. Status: ${auditReport.summary.status}. Total: ${auditReport.summary.total}. Passed: ${auditReport.summary.passed}.`
     );
 
     return res.json({

@@ -5,6 +5,7 @@ import type {
   SemanticTag,
   HeadingTag,
 } from '../types/normalized';
+import { normalizeText } from '../utils/textNormalizer';
 
 /**
  * Strips script, style, navigation, footer, and interactive chrome elements.
@@ -37,13 +38,6 @@ function cleanDom($: cheerio.CheerioAPI): void {
 }
 
 /**
- * Normalizes inner whitespace of strings.
- */
-function cleanText(str: string): string {
-  return str.replace(/\s+/g, ' ').trim();
-}
-
-/**
  * Extracts semantic content from a webpage HTML string, starting strictly from the first <h1>.
  *
  * Requirements:
@@ -59,8 +53,8 @@ export function extractWebsiteSemanticTree(
   const $ = cheerio.load(html);
 
   // Extract page title & meta description
-  const metaTitle = cleanText($('title').text() || '');
-  const metaDescription = cleanText(
+  const metaTitle = normalizeText($('title').text() || '');
+  const metaDescription = normalizeText(
     $('meta[name="description" i]').attr('content') ||
       $('meta[property="og:description" i]').attr('content') ||
       ''
@@ -88,7 +82,7 @@ export function extractWebsiteSemanticTree(
   // Locate the index of the first <h1>
   let firstH1Index = -1;
   $candidates.each((idx, el) => {
-    if (el.tagName.toLowerCase() === 'h1' && cleanText($(el).text()).length > 0) {
+    if (el.tagName.toLowerCase() === 'h1' && normalizeText($(el).text()).length > 0) {
       if (firstH1Index === -1) {
         firstH1Index = idx;
       }
@@ -100,7 +94,7 @@ export function extractWebsiteSemanticTree(
     $scope = $('body');
     const $allCandidates = $scope.find('h1, h2, h3, h4, h5, h6, p, ul, ol, table');
     $allCandidates.each((idx, el) => {
-      if (el.tagName.toLowerCase() === 'h1' && cleanText($(el).text()).length > 0) {
+      if (el.tagName.toLowerCase() === 'h1' && normalizeText($(el).text()).length > 0) {
         if (firstH1Index === -1) {
           firstH1Index = idx;
         }
@@ -124,7 +118,7 @@ export function extractWebsiteSemanticTree(
 
     // Check headings (h1..h6)
     if (/^h[1-6]$/.test(tagName)) {
-      const text = cleanText($el.text());
+      const text = normalizeText($el.text());
       if (!text) return;
 
       elementIndex++;
@@ -143,7 +137,7 @@ export function extractWebsiteSemanticTree(
     // Avoid double counting paragraphs nested within lists or table cells
     if (tagName === 'p') {
       if ($el.parents('ul, ol, table').length > 0) return;
-      const text = cleanText($el.text());
+      const text = normalizeText($el.text());
       if (!text) return;
 
       elementIndex++;
@@ -163,7 +157,7 @@ export function extractWebsiteSemanticTree(
 
       const items: string[] = [];
       $el.children('li').each((_, li) => {
-        const itemText = cleanText($(li).text());
+        const itemText = normalizeText($(li).text());
         if (itemText) items.push(itemText);
       });
 
@@ -190,7 +184,7 @@ export function extractWebsiteSemanticTree(
         $(tr)
           .find('th, td')
           .each((_, cell) => {
-            const cellText = cleanText($(cell).text());
+            const cellText = normalizeText($(cell).text());
             cells.push(cellText);
           });
         if (cells.some((c) => c.length > 0)) {

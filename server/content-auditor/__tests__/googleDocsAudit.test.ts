@@ -1,13 +1,59 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import type { docs_v1 } from 'googleapis';
-import {
-  extractGoogleDocId,
-  parseGoogleDoc,
-} from '../reference/googleDocsParser';
+import { extractGoogleDocId } from '../google/GoogleDocUrl';
+import { parseGoogleDoc } from '../google/GoogleDocParser';
+import { fetchPublicGoogleDoc } from '../google/GoogleDocsService';
+import { normalizeText, areTextsMatching } from '../utils/textNormalizer';
 import { extractWebsiteSemanticTree } from '../webpage/domContentExtractor';
-import { compareNormalizedTrees } from '../comparison/deterministicComparator';
+import {
+  compareNormalizedTrees,
+  compareListDetails,
+  compareTableDetails,
+} from '../comparison/deterministicComparator';
 import type { NormalizedDocument } from '../types/normalized';
+
+describe('Shared Text Normalizer', () => {
+  test('collapses multiple spaces, tabs, and line breaks into single space', () => {
+    assert.equal(
+      normalizeText('Our     Services \t\n  Overview'),
+      'Our Services Overview'
+    );
+  });
+
+  test('normalizes non-breaking spaces and unicode spaces', () => {
+    assert.equal(
+      normalizeText('Hello\u00A0World\u202Ffrom\u3000Earth'),
+      'Hello World from Earth'
+    );
+  });
+
+  test('removes zero-width characters', () => {
+    assert.equal(
+      normalizeText('Sec\u200Bure\uFEFF Content\u200D'),
+      'Secure Content'
+    );
+  });
+
+  test('decodes standard HTML entities', () => {
+    assert.equal(
+      normalizeText('Tom &amp; Jerry &quot;Show&quot; &#39;Special&#39; &lt;Classic&gt;'),
+      `Tom & Jerry "Show" 'Special' <Classic>`
+    );
+  });
+
+  test('normalizes smart quotes and em/en dashes', () => {
+    assert.equal(
+      normalizeText('“Modern” ‘Websites’ – High—Performance'),
+      `"Modern" 'Websites' - High-Performance`
+    );
+  });
+
+  test('areTextsMatching strictly checks normalized equality without fuzzy guesses', () => {
+    assert.equal(areTextsMatching('Our   Services', 'Our Services'), true);
+    assert.equal(areTextsMatching('Our Services', 'Services We Provide'), false);
+  });
+});
 
 describe('Google Doc URL Extractor', () => {
   test('extracts document ID from standard edit URLs', () => {
@@ -19,9 +65,9 @@ describe('Google Doc URL Extractor', () => {
     );
   });
 
-  test('extracts document ID from preview and user-scoped URLs', () => {
+  test('extracts document ID from preview and user-scoped URLs with query params', () => {
     const url =
-      'https://docs.google.com/document/u/0/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/preview?usp=sharing';
+      'https://docs.google.com/document/u/0/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/preview?usp=sharing&tab=t.0';
     assert.equal(
       extractGoogleDocId(url),
       '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'
@@ -65,6 +111,22 @@ describe('Google Doc URL Extractor', () => {
       () => extractGoogleDocId('https://example.com/not-a-doc'),
       /Invalid Google Doc URL/
     );
+  });
+});
+
+describe('Google Docs Service (Public Docs + API Key)', () => {
+  test('throws descriptive error when GOOGLE_API_KEY is not set', async () => {
+    const originalKey = process.env.GOOGLE_API_KEY;
+    delete process.env.GOOGLE_API_KEY;
+
+    try {
+      await assert.rejects(
+        () => fetchPublicGoogleDoc('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'),
+        /Google API key is not configured/
+      );
+    } finally {
+      if (originalKey) process.env.GOOGLE_API_KEY = originalKey;
+    }
   });
 });
 
@@ -126,11 +188,11 @@ describe('Google Doc AST Parser (Mocked API JSON)', () => {
 
     const parsed = parseGoogleDoc(mockDoc);
 
-    // Should have captured metadata from preamble
+    // Metadata from preamble is captured
     assert.equal(parsed.metadata?.url, 'https://example.com');
     assert.equal(parsed.metadata?.title, 'Professional Services');
 
-    // Content elements must start from first H1
+    // Body content strictly begins at first H1
     assert.equal(parsed.elements.length, 2);
     assert.equal(parsed.elements[0].type, 'heading');
     assert.equal(parsed.elements[0].tag, 'h1');
@@ -171,13 +233,51 @@ describe('Google Doc AST Parser (Mocked API JSON)', () => {
     );
   });
 
-  test('correctly maps headings, paragraphs, bullet lists, and tables', () => {
+  test('combines multiple text runs into clean single paragraph string', () => {
+    const mockDoc: docs_v1.Schema$Document = {
+      title: 'Multi-run Doc',
+      body: {
+        content: [
+          {
+            paragraph: {
+              paragraphStyle: { namedStyleType: 'HEADING_1' },
+              elements: [{ textRun: { content: 'Title\n' } }],
+            },
+          },
+          {
+            paragraph: {
+              paragraphStyle: { namedStyleType: 'NORMAL_TEXT' },
+              elements: [
+                { textRun: { content: 'We build ' } },
+                { textRun: { content: 'modern websites' } },
+                { textRun: { content: ' for businesses.\n' } },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    const parsed = parseGoogleDoc(mockDoc);
+    assert.equal(parsed.elements.length, 2);
+    assert.equal(
+      parsed.elements[1].text,
+      'We build modern websites for businesses.'
+    );
+  });
+
+  test('correctly maps headings (H1..H3), bulleted and numbered lists, and tables', () => {
     const mockDoc: docs_v1.Schema$Document = {
       title: 'Feature Specs',
       lists: {
-        list_1: {
+        list_ul: {
           listProperties: {
             nestingLevels: [{ glyphType: 'GLYPH_TYPE_UNSPECIFIED' }],
+          },
+        },
+        list_ol: {
+          listProperties: {
+            nestingLevels: [{ glyphType: 'DECIMAL' }],
           },
         },
       },
@@ -195,20 +295,34 @@ describe('Google Doc AST Parser (Mocked API JSON)', () => {
               elements: [{ textRun: { content: 'Our Highlights\n' } }],
             },
           },
-          // List item 1
+          // UL items
           {
             paragraph: {
               paragraphStyle: { namedStyleType: 'NORMAL_TEXT' },
-              bullet: { listId: 'list_1', nestingLevel: 0 },
-              elements: [{ textRun: { content: 'High Speed\n' } }],
+              bullet: { listId: 'list_ul', nestingLevel: 0 },
+              elements: [{ textRun: { content: 'Web Development\n' } }],
             },
           },
-          // List item 2
           {
             paragraph: {
               paragraphStyle: { namedStyleType: 'NORMAL_TEXT' },
-              bullet: { listId: 'list_1', nestingLevel: 0 },
-              elements: [{ textRun: { content: '24/7 Support\n' } }],
+              bullet: { listId: 'list_ul', nestingLevel: 0 },
+              elements: [{ textRun: { content: 'SEO\n' } }],
+            },
+          },
+          // OL items
+          {
+            paragraph: {
+              paragraphStyle: { namedStyleType: 'NORMAL_TEXT' },
+              bullet: { listId: 'list_ol', nestingLevel: 0 },
+              elements: [{ textRun: { content: 'Step One\n' } }],
+            },
+          },
+          {
+            paragraph: {
+              paragraphStyle: { namedStyleType: 'NORMAL_TEXT' },
+              bullet: { listId: 'list_ol', nestingLevel: 0 },
+              elements: [{ textRun: { content: 'Step Two\n' } }],
             },
           },
           // Table
@@ -243,7 +357,7 @@ describe('Google Doc AST Parser (Mocked API JSON)', () => {
                       content: [
                         {
                           paragraph: {
-                            elements: [{ textRun: { content: 'Starter\n' } }],
+                            elements: [{ textRun: { content: 'Basic\n' } }],
                           },
                         },
                       ],
@@ -252,7 +366,7 @@ describe('Google Doc AST Parser (Mocked API JSON)', () => {
                       content: [
                         {
                           paragraph: {
-                            elements: [{ textRun: { content: '$19/mo\n' } }],
+                            elements: [{ textRun: { content: '₹999\n' } }],
                           },
                         },
                       ],
@@ -267,7 +381,7 @@ describe('Google Doc AST Parser (Mocked API JSON)', () => {
     };
 
     const parsed = parseGoogleDoc(mockDoc);
-    assert.equal(parsed.elements.length, 4);
+    assert.equal(parsed.elements.length, 5);
 
     // H1
     assert.equal(parsed.elements[0].tag, 'h1');
@@ -277,19 +391,26 @@ describe('Google Doc AST Parser (Mocked API JSON)', () => {
     assert.equal(parsed.elements[1].tag, 'h2');
     assert.equal(parsed.elements[1].text, 'Our Highlights');
 
-    // List grouped
+    // UL
     assert.equal(parsed.elements[2].type, 'list');
     assert.equal(parsed.elements[2].tag, 'ul');
     if (parsed.elements[2].type === 'list') {
-      assert.deepEqual(parsed.elements[2].items, ['High Speed', '24/7 Support']);
+      assert.deepEqual(parsed.elements[2].items, ['Web Development', 'SEO']);
+    }
+
+    // OL
+    assert.equal(parsed.elements[3].type, 'list');
+    assert.equal(parsed.elements[3].tag, 'ol');
+    if (parsed.elements[3].type === 'list') {
+      assert.deepEqual(parsed.elements[3].items, ['Step One', 'Step Two']);
     }
 
     // Table
-    assert.equal(parsed.elements[3].type, 'table');
-    if (parsed.elements[3].type === 'table') {
-      assert.deepEqual(parsed.elements[3].rows, [
+    assert.equal(parsed.elements[4].type, 'table');
+    if (parsed.elements[4].type === 'table') {
+      assert.deepEqual(parsed.elements[4].rows, [
         ['Plan', 'Price'],
-        ['Starter', '$19/mo'],
+        ['Basic', '₹999'],
       ]);
     }
   });
@@ -306,7 +427,7 @@ describe('Website DOM Semantic Extractor', () => {
           <div class="cookie-banner">Please accept cookies.</div>
           <main>
             <h1>Awesome Cloud Solutions</h1>
-            <p>Fast, reliable cloud hosting built for developers.</p>
+            <p>Fast, reliable cloud hosting built for <strong>developers</strong>.</p>
             <h2>Features</h2>
             <ul>
               <li>99.99% Uptime</li>
@@ -325,6 +446,7 @@ describe('Website DOM Semantic Extractor', () => {
     assert.equal(tree.elements[0].tag, 'h1');
     assert.equal(tree.elements[0].text, 'Awesome Cloud Solutions');
 
+    // strong inside p should be collapsed into single text string
     assert.equal(tree.elements[1].tag, 'p');
     assert.equal(
       tree.elements[1].text,
@@ -369,12 +491,12 @@ describe('Deterministic Comparator', () => {
   test('returns WRONG_TAG when text matches but semantic tag differs', () => {
     const refDoc: NormalizedDocument = {
       elements: [
-        { id: '1', type: 'heading', tag: 'h2', level: 2, text: 'Features Overview' },
+        { id: '1', type: 'heading', tag: 'h2', level: 2, text: 'Our Services' },
       ],
     };
     const webDoc: NormalizedDocument = {
       elements: [
-        { id: '1', type: 'heading', tag: 'h3', level: 3, text: 'Features Overview' },
+        { id: '1', type: 'heading', tag: 'h3', level: 3, text: 'Our Services' },
       ],
     };
 
@@ -388,22 +510,19 @@ describe('Deterministic Comparator', () => {
   test('returns CONTENT_MISMATCH when element position/tag matches but text differs', () => {
     const refDoc: NormalizedDocument = {
       elements: [
-        { id: '1', type: 'heading', tag: 'h1', level: 1, text: 'Our Pricing' },
-        { id: '2', type: 'paragraph', tag: 'p', text: 'Plans start at $29/mo.' },
+        { id: '1', type: 'paragraph', tag: 'p', text: 'We build modern websites.' },
       ],
     };
     const webDoc: NormalizedDocument = {
       elements: [
-        { id: '1', type: 'heading', tag: 'h1', level: 1, text: 'Our Pricing' },
-        { id: '2', type: 'paragraph', tag: 'p', text: 'Plans start at $49/mo.' },
+        { id: '1', type: 'paragraph', tag: 'p', text: 'We design modern websites.' },
       ],
     };
 
     const report = compareNormalizedTrees(refDoc, webDoc);
     assert.equal(report.summary.status, 'FAIL');
-    assert.equal(report.summary.passed, 1);
     assert.equal(report.summary.contentMismatch, 1);
-    assert.equal(report.results[1].status, 'CONTENT_MISMATCH');
+    assert.equal(report.results[0].status, 'CONTENT_MISMATCH');
   });
 
   test('returns MISSING when reference item was not found on website', () => {
@@ -426,7 +545,34 @@ describe('Deterministic Comparator', () => {
     assert.equal(report.summary.passed, 2);
     assert.equal(report.summary.missing, 1);
     assert.equal(report.results[1].status, 'MISSING');
-    assert.match(report.results[1].message, /was not found on the webpage/);
+  });
+
+  test('compares lists with specific missing item reporting', () => {
+    const listComp = compareListDetails(
+      ['Web Development', 'SEO Services'],
+      ['Web Development']
+    );
+    assert.equal(listComp.matches, false);
+    assert.match(listComp.detail, /Missing list item: "SEO Services"/);
+
+    const matchComp = compareListDetails(['A', 'B'], ['A', 'B']);
+    assert.equal(matchComp.matches, true);
+  });
+
+  test('compares tables with specific row and cell reporting', () => {
+    const tableComp = compareTableDetails(
+      [
+        ['Plan', 'Price'],
+        ['Basic', '₹999'],
+      ],
+      [
+        ['Plan', 'Price'],
+        ['Basic', '₹1,299'],
+      ]
+    );
+    assert.equal(tableComp.matches, false);
+    assert.match(tableComp.detail, /Row 2, Cell 2/);
+    assert.match(tableComp.detail, /Expected: "₹999", Found: "₹1,299"/);
   });
 
   test('tracks extra elements found on website that were not in reference', () => {

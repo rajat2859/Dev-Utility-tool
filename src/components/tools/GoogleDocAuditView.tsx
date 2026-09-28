@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Globe,
   FileText,
@@ -7,16 +7,9 @@ import {
   XCircle,
   AlertTriangle,
   RefreshCw,
-  ExternalLink,
-  LogOut,
   ChevronDown,
   ChevronRight,
   Filter,
-  Layers,
-  Heading,
-  List as ListIcon,
-  Table as TableIcon,
-  Info,
 } from 'lucide-react';
 import type {
   ContentAuditReport,
@@ -25,19 +18,7 @@ import type {
   NormalizedElement,
 } from '../../../server/content-auditor/types/normalized';
 
-interface GoogleAuthStatus {
-  authenticated: boolean;
-  configured: boolean;
-  checking: boolean;
-}
-
 export default function GoogleDocAuditView() {
-  const [authStatus, setAuthStatus] = useState<GoogleAuthStatus>({
-    authenticated: false,
-    configured: true,
-    checking: true,
-  });
-
   const [docUrl, setDocUrl] = useState<string>('');
   const [targetUrl, setTargetUrl] = useState<string>('');
   const [contentSelector, setContentSelector] = useState<string>('');
@@ -50,64 +31,6 @@ export default function GoogleDocAuditView() {
 
   const [filter, setFilter] = useState<'all' | 'issues' | 'pass'>('all');
   const [activeTab, setActiveTab] = useState<'comparison' | 'reference' | 'website'>('comparison');
-
-  // Check Google Auth Status on mount
-  const checkAuth = async () => {
-    try {
-      setAuthStatus((prev) => ({ ...prev, checking: true }));
-      const res = await fetch('/api/google/auth/status');
-      const data = await res.json();
-      setAuthStatus({
-        authenticated: !!data.authenticated,
-        configured: data.configured !== false,
-        checking: false,
-      });
-    } catch {
-      setAuthStatus({
-        authenticated: false,
-        configured: false,
-        checking: false,
-      });
-    }
-  };
-
-  useEffect(() => {
-    // Check if returning from OAuth callback
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('google_auth') === 'success') {
-        window.history.replaceState({}, '', window.location.pathname);
-      }
-    }
-    checkAuth();
-  }, []);
-
-  const handleLogin = async () => {
-    try {
-      setError(null);
-      const res = await fetch('/api/google/auth/start?format=json');
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(
-          data.error || 'Failed to start Google sign-in. Please ensure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are configured in your .env file.'
-        );
-      }
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to start Google sign-in.');
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/google/auth/logout', { method: 'POST' });
-      await checkAuth();
-    } catch (err) {
-      console.error('Failed to logout:', err);
-    }
-  };
 
   const handleRunAudit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,7 +48,7 @@ export default function GoogleDocAuditView() {
     setReport(null);
 
     const steps = [
-      'Reading document structure from Google Docs API...',
+      'Fetching public document from Google Docs API...',
       'Locating first H1 and normalizing content...',
       'Fetching and rendering live website...',
       'Extracting semantic DOM structure from first H1...',
@@ -146,7 +69,7 @@ export default function GoogleDocAuditView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          docUrl: docUrl.trim(),
+          googleDocUrl: docUrl.trim(),
           targetUrl: targetUrl.trim(),
           contentSelector: contentSelector.trim() || undefined,
         }),
@@ -178,106 +101,17 @@ export default function GoogleDocAuditView() {
 
   return (
     <div className="space-y-6">
-      {/* Authentication Banner */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div
-              className={`p-2.5 rounded-xl text-white ${
-                authStatus.authenticated ? 'bg-emerald-600' : 'bg-blue-600'
-              }`}
-            >
-              <FileText className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-slate-900">
-                  Google Docs Integration
-                </h3>
-                {authStatus.checking ? (
-                  <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                    Checking status...
-                  </span>
-                ) : authStatus.authenticated ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                    <CheckCircle2 className="h-3 w-3" />
-                    Connected
-                  </span>
-                ) : !authStatus.configured ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
-                    <AlertTriangle className="h-3 w-3" />
-                    OAuth Not Configured
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                    <AlertTriangle className="h-3 w-3" />
-                    Not connected
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {authStatus.authenticated
-                  ? 'Access granted to read Google Docs via official Google Docs API.'
-                  : !authStatus.configured
-                  ? 'Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file to enable Google Docs sign-in.'
-                  : 'Sign in to let Content Audit read document structure directly from Google Docs.'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {!authStatus.checking &&
-              (authStatus.authenticated ? (
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 rounded-lg transition-colors cursor-pointer"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                  Disconnect
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleLogin}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl shadow-xs transition-colors cursor-pointer"
-                >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24">
-                    <path
-                      fill="currentColor"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    />
-                  </svg>
-                  Sign in with Google
-                </button>
-              ))}
-          </div>
-        </div>
-      </div>
-
       {/* Input Form */}
       <form
         onSubmit={handleRunAudit}
         className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Google Doc URL */}
+          {/* Reference Google Doc URL */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
               <FileText className="h-4 w-4 text-blue-600" />
-              <span>Google Doc URL</span>
+              <span>Reference Google Doc URL</span>
             </label>
             <input
               type="url"
@@ -287,9 +121,9 @@ export default function GoogleDocAuditView() {
               disabled={isLoading}
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             />
-            <p className="text-[11px] text-slate-500">
-              Audit starts strictly from the first <strong>Heading 1</strong>. Any
-              preamble, notes, or instructions before H1 are automatically ignored.
+            <p className="text-[11px] text-slate-500 flex items-center gap-1">
+              <span>Google Doc must be shared as:</span>
+              <strong className="text-slate-700">Anyone with the link &rarr; Viewer</strong>
             </p>
           </div>
 
@@ -308,8 +142,7 @@ export default function GoogleDocAuditView() {
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             />
             <p className="text-[11px] text-slate-500">
-              Scanned starting from the first <strong>&lt;h1&gt;</strong> on the webpage.
-              Headers, footers, and sidebars are excluded.
+              Audit starts from the page's first <strong>&lt;h1&gt;</strong>. Global headers and footers are ignored.
             </p>
           </div>
         </div>
@@ -340,7 +173,7 @@ export default function GoogleDocAuditView() {
                 className="w-full max-w-md px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
               <p className="text-[11px] text-slate-400">
-                Optional CSS selector to confine webpage content extraction to a specific container.
+                Optional CSS selector to scope website extraction to a specific container.
               </p>
             </div>
           )}
@@ -359,8 +192,8 @@ export default function GoogleDocAuditView() {
 
           <button
             type="submit"
-            disabled={isLoading || !authStatus.authenticated}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition-colors cursor-pointer ml-auto"
+            disabled={isLoading}
+            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition-colors cursor-pointer ml-auto"
           >
             <ShieldCheck className="h-4 w-4" />
             <span>Run Content Audit</span>
@@ -373,17 +206,16 @@ export default function GoogleDocAuditView() {
         <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 text-xs text-rose-800 flex items-start gap-3">
           <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <p className="font-semibold">{error}</p>
+            <p className="font-semibold whitespace-pre-wrap">{error}</p>
             {error.includes('Heading 1') && (
               <p className="text-[11px] text-rose-700">
                 Ensure your Google Doc has at least one heading formatted with the built-in
                 Google Docs "Heading 1" paragraph style.
               </p>
             )}
-            {error.includes('Permission denied') && (
-              <p className="text-[11px] text-rose-700">
-                Make sure your signed-in Google account has read access to the doc, or set
-                sharing to "Anyone with the link can view".
+            {error.includes('Anyone with the link') && (
+              <p className="text-[11px] text-rose-700 font-medium">
+                In Google Docs, click the blue "Share" button at top-right &rarr; General access &rarr; change to "Anyone with the link" as "Viewer".
               </p>
             )}
           </div>
@@ -582,7 +414,7 @@ export default function GoogleDocAuditView() {
                       ? {
                           badge: 'bg-rose-100 text-rose-800 border-rose-200',
                           border: 'border-rose-200 bg-rose-50/20',
-                          label: 'MISMATCH',
+                          label: 'CONTENT MISMATCH',
                         }
                       : {
                           badge: 'bg-red-100 text-red-800 border-red-200',
@@ -667,8 +499,7 @@ export default function GoogleDocAuditView() {
                   Extracted Reference Structure (Starting from First H1)
                 </h4>
                 <p className="text-xs text-slate-500">
-                  This shows the semantic hierarchy extracted from the Google Doc via the API.
-                  All non-content metadata before the first H1 has been stripped.
+                  The semantic hierarchy extracted from the public Google Doc. All pre-H1 notes and metadata have been ignored.
                 </p>
               </div>
 
@@ -711,7 +542,7 @@ export default function GoogleDocAuditView() {
                   Extracted Website Semantic Tree
                 </h4>
                 <p className="text-xs text-slate-500">
-                  This shows the semantic hierarchy extracted from the target website starting from the first H1.
+                  The semantic hierarchy extracted from the target website starting from the first H1.
                 </p>
               </div>
 

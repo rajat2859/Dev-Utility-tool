@@ -2,71 +2,24 @@ import type { docs_v1 } from 'googleapis';
 import type {
   NormalizedDocument,
   NormalizedElement,
-  SemanticTag,
   HeadingTag,
   ListElement,
 } from '../types/normalized';
+import { normalizeText } from '../utils/textNormalizer';
 
 /**
- * Extracts a Google Docs document ID from a URL or raw ID string.
- *
- * Supported formats:
- * - https://docs.google.com/document/d/<DOCUMENT_ID>/edit
- * - https://docs.google.com/document/d/<DOCUMENT_ID>
- * - https://docs.google.com/document/u/0/d/<DOCUMENT_ID>/preview
- * - http://docs.google.com/document/d/<DOCUMENT_ID>/...
- * - docs.google.com/document/d/<DOCUMENT_ID>/...
- * - plain DOCUMENT_ID (alphanumeric with hyphens/underscores, >= 25 chars)
- */
-export function extractGoogleDocId(input: string): string {
-  if (!input || typeof input !== 'string') {
-    throw new Error('Please provide a valid Google Doc URL.');
-  }
-
-  const trimmed = input.trim();
-  if (!trimmed) {
-    throw new Error('Please provide a valid Google Doc URL.');
-  }
-
-  if (trimmed.includes('docs.google.com/spreadsheets')) {
-    throw new Error('This is a Google Sheets URL. Please provide a Google Doc URL.');
-  }
-  if (trimmed.includes('docs.google.com/presentation')) {
-    throw new Error('This is a Google Slides URL. Please provide a Google Doc URL.');
-  }
-
-  const urlMatch = trimmed.match(
-    /(?:docs\.google\.com\/document\/(?:u\/\d+\/)?d\/)([a-zA-Z0-9_-]+)/i
-  );
-  if (urlMatch && urlMatch[1]) {
-    return urlMatch[1];
-  }
-
-  if (/^[a-zA-Z0-9_-]{25,}$/.test(trimmed)) {
-    return trimmed;
-  }
-
-  throw new Error(
-    'Invalid Google Doc URL. Expected format: https://docs.google.com/document/d/<DOCUMENT_ID>/edit'
-  );
-}
-
-/**
- * Extracts raw textual content from a Google Docs paragraph element by concatenating text runs.
+ * Extracts raw textual content from a Google Docs paragraph element
+ * by concatenating all text runs and removing structural trailing newlines.
  */
 function extractParagraphText(paragraph?: docs_v1.Schema$Paragraph): string {
   if (!paragraph || !paragraph.elements) return '';
-  return paragraph.elements
-    .map((el) => el.textRun?.content || '')
-    .join('')
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/\n+$/, '')
-    .trim();
+  const raw = paragraph.elements.map((el) => el.textRun?.content || '').join('');
+  return normalizeText(raw);
 }
 
 /**
- * Determines whether a bullet in a Google Doc represents an ordered list (ol) or unordered list (ul).
+ * Determines whether a bullet in a Google Doc represents an ordered list (ol)
+ * or unordered list (ul) by inspecting glyph properties.
  */
 function determineListType(
   doc: docs_v1.Schema$Document,
@@ -133,7 +86,7 @@ function extractPreambleMetadata(
  * - Maps NORMAL_TEXT -> p
  * - Maps bullet items -> ul / ol
  * - Maps tables -> table
- * - Ignores styling, fonts, colors, and layout noise.
+ * - Ignores fonts, sizes, colors, and layout noise.
  */
 export function parseGoogleDoc(doc: docs_v1.Schema$Document): NormalizedDocument {
   const content = doc.body?.content || [];
@@ -245,7 +198,7 @@ export function parseGoogleDoc(doc: docs_v1.Schema$Document): NormalizedDocument
               if (pText) cellTexts.push(pText);
             }
           }
-          cells.push(cellTexts.join(' ').trim());
+          cells.push(normalizeText(cellTexts.join(' ')));
         }
         if (cells.some((c) => c.length > 0)) {
           rows.push(cells);
