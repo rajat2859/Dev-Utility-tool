@@ -6,15 +6,15 @@
     "semantic_hash": "872f026cb7ba6fd23cabce4d276db45a"
   },
   "package.json": {
-    "mtime": 1790108980.1586926,
-    "seen": 1790109344.4258058,
-    "ast_hash": "455379d896557eece6b4b21540b4fabe",
+    "mtime": 1790620723.8026516,
+    "seen": 1790620884.7077825,
+    "ast_hash": "e11d621cba0cbd32a4543ddcd35bea2c",
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1790108722.539268,
-    "seen": 1790109344.4258149,
-    "ast_hash": "4e723ec8e51346ff6f68618bf54bd4ab",
+    "mtime": 1790620387.473282,
+    "seen": 1790620884.7077873,
+    "ast_hash": "bdb1c397dad2d3d47552cb875009083b",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -36,9 +36,9 @@
     "semantic_hash": ""
   },
   "src/components/tools/ContentChecker.tsx": {
-    "mtime": 1790109241.5483477,
-    "seen": 1790109344.4259443,
-    "ast_hash": "e56a88108202410c51a3754f0fa289a4",
+    "mtime": 1790620820.7334344,
+    "seen": 1790620884.7078984,
+    "ast_hash": "8ba05f82f9c2f25d20c0a14044c45cc4",
     "semantic_hash": ""
   },
   "src/components/tools/GradientGenerator.tsx": {
@@ -216,9 +216,9 @@
     "semantic_hash": ""
   },
   "server/content-auditor/reference/ReferenceNormalizer.ts": {
-    "mtime": 1790108238.0235515,
-    "seen": 1790109344.4258652,
-    "ast_hash": "c50baf07ade47128de9814ffd3b04920",
+    "mtime": 1790618875.4420154,
+    "seen": 1790620884.7078388,
+    "ast_hash": "298df62331ee10b19dcc89907327976f",
     "semantic_hash": ""
   },
   "server/content-auditor/reference/ReferenceParser.ts": {
@@ -240,9 +240,9 @@
     "semantic_hash": ""
   },
   "server/content-auditor/routes/contentAuditRoutes.ts": {
-    "mtime": 1790108897.4075122,
-    "seen": 1790109344.4258807,
-    "ast_hash": "5ad347fcdc5b004fadc01fb8ae4b1985",
+    "mtime": 1790620579.4245462,
+    "seen": 1790620884.707854,
+    "ast_hash": "bb0540251a5fdf698314f7fde53687e0",
     "semantic_hash": ""
   },
   "server/content-auditor/types/page.ts": {
@@ -297,6 +297,54 @@
     "mtime": 1790108291.0034442,
     "seen": 1790109344.425919,
     "ast_hash": "b672676d3a6356e1e30aae41a8027096",
+    "semantic_hash": ""
+  },
+  "server/content-auditor/__tests__/googleDocsAudit.test.ts": {
+    "mtime": 1790620701.1881156,
+    "seen": 1790620884.7077966,
+    "ast_hash": "d2eea64565f530c140b9e84c1b8d6a74",
+    "semantic_hash": ""
+  },
+  "server/content-auditor/auth/googleAuth.ts": {
+    "mtime": 1790620313.446422,
+    "seen": 1790620884.7077992,
+    "ast_hash": "ddff572a395be0da366deb7729b0bdc3",
+    "semantic_hash": ""
+  },
+  "server/content-auditor/auth/googleAuthRoutes.ts": {
+    "mtime": 1790620322.8008437,
+    "seen": 1790620884.707802,
+    "ast_hash": "87fba37f96cc46dc538681ae1e8dc75e",
+    "semantic_hash": ""
+  },
+  "server/content-auditor/comparison/deterministicComparator.ts": {
+    "mtime": 1790620552.0341818,
+    "seen": 1790620884.7078288,
+    "ast_hash": "aceff9b99e190d4ac947418c70c9e62f",
+    "semantic_hash": ""
+  },
+  "server/content-auditor/reference/googleDocsParser.ts": {
+    "mtime": 1790620628.5053997,
+    "seen": 1790620884.7078478,
+    "ast_hash": "6094b954151bffd1af104c5e4ea5f6e0",
+    "semantic_hash": ""
+  },
+  "server/content-auditor/types/normalized.ts": {
+    "mtime": 1790620618.9614525,
+    "seen": 1790620884.7078567,
+    "ast_hash": "09b3f43e79947f16d1d9fff4cc0117ab",
+    "semantic_hash": ""
+  },
+  "server/content-auditor/webpage/domContentExtractor.ts": {
+    "mtime": 1790620645.750511,
+    "seen": 1790620884.7078867,
+    "ast_hash": "89b956f5b4a38763bf65ad961c4d7037",
+    "semantic_hash": ""
+  },
+  "src/components/tools/GoogleDocAuditView.tsx": {
+    "mtime": 1790620781.4509213,
+    "seen": 1790620884.707901,
+    "ast_hash": "d2fa5038132f4b0c7fc25c57969edbbf",
     "semantic_hash": ""
   }
 }

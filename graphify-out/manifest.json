@@ -6,15 +6,15 @@
     "semantic_hash": "872f026cb7ba6fd23cabce4d276db45a"
   },
   "package.json": {
-    "mtime": 1790620723.8026516,
-    "seen": 1790620884.7077825,
-    "ast_hash": "e11d621cba0cbd32a4543ddcd35bea2c",
+    "mtime": 1790621517.6984377,
+    "seen": 1790622761.2896943,
+    "ast_hash": "410bf7830dced28519f22b8d7781eebb",
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1790620387.473282,
-    "seen": 1790620884.7077873,
-    "ast_hash": "bdb1c397dad2d3d47552cb875009083b",
+    "mtime": 1790622507.2729585,
+    "seen": 1790622761.2897067,
+    "ast_hash": "4e723ec8e51346ff6f68618bf54bd4ab",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -240,9 +240,9 @@
     "semantic_hash": ""
   },
   "server/content-auditor/routes/contentAuditRoutes.ts": {
-    "mtime": 1790620579.4245462,
-    "seen": 1790620884.707854,
-    "ast_hash": "bb0540251a5fdf698314f7fde53687e0",
+    "mtime": 1790622567.9404788,
+    "seen": 1790622761.2898731,
+    "ast_hash": "6dfb07541ddb7380408a12ef00cdb7ca",
     "semantic_hash": ""
   },
   "server/content-auditor/types/page.ts": {
@@ -300,33 +300,15 @@
     "semantic_hash": ""
   },
   "server/content-auditor/__tests__/googleDocsAudit.test.ts": {
-    "mtime": 1790620701.1881156,
-    "seen": 1790620884.7077966,
-    "ast_hash": "d2eea64565f530c140b9e84c1b8d6a74",
-    "semantic_hash": ""
-  },
-  "server/content-auditor/auth/googleAuth.ts": {
-    "mtime": 1790620313.446422,
-    "seen": 1790620884.7077992,
-    "ast_hash": "ddff572a395be0da366deb7729b0bdc3",
-    "semantic_hash": ""
-  },
-  "server/content-auditor/auth/googleAuthRoutes.ts": {
-    "mtime": 1790620322.8008437,
-    "seen": 1790620884.707802,
-    "ast_hash": "87fba37f96cc46dc538681ae1e8dc75e",
+    "mtime": 1790622609.4356883,
+    "seen": 1790622761.2897294,
+    "ast_hash": "37ed5a529e78edb91f72c119e2f55535",
     "semantic_hash": ""
   },
   "server/content-auditor/comparison/deterministicComparator.ts": {
-    "mtime": 1790620552.0341818,
-    "seen": 1790620884.7078288,
-    "ast_hash": "aceff9b99e190d4ac947418c70c9e62f",
-    "semantic_hash": ""
-  },
-  "server/content-auditor/reference/googleDocsParser.ts": {
-    "mtime": 1790620628.5053997,
-    "seen": 1790620884.7078478,
-    "ast_hash": "6094b954151bffd1af104c5e4ea5f6e0",
+    "mtime": 1790622489.743109,
+    "seen": 1790622761.289797,
+    "ast_hash": "bc06c2366c560f73728ecffaa621290c",
     "semantic_hash": ""
   },
   "server/content-auditor/types/normalized.ts": {
@@ -336,15 +318,39 @@
     "semantic_hash": ""
   },
   "server/content-auditor/webpage/domContentExtractor.ts": {
-    "mtime": 1790620645.750511,
-    "seen": 1790620884.7078867,
-    "ast_hash": "89b956f5b4a38763bf65ad961c4d7037",
+    "mtime": 1790622472.2799282,
+    "seen": 1790622761.2899685,
+    "ast_hash": "7b5299e7d15a0a9f743686afdb725e28",
     "semantic_hash": ""
   },
   "src/components/tools/GoogleDocAuditView.tsx": {
-    "mtime": 1790620781.4509213,
-    "seen": 1790620884.707901,
-    "ast_hash": "d2fa5038132f4b0c7fc25c57969edbbf",
+    "mtime": 1790622589.8662927,
+    "seen": 1790622761.290006,
+    "ast_hash": "5f6b68fcbee49e3272df498f2b0e4a00",
+    "semantic_hash": ""
+  },
+  "server/content-auditor/google/GoogleDocParser.ts": {
+    "mtime": 1790622446.4460113,
+    "seen": 1790622761.2898128,
+    "ast_hash": "5fa1de7291afee4178068b33497b98c4",
+    "semantic_hash": ""
+  },
+  "server/content-auditor/google/GoogleDocUrl.ts": {
+    "mtime": 1790622432.3648014,
+    "seen": 1790622761.2898197,
+    "ast_hash": "59ded5d44068b23238fc59d4e49a7a9a",
+    "semantic_hash": ""
+  },
+  "server/content-auditor/google/GoogleDocsService.ts": {
+    "mtime": 1790622438.038083,
+    "seen": 1790622761.2898264,
+    "ast_hash": "256f41e97a99c181cf5aed26954a7543",
+    "semantic_hash": ""
+  },
+  "server/content-auditor/utils/textNormalizer.ts": {
+    "mtime": 1790622426.331244,
+    "seen": 1790622761.289913,
+    "ast_hash": "1251be2c759932173608705f1b2d9cff",
     "semantic_hash": ""
   }
 }

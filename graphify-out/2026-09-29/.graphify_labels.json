@@ -9,7 +9,7 @@
   "7": "compilerOptions",
   "8": "dependencies",
   "9": "Development Dependencies",
-  "10": "page.ts",
+  "10": "contentAuditRoutes.ts",
   "11": "Graphify Agent Rules & Workflows",
   "12": "HTML Entrypoint & Bootstrap",
   "13": "Core Type Definitions",
@@ -17,5 +17,6 @@
   "15": "Favicon & Visual Identity",
   "16": "Git & Conventional Commits Rules",
   "17": "GoogleDocParser.ts",
-  "18": "PageFetcher.ts"
+  "18": "PageFetcher.ts",
+  "19": "googleAuth.ts"
 }

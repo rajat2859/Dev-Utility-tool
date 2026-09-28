@@ -1,17 +1,17 @@
-# Graph Report - Dev-Utility-tool  (2026-09-23)
+# Graph Report - Dev-Utility-tool  (2026-09-29)
 
 ## Corpus Check
-- 46 files · ~58,757 words
+- 54 files · ~66,584 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 9 file(s) not represented in the graph (top: (none) 2, .example 1, .lock 1)
 
 ## Summary
-- 373 nodes · 691 edges · 19 communities (18 shown, 1 thin omitted)
+- 422 nodes · 815 edges · 20 communities (19 shown, 1 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.84)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a338c1e0`
+- Built from commit: `e5514947`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -26,7 +26,7 @@
 - compilerOptions
 - dependencies
 - Development Dependencies
-- page.ts
+- contentAuditRoutes.ts
 - Graphify Agent Rules & Workflows
 - HTML Entrypoint & Bootstrap
 - Core Type Definitions
@@ -35,14 +35,15 @@
 - Git & Conventional Commits Rules
 - GoogleDocParser.ts
 - PageFetcher.ts
+- googleAuth.ts
 
 ## God Nodes (most connected - your core abstractions)
 1. `compareTextSimilarity()` - 19 edges
 2. `compilerOptions` - 16 edges
 3. `normalizeText()` - 14 edges
-4. `copyText()` - 13 edges
-5. `react` - 12 edges
-6. `lucide-react` - 11 edges
+4. `react` - 13 edges
+5. `copyText()` - 13 edges
+6. `lucide-react` - 12 edges
 7. `buildContentAuditReport()` - 11 edges
 8. `scripts` - 8 edges
 9. `computeWordDiff()` - 8 edges
@@ -51,14 +52,14 @@
 ## Surprising Connections (you probably didn't know these)
 - `MatchScoreResult` --references--> `BlockComparisonStatus`  [EXTRACTED]
   server/content-auditor/comparison/TextMatcher.ts → server/content-auditor/types/report.ts
-- `compareTextSimilarity()` --calls--> `canonicalize()`  [EXTRACTED]
-  server/content-auditor/comparison/TextMatcher.ts → server/content-auditor/reference/ReferenceNormalizer.ts
-- `compareTextSimilarity()` --calls--> `normalizeText()`  [EXTRACTED]
-  server/content-auditor/comparison/TextMatcher.ts → server/content-auditor/reference/ReferenceNormalizer.ts
-- `compareTextSimilarity()` --calls--> `tokenizeWords()`  [EXTRACTED]
-  server/content-auditor/comparison/TextMatcher.ts → server/content-auditor/reference/ReferenceNormalizer.ts
 - `parseGoogleDocReference()` --calls--> `normalizeText()`  [EXTRACTED]
   server/content-auditor/reference/GoogleDocParser.ts → server/content-auditor/reference/ReferenceNormalizer.ts
+- `performTiledOcr()` --calls--> `normalizeText()`  [EXTRACTED]
+  server/content-auditor/reference/ScreenshotOcr.ts → server/content-auditor/reference/ReferenceNormalizer.ts
+- `ContentChecker()` --calls--> `normalizeUrl()`  [EXTRACTED]
+  src/components/tools/ContentChecker.tsx → src/lib/utils.ts
+- `GradientGenerator()` --calls--> `copyText()`  [EXTRACTED]
+  src/components/tools/GradientGenerator.tsx → src/lib/utils.ts
 
 ## Import Cycles
 - None detected.
@@ -67,31 +68,31 @@
 - **Client Application Bootstrap Lifecycle** — index, index_hmr_suppression, index_initial_loader, index_entry_script [EXTRACTED 1.00]
 - **Dev Utility Tool Brand Identity Composition** — public_favicon_app_icon, public_favicon_wrench_mark, public_favicon_sparkle_accent [EXTRACTED 1.00]
 
-## Communities (19 total, 1 thin omitted)
+## Communities (20 total, 1 thin omitted)
 
 ### Community 0 - "server.ts"
-Cohesion: 0.09
-Nodes (27): compression, dotenv, express, zod, app, buildPreviewErrorPage(), buildPreviewProbe(), SelectedCheckOptions (+19 more)
+Cohesion: 0.12
+Nodes (20): compression, dotenv, app, buildPreviewErrorPage(), buildPreviewProbe(), decodeHtmlEntities(), escapeHtmlAttribute(), extractAllHeadings() (+12 more)
 
 ### Community 1 - "ContentChecker.tsx"
-Cohesion: 0.13
-Nodes (17): AnalysisReport, AuditIssue, BodyContentSection, BodyMismatch, categoryGroup(), CHECK_CATEGORIES, ContentChecker(), DiffWord (+9 more)
+Cohesion: 0.12
+Nodes (18): AnalysisReport, AuditIssue, BodyContentSection, BodyMismatch, categoryGroup(), CHECK_CATEGORIES, ContentChecker(), DiffWord (+10 more)
 
 ### Community 2 - "package.json"
-Cohesion: 0.07
-Nodes (28): name, private, scripts, build, clean, dev, lint, preview (+20 more)
+Cohesion: 0.06
+Nodes (34): name, private, scripts, build, clean, dev, lint, preview (+26 more)
 
 ### Community 3 - "AuditReportBuilder.ts"
-Cohesion: 0.14
-Nodes (33): ref_node_test, computeWordDiff(), auditFaq(), auditHeadings(), auditFeatureImage(), extractFilename(), normalizeImageUrl(), auditLists() (+25 more)
+Cohesion: 0.09
+Nodes (50): computeWordDiff(), auditFaq(), auditHeadings(), auditFeatureImage(), extractFilename(), normalizeImageUrl(), auditLists(), auditContentSequence() (+42 more)
 
 ### Community 4 - "Responsive Device Preview Tool"
 Cohesion: 0.14
 Nodes (19): Brand, BRAND_LABEL, BRANDS_BY_GROUP, chromeMetrics(), Device, DEVICE_LIBRARY, DeviceShell(), displayUrl() (+11 more)
 
 ### Community 5 - "App.tsx"
-Cohesion: 0.05
-Nodes (58): clsx, jszip, lucide-react, motion, ref_node_assert, react, tailwind-merge, App() (+50 more)
+Cohesion: 0.06
+Nodes (56): jszip, lucide-react, motion, react, react-dom, App(), ContentChecker, GradientGenerator (+48 more)
 
 ### Community 6 - "Gradient Generator & Color Tools"
 Cohesion: 0.18
@@ -102,16 +103,16 @@ Cohesion: 0.11
 Nodes (17): compilerOptions, allowImportingTsExtensions, allowJs, experimentalDecorators, isolatedModules, jsx, lib, module (+9 more)
 
 ### Community 8 - "dependencies"
-Cohesion: 0.12
-Nodes (17): dependencies, cheerio, clsx, compression, dotenv, express, jszip, lucide-react (+9 more)
+Cohesion: 0.11
+Nodes (18): dependencies, cheerio, clsx, compression, dotenv, express, googleapis, jszip (+10 more)
 
 ### Community 9 - "Development Dependencies"
 Cohesion: 0.15
 Nodes (13): devDependencies, autoprefixer, esbuild, tailwindcss, tsx, @types/compression, @types/express, @types/jszip (+5 more)
 
-### Community 10 - "page.ts"
-Cohesion: 0.13
-Nodes (23): cheerio, ref_domhandler, canonicalize(), decodeHtmlEntities(), HTML_ENTITIES, normalizeText(), tokenizeWords(), PageAuditModel (+15 more)
+### Community 10 - "contentAuditRoutes.ts"
+Cohesion: 0.10
+Nodes (34): ref_node_assert, ref_node_test, zod, compareNormalizedTrees(), isTextMatch(), normalizeForComparison(), determineListType(), extractGoogleDocId() (+26 more)
 
 ### Community 12 - "HTML Entrypoint & Bootstrap"
 Cohesion: 0.60
@@ -141,25 +142,29 @@ Nodes (15): tesseract.js, extractLabeledField(), parseGoogleDocReference(), pars
 Cohesion: 0.21
 Nodes (12): ref_node_dns, ref_node_fs, playwright-core, BROWSER_HEADERS, FetchResult, fetchWebpage(), CANDIDATE_BROWSER_PATHS, findBrowserPath() (+4 more)
 
+### Community 19 - "googleAuth.ts"
+Cohesion: 0.25
+Nodes (13): express, ref_fs, ref_google_auth_library, googleapis, generateAuthUrl(), getAuthStatus(), getGoogleDocsClient(), getOAuth2Client() (+5 more)
+
 ## Knowledge Gaps
-- **162 isolated node(s):** `name`, `private`, `version`, `type`, `dev` (+157 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 176 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **166 isolated node(s):** `name`, `private`, `version`, `type`, `dev` (+161 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 182 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **1 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `dependencies` connect `dependencies` to `package.json`?**
-  _High betweenness centrality (0.074) - this node is a cross-community bridge._
-- **Why does `react` connect `App.tsx` to `ContentChecker.tsx`, `package.json`, `Responsive Device Preview Tool`, `Gradient Generator & Color Tools`?**
+  _High betweenness centrality (0.071) - this node is a cross-community bridge._
+- **Why does `react` connect `App.tsx` to `ContentChecker.tsx`, `package.json`, `Responsive Device Preview Tool`, `Gradient Generator & Color Tools`, `contentAuditRoutes.ts`?**
   _High betweenness centrality (0.065) - this node is a cross-community bridge._
-- **Why does `lucide-react` connect `App.tsx` to `ContentChecker.tsx`, `package.json`, `Responsive Device Preview Tool`, `Gradient Generator & Color Tools`?**
+- **Why does `lucide-react` connect `App.tsx` to `ContentChecker.tsx`, `package.json`, `Responsive Device Preview Tool`, `Gradient Generator & Color Tools`, `contentAuditRoutes.ts`?**
   _High betweenness centrality (0.060) - this node is a cross-community bridge._
 - **What connects `name`, `private`, `version` to the rest of the system?**
-  _162 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _166 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `server.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.08571428571428572 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.12307692307692308 - nodes in this community are weakly interconnected._
 - **Should `ContentChecker.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.13071895424836602 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.12280701754385964 - nodes in this community are weakly interconnected._
 - **Should `package.json` be split into smaller, more focused modules?**
-  _Cohesion score 0.07126436781609195 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.057057057057057055 - nodes in this community are weakly interconnected._
