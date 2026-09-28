@@ -34,6 +34,19 @@
   },
   "nodes": [
     {
+      "id": "server_content_auditor_report_auditreportbuilder_selectedcheckoptions",
+      "label": "SelectedCheckOptions",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "server.ts",
+      "file_type": "code",
+      "norm_label": "selectedcheckoptions",
+      "source_file": "server/content-auditor/report/AuditReportBuilder.ts",
+      "source_location": "L24"
+    },
+    {
       "id": "server_faqqa",
       "label": "FaqQA",
       "_callable": true,
@@ -44,7 +57,7 @@
       "file_type": "code",
       "norm_label": "faqqa",
       "source_file": "server.ts",
-      "source_location": "L126"
+      "source_location": "L125"
     },
     {
       "id": "src_components_tools_contentchecker_analysisreport",
@@ -57,7 +70,7 @@
       "file_type": "code",
       "norm_label": "analysisreport",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L164"
+      "source_location": "L163"
     },
     {
       "id": "src_components_tools_contentchecker_auditissue",
@@ -70,7 +83,7 @@
       "file_type": "code",
       "norm_label": "auditissue",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L153"
+      "source_location": "L152"
     },
     {
       "id": "src_components_tools_contentchecker_bodycontentsection",
@@ -83,7 +96,7 @@
       "file_type": "code",
       "norm_label": "bodycontentsection",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L102"
+      "source_location": "L101"
     },
     {
       "id": "src_components_tools_contentchecker_bodymismatch",
@@ -96,7 +109,7 @@
       "file_type": "code",
       "norm_label": "bodymismatch",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L91"
+      "source_location": "L90"
     },
     {
       "id": "src_components_tools_contentchecker_diffword",
@@ -109,7 +122,7 @@
       "file_type": "code",
       "norm_label": "diffword",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L85"
+      "source_location": "L84"
     },
     {
       "id": "src_components_tools_contentchecker_faqschemasection",
@@ -122,7 +135,7 @@
       "file_type": "code",
       "norm_label": "faqschemasection",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L110"
+      "source_location": "L109"
     },
     {
       "id": "src_components_tools_contentchecker_featureimagesection",
@@ -135,7 +148,7 @@
       "file_type": "code",
       "norm_label": "featureimagesection",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L118"
+      "source_location": "L117"
     },
     {
       "id": "src_components_tools_contentchecker_headingmatch",
@@ -148,7 +161,7 @@
       "file_type": "code",
       "norm_label": "headingmatch",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L66"
+      "source_location": "L65"
     },
     {
       "id": "src_components_tools_contentchecker_headingssection",
@@ -161,7 +174,7 @@
       "file_type": "code",
       "norm_label": "headingssection",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L79"
+      "source_location": "L78"
     },
     {
       "id": "src_components_tools_contentchecker_pageextractiondiagnostics",
@@ -174,7 +187,7 @@
       "file_type": "code",
       "norm_label": "pageextractiondiagnostics",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L126"
+      "source_location": "L125"
     },
     {
       "id": "src_components_tools_contentchecker_referenceextractiondiagnostics",
@@ -187,7 +200,7 @@
       "file_type": "code",
       "norm_label": "referenceextractiondiagnostics",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L140"
+      "source_location": "L139"
     },
     {
       "id": "src_components_tools_contentchecker_seosection",
@@ -200,215 +213,137 @@
       "file_type": "code",
       "norm_label": "seosection",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L49"
-    },
-    {
-      "id": "server_content_auditor_report_auditreportbuilder_selectedcheckoptions",
-      "label": "SelectedCheckOptions",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "selectedcheckoptions",
-      "source_file": "server/content-auditor/report/AuditReportBuilder.ts",
-      "source_location": "L24"
-    },
-    {
-      "id": "server_content_auditor_types_normalized_auditsummary",
-      "label": "AuditSummary",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "auditsummary",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L82"
-    },
-    {
-      "id": "server_content_auditor_types_normalized_basenormalizedelement",
-      "label": "BaseNormalizedElement",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "basenormalizedelement",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L12"
-    },
-    {
-      "id": "server_content_auditor_types_normalized_comparisonstatus",
-      "label": "ComparisonStatus",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "comparisonstatus",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L59"
-    },
-    {
-      "id": "server_content_auditor_types_normalized_contentauditreport",
-      "label": "ContentAuditReport",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "contentauditreport",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L92"
-    },
-    {
-      "id": "server_content_auditor_types_normalized_elementcomparisonresult",
-      "label": "ElementComparisonResult",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "elementcomparisonresult",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L61"
-    },
-    {
-      "id": "server_content_auditor_types_normalized_headingelement",
-      "label": "HeadingElement",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "headingelement",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L19"
-    },
-    {
-      "id": "server_content_auditor_types_normalized_headingtag",
-      "label": "HeadingTag",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "headingtag",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "server_content_auditor_types_normalized_listelement",
-      "label": "ListElement",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "listelement",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L30"
-    },
-    {
-      "id": "server_content_auditor_types_normalized_normalizeddocument",
-      "label": "NormalizedDocument",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "normalizeddocument",
-      "source_file": "server/content-auditor/types/normalized.ts",
       "source_location": "L48"
     },
     {
-      "id": "server_content_auditor_types_normalized_normalizedelement",
-      "label": "NormalizedElement",
+      "id": "server_content_auditor_types_page_pageauditmodel",
+      "label": "PageAuditModel",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "normalizedelement",
-      "source_file": "server/content-auditor/types/normalized.ts",
+      "norm_label": "pageauditmodel",
+      "source_file": "server/content-auditor/types/page.ts",
+      "source_location": "L64"
+    },
+    {
+      "id": "server_content_auditor_types_page_pageblocktype",
+      "label": "PageBlockType",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "page.ts",
+      "file_type": "code",
+      "norm_label": "pageblocktype",
+      "source_file": "server/content-auditor/types/page.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "server_content_auditor_types_page_pagecontentblock",
+      "label": "PageContentBlock",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "page.ts",
+      "file_type": "code",
+      "norm_label": "pagecontentblock",
+      "source_file": "server/content-auditor/types/page.ts",
+      "source_location": "L12"
+    },
+    {
+      "id": "server_content_auditor_types_page_pageextractiondiagnostics",
+      "label": "PageExtractionDiagnostics",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "page.ts",
+      "file_type": "code",
+      "norm_label": "pageextractiondiagnostics",
+      "source_file": "server/content-auditor/types/page.ts",
+      "source_location": "L50"
+    },
+    {
+      "id": "server_content_auditor_types_page_pagefaqdata",
+      "label": "PageFaqData",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "page.ts",
+      "file_type": "code",
+      "norm_label": "pagefaqdata",
+      "source_file": "server/content-auditor/types/page.ts",
       "source_location": "L42"
     },
     {
-      "id": "server_content_auditor_types_normalized_normalizedelementtype",
-      "label": "NormalizedElementType",
+      "id": "server_content_auditor_types_page_pagefaqitem",
+      "label": "PageFaqItem",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "normalizedelementtype",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L10"
+      "norm_label": "pagefaqitem",
+      "source_file": "server/content-auditor/types/page.ts",
+      "source_location": "L37"
     },
     {
-      "id": "server_content_auditor_types_normalized_paragraphelement",
-      "label": "ParagraphElement",
+      "id": "server_content_auditor_types_page_pageheading",
+      "label": "PageHeading",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "paragraphelement",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L25"
-    },
-    {
-      "id": "server_content_auditor_types_normalized_semantictag",
-      "label": "SemanticTag",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "semantictag",
-      "source_file": "server/content-auditor/types/normalized.ts",
+      "norm_label": "pageheading",
+      "source_file": "server/content-auditor/types/page.ts",
       "source_location": "L3"
     },
     {
-      "id": "server_content_auditor_types_normalized_tableelement",
-      "label": "TableElement",
+      "id": "server_content_auditor_types_page_pagetable",
+      "label": "PageTable",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "tableelement",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L36"
+      "norm_label": "pagetable",
+      "source_file": "server/content-auditor/types/page.ts",
+      "source_location": "L24"
     },
     {
-      "id": "src_components_tools_googledocauditview_googleauthstatus",
-      "label": "GoogleAuthStatus",
+      "id": "server_content_auditor_webpage_maincontentresolver_maincontentresult",
+      "label": "MainContentResult",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "googleauthstatus",
-      "source_file": "src/components/tools/GoogleDocAuditView.tsx",
-      "source_location": "L28"
+      "norm_label": "maincontentresult",
+      "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
+      "source_location": "L42"
+    },
+    {
+      "id": "server_content_auditor_webpage_metadataextractor_pagemetadata",
+      "label": "PageMetadata",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "page.ts",
+      "file_type": "code",
+      "norm_label": "pagemetadata",
+      "source_file": "server/content-auditor/webpage/MetadataExtractor.ts",
+      "source_location": "L5"
     },
     {
       "id": "src_types_appsettings",
@@ -593,19 +528,6 @@
       "source_location": "L24"
     },
     {
-      "id": "server_content_auditor_webpage_maincontentresolver_maincontentresult",
-      "label": "MainContentResult",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "package.json",
-      "file_type": "code",
-      "norm_label": "maincontentresult",
-      "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
-      "source_location": "L42"
-    },
-    {
       "id": "server_content_auditor_comparison_textmatcher_matchscoreresult",
       "label": "MatchScoreResult",
       "_callable": true,
@@ -619,97 +541,6 @@
       "source_location": "L4"
     },
     {
-      "id": "server_content_auditor_types_page_pageauditmodel",
-      "label": "PageAuditModel",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "pageauditmodel",
-      "source_file": "server/content-auditor/types/page.ts",
-      "source_location": "L64"
-    },
-    {
-      "id": "server_content_auditor_types_page_pageblocktype",
-      "label": "PageBlockType",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "pageblocktype",
-      "source_file": "server/content-auditor/types/page.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "server_content_auditor_types_page_pagecontentblock",
-      "label": "PageContentBlock",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "pagecontentblock",
-      "source_file": "server/content-auditor/types/page.ts",
-      "source_location": "L12"
-    },
-    {
-      "id": "server_content_auditor_types_page_pageextractiondiagnostics",
-      "label": "PageExtractionDiagnostics",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "pageextractiondiagnostics",
-      "source_file": "server/content-auditor/types/page.ts",
-      "source_location": "L50"
-    },
-    {
-      "id": "server_content_auditor_types_page_pagefaqdata",
-      "label": "PageFaqData",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "pagefaqdata",
-      "source_file": "server/content-auditor/types/page.ts",
-      "source_location": "L42"
-    },
-    {
-      "id": "server_content_auditor_types_page_pagefaqitem",
-      "label": "PageFaqItem",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "pagefaqitem",
-      "source_file": "server/content-auditor/types/page.ts",
-      "source_location": "L37"
-    },
-    {
-      "id": "server_content_auditor_types_page_pageheading",
-      "label": "PageHeading",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "pageheading",
-      "source_file": "server/content-auditor/types/page.ts",
-      "source_location": "L3"
-    },
-    {
       "id": "server_content_auditor_types_page_pageimage",
       "label": "PageImage",
       "_callable": true,
@@ -721,19 +552,6 @@
       "norm_label": "pageimage",
       "source_file": "server/content-auditor/types/page.ts",
       "source_location": "L31"
-    },
-    {
-      "id": "server_content_auditor_types_page_pagetable",
-      "label": "PageTable",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "pagetable",
-      "source_file": "server/content-auditor/types/page.ts",
-      "source_location": "L24"
     },
     {
       "id": "server_content_auditor_types_report_auditissue",
@@ -955,19 +773,6 @@
       "norm_label": "tablecomparison",
       "source_file": "server/content-auditor/types/report.ts",
       "source_location": "L105"
-    },
-    {
-      "id": "server_content_auditor_webpage_metadataextractor_pagemetadata",
-      "label": "PageMetadata",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "pagemetadata",
-      "source_file": "server/content-auditor/webpage/MetadataExtractor.ts",
-      "source_location": "L5"
     },
     {
       "id": "src_components_tools_responsivepreview_brand",
@@ -1239,7 +1044,7 @@
       "file_type": "code",
       "norm_label": "buildpreviewerrorpage()",
       "source_file": "server.ts",
-      "source_location": "L1080"
+      "source_location": "L1078"
     },
     {
       "id": "server_buildpreviewprobe",
@@ -1251,7 +1056,19 @@
       "file_type": "code",
       "norm_label": "buildpreviewprobe()",
       "source_file": "server.ts",
-      "source_location": "L708"
+      "source_location": "L706"
+    },
+    {
+      "id": "server_content_auditor_routes_contentauditroutes_sanitizeforlog",
+      "label": "sanitizeForLog()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "server.ts",
+      "file_type": "code",
+      "norm_label": "sanitizeforlog()",
+      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
+      "source_location": "L38"
     },
     {
       "id": "server_decodehtmlentities",
@@ -1263,7 +1080,7 @@
       "file_type": "code",
       "norm_label": "decodehtmlentities()",
       "source_file": "server.ts",
-      "source_location": "L42"
+      "source_location": "L41"
     },
     {
       "id": "server_escapehtmlattribute",
@@ -1275,7 +1092,7 @@
       "file_type": "code",
       "norm_label": "escapehtmlattribute()",
       "source_file": "server.ts",
-      "source_location": "L698"
+      "source_location": "L696"
     },
     {
       "id": "server_extractallheadings",
@@ -1287,7 +1104,7 @@
       "file_type": "code",
       "norm_label": "extractallheadings()",
       "source_file": "server.ts",
-      "source_location": "L187"
+      "source_location": "L186"
     },
     {
       "id": "server_extractcanonicalurl",
@@ -1299,7 +1116,7 @@
       "file_type": "code",
       "norm_label": "extractcanonicalurl()",
       "source_file": "server.ts",
-      "source_location": "L117"
+      "source_location": "L116"
     },
     {
       "id": "server_extractfaqschema",
@@ -1311,7 +1128,7 @@
       "file_type": "code",
       "norm_label": "extractfaqschema()",
       "source_file": "server.ts",
-      "source_location": "L130"
+      "source_location": "L129"
     },
     {
       "id": "server_extractmetadescriptiontag",
@@ -1323,7 +1140,7 @@
       "file_type": "code",
       "norm_label": "extractmetadescriptiontag()",
       "source_file": "server.ts",
-      "source_location": "L96"
+      "source_location": "L95"
     },
     {
       "id": "server_extractogimage",
@@ -1335,7 +1152,7 @@
       "file_type": "code",
       "norm_label": "extractogimage()",
       "source_file": "server.ts",
-      "source_location": "L103"
+      "source_location": "L102"
     },
     {
       "id": "server_extractpagetitle",
@@ -1347,7 +1164,7 @@
       "file_type": "code",
       "norm_label": "extractpagetitle()",
       "source_file": "server.ts",
-      "source_location": "L88"
+      "source_location": "L87"
     },
     {
       "id": "server_fetchgoogledoctext",
@@ -1359,7 +1176,7 @@
       "file_type": "code",
       "norm_label": "fetchgoogledoctext()",
       "source_file": "server.ts",
-      "source_location": "L592"
+      "source_location": "L591"
     },
     {
       "id": "server_fetchwebpagehtml",
@@ -1371,7 +1188,7 @@
       "file_type": "code",
       "norm_label": "fetchwebpagehtml()",
       "source_file": "server.ts",
-      "source_location": "L485"
+      "source_location": "L484"
     },
     {
       "id": "server_isprivatepreviewhost",
@@ -1383,7 +1200,7 @@
       "file_type": "code",
       "norm_label": "isprivatepreviewhost()",
       "source_file": "server.ts",
-      "source_location": "L689"
+      "source_location": "L687"
     },
     {
       "id": "server_normalizeurl",
@@ -1395,7 +1212,7 @@
       "file_type": "code",
       "norm_label": "normalizeurl()",
       "source_file": "server.ts",
-      "source_location": "L83"
+      "source_location": "L82"
     },
     {
       "id": "server_parsefullseoandschemas",
@@ -1407,7 +1224,7 @@
       "file_type": "code",
       "norm_label": "parsefullseoandschemas()",
       "source_file": "server.ts",
-      "source_location": "L198"
+      "source_location": "L197"
     },
     {
       "id": "server_sanitizeandparsejsonld",
@@ -1419,7 +1236,7 @@
       "file_type": "code",
       "norm_label": "sanitizeandparsejsonld()",
       "source_file": "server.ts",
-      "source_location": "L52"
+      "source_location": "L51"
     },
     {
       "id": "server_setupfrontend",
@@ -1431,7 +1248,7 @@
       "file_type": "code",
       "norm_label": "setupfrontend()",
       "source_file": "server.ts",
-      "source_location": "L1212"
+      "source_location": "L1210"
     },
     {
       "id": "server_striptags",
@@ -1443,7 +1260,7 @@
       "file_type": "code",
       "norm_label": "striptags()",
       "source_file": "server.ts",
-      "source_location": "L79"
+      "source_location": "L78"
     },
     {
       "id": "server_tojsliteral",
@@ -1455,7 +1272,7 @@
       "file_type": "code",
       "norm_label": "tojsliteral()",
       "source_file": "server.ts",
-      "source_location": "L702"
+      "source_location": "L700"
     },
     {
       "id": "src_components_tools_contentchecker_categorygroup",
@@ -1467,7 +1284,7 @@
       "file_type": "code",
       "norm_label": "categorygroup()",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L39"
+      "source_location": "L38"
     },
     {
       "id": "src_components_tools_contentchecker_contentchecker",
@@ -1479,7 +1296,7 @@
       "file_type": "code",
       "norm_label": "contentchecker()",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L244"
+      "source_location": "L243"
     },
     {
       "id": "src_components_tools_contentchecker_getstatusbadge",
@@ -1491,7 +1308,7 @@
       "file_type": "code",
       "norm_label": "getstatusbadge()",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L206"
+      "source_location": "L205"
     },
     {
       "id": "src_components_tools_contentchecker_renderdiff",
@@ -1503,175 +1320,103 @@
       "file_type": "code",
       "norm_label": "renderdiff()",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L181"
+      "source_location": "L180"
     },
     {
-      "id": "src_components_tools_googledocauditview_googledocauditview",
-      "label": "GoogleDocAuditView()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "ContentChecker.tsx",
-      "file_type": "code",
-      "norm_label": "googledocauditview()",
-      "source_file": "src/components/tools/GoogleDocAuditView.tsx",
-      "source_location": "L34"
-    },
-    {
-      "id": "server_content_auditor_comparison_deterministiccomparator_comparenormalizedtrees",
-      "label": "compareNormalizedTrees()",
+      "id": "server_content_auditor_reference_referencenormalizer_canonicalize",
+      "label": "canonicalize()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "comparenormalizedtrees()",
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L49"
+      "norm_label": "canonicalize()",
+      "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
+      "source_location": "L75"
     },
     {
-      "id": "server_content_auditor_comparison_deterministiccomparator_istextmatch",
-      "label": "isTextMatch()",
+      "id": "server_content_auditor_reference_referencenormalizer_decodehtmlentities",
+      "label": "decodeHtmlEntities()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "istextmatch()",
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L28"
+      "norm_label": "decodehtmlentities()",
+      "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
+      "source_location": "L27"
     },
     {
-      "id": "server_content_auditor_comparison_deterministiccomparator_normalizeforcomparison",
-      "label": "normalizeForComparison()",
+      "id": "server_content_auditor_reference_referencenormalizer_normalizetext",
+      "label": "normalizeText()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "normalizeforcomparison()",
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L14"
+      "norm_label": "normalizetext()",
+      "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
+      "source_location": "L55"
     },
     {
-      "id": "server_content_auditor_reference_googledocsparser_determinelisttype",
-      "label": "determineListType()",
+      "id": "server_content_auditor_reference_referencenormalizer_tokenizewords",
+      "label": "tokenizeWords()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "determinelisttype()",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L71"
+      "norm_label": "tokenizewords()",
+      "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
+      "source_location": "L86"
     },
     {
-      "id": "server_content_auditor_reference_googledocsparser_extractgoogledocid",
-      "label": "extractGoogleDocId()",
+      "id": "server_content_auditor_webpage_contentextractor_extractpageauditmodel",
+      "label": "extractPageAuditModel()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "extractgoogledocid()",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
+      "norm_label": "extractpageauditmodel()",
+      "source_file": "server/content-auditor/webpage/ContentExtractor.ts",
       "source_location": "L21"
     },
     {
-      "id": "server_content_auditor_reference_googledocsparser_extractparagraphtext",
-      "label": "extractParagraphText()",
+      "id": "server_content_auditor_webpage_contentextractor_sanitizeandparsejsonld",
+      "label": "sanitizeAndParseJsonLd()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "extractparagraphtext()",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L57"
+      "norm_label": "sanitizeandparsejsonld()",
+      "source_file": "server/content-auditor/webpage/ContentExtractor.ts",
+      "source_location": "L7"
     },
     {
-      "id": "server_content_auditor_reference_googledocsparser_extractpreamblemetadata",
-      "label": "extractPreambleMetadata()",
+      "id": "server_content_auditor_webpage_maincontentresolver_resolvemaincontent",
+      "label": "resolveMainContent()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "extractpreamblemetadata()",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L91"
+      "norm_label": "resolvemaincontent()",
+      "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
+      "source_location": "L54"
     },
     {
-      "id": "server_content_auditor_reference_googledocsparser_parsegoogledoc",
-      "label": "parseGoogleDoc()",
+      "id": "server_content_auditor_webpage_metadataextractor_extractpagemetadata",
+      "label": "extractPageMetadata()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "parsegoogledoc()",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L138"
-    },
-    {
-      "id": "server_content_auditor_reference_googledocsparser_parsegoogledoc_finalizependinglist",
-      "label": "finalizePendingList()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "finalizependinglist()",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L167"
-    },
-    {
-      "id": "server_content_auditor_routes_contentauditroutes_sanitizeforlog",
-      "label": "sanitizeForLog()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "sanitizeforlog()",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L42"
-    },
-    {
-      "id": "server_content_auditor_webpage_domcontentextractor_cleandom",
-      "label": "cleanDom()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "cleandom()",
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L12"
-    },
-    {
-      "id": "server_content_auditor_webpage_domcontentextractor_cleantext",
-      "label": "cleanText()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "cleantext()",
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L42"
-    },
-    {
-      "id": "server_content_auditor_webpage_domcontentextractor_extractwebsitesemantictree",
-      "label": "extractWebsiteSemanticTree()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "extractwebsitesemantictree()",
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L55"
+      "norm_label": "extractpagemetadata()",
+      "source_file": "server/content-auditor/webpage/MetadataExtractor.ts",
+      "source_location": "L22"
     },
     {
       "id": "server_content_auditor_reference_googledocparser_extractlabeledfield",
@@ -1818,90 +1563,6 @@
       "source_location": "L17"
     },
     {
-      "id": "server_content_auditor_auth_googleauth_generateauthurl",
-      "label": "generateAuthUrl()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "googleAuth.ts",
-      "file_type": "code",
-      "norm_label": "generateauthurl()",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L88"
-    },
-    {
-      "id": "server_content_auditor_auth_googleauth_getauthstatus",
-      "label": "getAuthStatus()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "googleAuth.ts",
-      "file_type": "code",
-      "norm_label": "getauthstatus()",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L69"
-    },
-    {
-      "id": "server_content_auditor_auth_googleauth_getgoogledocsclient",
-      "label": "getGoogleDocsClient()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "googleAuth.ts",
-      "file_type": "code",
-      "norm_label": "getgoogledocsclient()",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L138"
-    },
-    {
-      "id": "server_content_auditor_auth_googleauth_getoauth2client",
-      "label": "getOAuth2Client()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "googleAuth.ts",
-      "file_type": "code",
-      "norm_label": "getoauth2client()",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L14"
-    },
-    {
-      "id": "server_content_auditor_auth_googleauth_handleauthcallback",
-      "label": "handleAuthCallback()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "googleAuth.ts",
-      "file_type": "code",
-      "norm_label": "handleauthcallback()",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L106"
-    },
-    {
-      "id": "server_content_auditor_auth_googleauth_isgoogleoauthconfigured",
-      "label": "isGoogleOAuthConfigured()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "googleAuth.ts",
-      "file_type": "code",
-      "norm_label": "isgoogleoauthconfigured()",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L59"
-    },
-    {
-      "id": "server_content_auditor_auth_googleauth_logout",
-      "label": "logout()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "googleAuth.ts",
-      "file_type": "code",
-      "norm_label": "logout()",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L121"
-    },
-    {
       "id": "server_content_auditor_comparison_diff_computeworddiff",
       "label": "computeWordDiff()",
       "_callable": true,
@@ -2046,54 +1707,6 @@
       "source_location": "L13"
     },
     {
-      "id": "server_content_auditor_reference_referencenormalizer_canonicalize",
-      "label": "canonicalize()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "canonicalize()",
-      "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
-      "source_location": "L75"
-    },
-    {
-      "id": "server_content_auditor_reference_referencenormalizer_decodehtmlentities",
-      "label": "decodeHtmlEntities()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "decodehtmlentities()",
-      "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
-      "source_location": "L27"
-    },
-    {
-      "id": "server_content_auditor_reference_referencenormalizer_normalizetext",
-      "label": "normalizeText()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "normalizetext()",
-      "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
-      "source_location": "L55"
-    },
-    {
-      "id": "server_content_auditor_reference_referencenormalizer_tokenizewords",
-      "label": "tokenizeWords()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "tokenizewords()",
-      "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
-      "source_location": "L86"
-    },
-    {
       "id": "server_content_auditor_report_auditreportbuilder_buildcontentauditreport",
       "label": "buildContentAuditReport()",
       "_callable": true,
@@ -2104,54 +1717,6 @@
       "norm_label": "buildcontentauditreport()",
       "source_file": "server/content-auditor/report/AuditReportBuilder.ts",
       "source_location": "L34"
-    },
-    {
-      "id": "server_content_auditor_webpage_contentextractor_extractpageauditmodel",
-      "label": "extractPageAuditModel()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "extractpageauditmodel()",
-      "source_file": "server/content-auditor/webpage/ContentExtractor.ts",
-      "source_location": "L21"
-    },
-    {
-      "id": "server_content_auditor_webpage_contentextractor_sanitizeandparsejsonld",
-      "label": "sanitizeAndParseJsonLd()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "sanitizeandparsejsonld()",
-      "source_file": "server/content-auditor/webpage/ContentExtractor.ts",
-      "source_location": "L7"
-    },
-    {
-      "id": "server_content_auditor_webpage_maincontentresolver_resolvemaincontent",
-      "label": "resolveMainContent()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "resolvemaincontent()",
-      "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
-      "source_location": "L54"
-    },
-    {
-      "id": "server_content_auditor_webpage_metadataextractor_extractpagemetadata",
-      "label": "extractPageMetadata()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "extractpagemetadata()",
-      "source_file": "server/content-auditor/webpage/MetadataExtractor.ts",
-      "source_location": "L22"
     },
     {
       "id": "src_components_tools_responsivepreview_chromemetrics",
@@ -2742,7 +2307,62 @@
       "file_type": "code",
       "norm_label": "app",
       "source_file": "server.ts",
-      "source_location": "L20"
+      "source_location": "L19"
+    },
+    {
+      "id": "server_content_auditor_routes_contentauditroutes",
+      "label": "contentAuditRoutes.ts",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "server.ts",
+      "file_type": "code",
+      "norm_label": "contentauditroutes.ts",
+      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "server_content_auditor_routes_contentauditroutes_analyzerequestschema",
+      "label": "AnalyzeRequestSchema",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "server.ts",
+      "file_type": "code",
+      "norm_label": "analyzerequestschema",
+      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
+      "source_location": "L12"
+    },
+    {
+      "id": "server_content_auditor_routes_contentauditroutes_contentauditrouter",
+      "label": "contentAuditRouter",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "server.ts",
+      "file_type": "code",
+      "norm_label": "contentauditrouter",
+      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
+      "source_location": "L9"
+    },
+    {
+      "id": "server_content_auditor_routes_contentauditroutes_resolvedocschema",
+      "label": "ResolveDocSchema",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "server.ts",
+      "file_type": "code",
+      "norm_label": "resolvedocschema",
+      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
+      "source_location": "L29"
+    },
+    {
+      "id": "server_content_auditor_routes_contentauditroutes_resolvescreenshotschema",
+      "label": "ResolveScreenshotSchema",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "server.ts",
+      "file_type": "code",
+      "norm_label": "resolvescreenshotschema",
+      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
+      "source_location": "L34"
     },
     {
       "id": "server_html_named_entities",
@@ -2753,7 +2373,7 @@
       "file_type": "code",
       "norm_label": "html_named_entities",
       "source_file": "server.ts",
-      "source_location": "L33"
+      "source_location": "L32"
     },
     {
       "id": "server_responsive_ua",
@@ -2764,7 +2384,7 @@
       "file_type": "code",
       "norm_label": "responsive_ua",
       "source_file": "server.ts",
-      "source_location": "L676"
+      "source_location": "L674"
     },
     {
       "id": "ref_compression",
@@ -2789,6 +2409,28 @@
       "source_location": "L21"
     },
     {
+      "id": "ref_express",
+      "label": "express",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "server.ts",
+      "file_type": "concept",
+      "norm_label": "express",
+      "source_file": "package.json",
+      "source_location": "L22"
+    },
+    {
+      "id": "ref_zod",
+      "label": "zod",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "server.ts",
+      "file_type": "concept",
+      "norm_label": "zod",
+      "source_file": "package.json",
+      "source_location": "L31"
+    },
+    {
       "id": "src_components_tools_contentchecker",
       "label": "ContentChecker.tsx",
       "_origin": "ast",
@@ -2808,139 +2450,106 @@
       "file_type": "code",
       "norm_label": "check_categories",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L27"
+      "source_location": "L26"
     },
     {
-      "id": "server_content_auditor_comparison_deterministiccomparator",
-      "label": "deterministicComparator.ts",
+      "id": "server_content_auditor_reference_referencenormalizer",
+      "label": "ReferenceNormalizer.ts",
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "deterministiccomparator.ts",
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
+      "norm_label": "referencenormalizer.ts",
+      "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
       "source_location": "L1"
     },
     {
-      "id": "server_content_auditor_reference_googledocsparser",
-      "label": "googleDocsParser.ts",
+      "id": "server_content_auditor_reference_referencenormalizer_html_entities",
+      "label": "HTML_ENTITIES",
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "googledocsparser.ts",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
+      "norm_label": "html_entities",
+      "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
+      "source_location": "L7"
+    },
+    {
+      "id": "server_content_auditor_types_page",
+      "label": "page.ts",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "page.ts",
+      "file_type": "code",
+      "norm_label": "page.ts",
+      "source_file": "server/content-auditor/types/page.ts",
       "source_location": "L1"
     },
     {
-      "id": "server_content_auditor_routes_contentauditroutes",
-      "label": "contentAuditRoutes.ts",
+      "id": "server_content_auditor_webpage_contentextractor",
+      "label": "ContentExtractor.ts",
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "contentauditroutes.ts",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
+      "norm_label": "contentextractor.ts",
+      "source_file": "server/content-auditor/webpage/ContentExtractor.ts",
       "source_location": "L1"
     },
     {
-      "id": "server_content_auditor_routes_contentauditroutes_analyzerequestschema",
-      "label": "AnalyzeRequestSchema",
+      "id": "server_content_auditor_webpage_maincontentresolver",
+      "label": "MainContentResolver.ts",
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "analyzerequestschema",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L16"
-    },
-    {
-      "id": "server_content_auditor_routes_contentauditroutes_contentauditrouter",
-      "label": "contentAuditRouter",
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "contentauditrouter",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L13"
-    },
-    {
-      "id": "server_content_auditor_routes_contentauditroutes_resolvedocschema",
-      "label": "ResolveDocSchema",
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "resolvedocschema",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L33"
-    },
-    {
-      "id": "server_content_auditor_routes_contentauditroutes_resolvescreenshotschema",
-      "label": "ResolveScreenshotSchema",
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "resolvescreenshotschema",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L38"
-    },
-    {
-      "id": "server_content_auditor_tests_googledocsaudit_test",
-      "label": "googleDocsAudit.test.ts",
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "googledocsaudit.test.ts",
-      "source_file": "server/content-auditor/__tests__/googleDocsAudit.test.ts",
+      "norm_label": "maincontentresolver.ts",
+      "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
       "source_location": "L1"
     },
     {
-      "id": "server_content_auditor_types_normalized",
-      "label": "normalized.ts",
+      "id": "server_content_auditor_webpage_maincontentresolver_chrome_selectors",
+      "label": "CHROME_SELECTORS",
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "code",
-      "norm_label": "normalized.ts",
-      "source_file": "server/content-auditor/types/normalized.ts",
+      "norm_label": "chrome_selectors",
+      "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
+      "source_location": "L19"
+    },
+    {
+      "id": "server_content_auditor_webpage_maincontentresolver_common_content_selectors",
+      "label": "COMMON_CONTENT_SELECTORS",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "page.ts",
+      "file_type": "code",
+      "norm_label": "common_content_selectors",
+      "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
+      "source_location": "L5"
+    },
+    {
+      "id": "server_content_auditor_webpage_metadataextractor",
+      "label": "MetadataExtractor.ts",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "page.ts",
+      "file_type": "code",
+      "norm_label": "metadataextractor.ts",
+      "source_file": "server/content-auditor/webpage/MetadataExtractor.ts",
       "source_location": "L1"
     },
     {
-      "id": "server_content_auditor_webpage_domcontentextractor",
-      "label": "domContentExtractor.ts",
+      "id": "ref_cheerio",
+      "label": "cheerio",
       "_origin": "ast",
       "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "domcontentextractor.ts",
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_tools_googledocauditview",
-      "label": "GoogleDocAuditView.tsx",
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "googledocauditview.tsx",
-      "source_file": "src/components/tools/GoogleDocAuditView.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "ref_zod",
-      "label": "zod",
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
+      "community_name": "page.ts",
       "file_type": "concept",
-      "norm_label": "zod",
+      "norm_label": "cheerio",
       "source_file": "package.json",
-      "source_location": "L32"
+      "source_location": "L18"
     },
     {
       "id": "agents_rules_graphify",
@@ -3150,7 +2759,7 @@
       "file_type": "concept",
       "norm_label": "tesseract.js",
       "source_file": "package.json",
-      "source_location": "L31"
+      "source_location": "L30"
     },
     {
       "id": "server_content_auditor_webpage_pagefetcher",
@@ -3216,73 +2825,7 @@
       "file_type": "concept",
       "norm_label": "playwright-core",
       "source_file": "package.json",
-      "source_location": "L27"
-    },
-    {
-      "id": "server_content_auditor_auth_googleauth",
-      "label": "googleAuth.ts",
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "googleAuth.ts",
-      "file_type": "code",
-      "norm_label": "googleauth.ts",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "server_content_auditor_auth_googleauth_token_path",
-      "label": "TOKEN_PATH",
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "googleAuth.ts",
-      "file_type": "code",
-      "norm_label": "token_path",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L6"
-    },
-    {
-      "id": "server_content_auditor_auth_googleauthroutes",
-      "label": "googleAuthRoutes.ts",
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "googleAuth.ts",
-      "file_type": "code",
-      "norm_label": "googleauthroutes.ts",
-      "source_file": "server/content-auditor/auth/googleAuthRoutes.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "server_content_auditor_auth_googleauthroutes_googleauthrouter",
-      "label": "googleAuthRouter",
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "googleAuth.ts",
-      "file_type": "code",
-      "norm_label": "googleauthrouter",
-      "source_file": "server/content-auditor/auth/googleAuthRoutes.ts",
-      "source_location": "L9"
-    },
-    {
-      "id": "ref_express",
-      "label": "express",
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "googleAuth.ts",
-      "file_type": "concept",
-      "norm_label": "express",
-      "source_file": "package.json",
-      "source_location": "L22"
-    },
-    {
-      "id": "ref_googleapis",
-      "label": "googleapis",
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "googleAuth.ts",
-      "file_type": "concept",
-      "norm_label": "googleapis",
-      "source_file": "package.json",
-      "source_location": "L23"
+      "source_location": "L26"
     },
     {
       "id": "package",
@@ -3428,39 +2971,6 @@
       "source_location": "L4"
     },
     {
-      "id": "server_content_auditor_webpage_maincontentresolver",
-      "label": "MainContentResolver.ts",
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "package.json",
-      "file_type": "code",
-      "norm_label": "maincontentresolver.ts",
-      "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "server_content_auditor_webpage_maincontentresolver_chrome_selectors",
-      "label": "CHROME_SELECTORS",
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "package.json",
-      "file_type": "code",
-      "norm_label": "chrome_selectors",
-      "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
-      "source_location": "L19"
-    },
-    {
-      "id": "server_content_auditor_webpage_maincontentresolver_common_content_selectors",
-      "label": "COMMON_CONTENT_SELECTORS",
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "package.json",
-      "file_type": "code",
-      "norm_label": "common_content_selectors",
-      "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
-      "source_location": "L5"
-    },
-    {
       "id": "vite_config",
       "label": "vite.config.ts",
       "_origin": "ast",
@@ -3480,29 +2990,7 @@
       "file_type": "concept",
       "norm_label": "autoprefixer",
       "source_file": "package.json",
-      "source_location": "L41"
-    },
-    {
-      "id": "ref_cheerio",
-      "label": "cheerio",
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "package.json",
-      "file_type": "concept",
-      "norm_label": "cheerio",
-      "source_file": "package.json",
-      "source_location": "L18"
-    },
-    {
-      "id": "ref_clsx",
-      "label": "clsx",
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "package.json",
-      "file_type": "concept",
-      "norm_label": "clsx",
-      "source_file": "package.json",
-      "source_location": "L19"
+      "source_location": "L40"
     },
     {
       "id": "ref_esbuild",
@@ -3513,18 +3001,18 @@
       "file_type": "concept",
       "norm_label": "esbuild",
       "source_file": "package.json",
-      "source_location": "L42"
+      "source_location": "L41"
     },
     {
-      "id": "ref_tailwind_merge",
-      "label": "tailwind-merge",
+      "id": "ref_react_dom",
+      "label": "react-dom",
       "_origin": "ast",
       "community": 2,
       "community_name": "package.json",
       "file_type": "concept",
-      "norm_label": "tailwind-merge",
+      "norm_label": "react-dom",
       "source_file": "package.json",
-      "source_location": "L30"
+      "source_location": "L28"
     },
     {
       "id": "ref_tailwindcss",
@@ -3535,7 +3023,7 @@
       "file_type": "concept",
       "norm_label": "tailwindcss",
       "source_file": "package.json",
-      "source_location": "L43"
+      "source_location": "L42"
     },
     {
       "id": "ref_tailwindcss_vite",
@@ -3557,7 +3045,7 @@
       "file_type": "concept",
       "norm_label": "tsx",
       "source_file": "package.json",
-      "source_location": "L44"
+      "source_location": "L43"
     },
     {
       "id": "ref_types_compression",
@@ -3568,7 +3056,7 @@
       "file_type": "concept",
       "norm_label": "@types/compression",
       "source_file": "package.json",
-      "source_location": "L35"
+      "source_location": "L34"
     },
     {
       "id": "ref_types_express",
@@ -3579,7 +3067,7 @@
       "file_type": "concept",
       "norm_label": "@types/express",
       "source_file": "package.json",
-      "source_location": "L36"
+      "source_location": "L35"
     },
     {
       "id": "ref_types_jszip",
@@ -3590,7 +3078,7 @@
       "file_type": "concept",
       "norm_label": "@types/jszip",
       "source_file": "package.json",
-      "source_location": "L37"
+      "source_location": "L36"
     },
     {
       "id": "ref_types_node",
@@ -3601,7 +3089,7 @@
       "file_type": "concept",
       "norm_label": "@types/node",
       "source_file": "package.json",
-      "source_location": "L38"
+      "source_location": "L37"
     },
     {
       "id": "ref_types_react",
@@ -3612,7 +3100,7 @@
       "file_type": "concept",
       "norm_label": "@types/react",
       "source_file": "package.json",
-      "source_location": "L39"
+      "source_location": "L38"
     },
     {
       "id": "ref_types_react_dom",
@@ -3623,7 +3111,7 @@
       "file_type": "concept",
       "norm_label": "@types/react-dom",
       "source_file": "package.json",
-      "source_location": "L40"
+      "source_location": "L39"
     },
     {
       "id": "ref_typescript",
@@ -3634,7 +3122,7 @@
       "file_type": "concept",
       "norm_label": "typescript",
       "source_file": "package.json",
-      "source_location": "L45"
+      "source_location": "L44"
     },
     {
       "id": "ref_vite",
@@ -3645,7 +3133,7 @@
       "file_type": "concept",
       "norm_label": "vite",
       "source_file": "package.json",
-      "source_location": "L46"
+      "source_location": "L45"
     },
     {
       "id": "ref_vitejs_plugin_react",
@@ -3747,28 +3235,6 @@
       "source_location": "L1"
     },
     {
-      "id": "server_content_auditor_reference_referencenormalizer",
-      "label": "ReferenceNormalizer.ts",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "referencenormalizer.ts",
-      "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "server_content_auditor_reference_referencenormalizer_html_entities",
-      "label": "HTML_ENTITIES",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "html_entities",
-      "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
-      "source_location": "L7"
-    },
-    {
       "id": "server_content_auditor_report_auditreportbuilder",
       "label": "AuditReportBuilder.ts",
       "_origin": "ast",
@@ -3791,17 +3257,6 @@
       "source_location": "L1"
     },
     {
-      "id": "server_content_auditor_types_page",
-      "label": "page.ts",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "page.ts",
-      "source_file": "server/content-auditor/types/page.ts",
-      "source_location": "L1"
-    },
-    {
       "id": "server_content_auditor_types_report",
       "label": "report.ts",
       "_origin": "ast",
@@ -3810,28 +3265,6 @@
       "file_type": "code",
       "norm_label": "report.ts",
       "source_file": "server/content-auditor/types/report.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "server_content_auditor_webpage_contentextractor",
-      "label": "ContentExtractor.ts",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "contentextractor.ts",
-      "source_file": "server/content-auditor/webpage/ContentExtractor.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "server_content_auditor_webpage_metadataextractor",
-      "label": "MetadataExtractor.ts",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "metadataextractor.ts",
-      "source_file": "server/content-auditor/webpage/MetadataExtractor.ts",
       "source_location": "L1"
     },
     {
@@ -4231,6 +3664,17 @@
       "source_location": "L1"
     },
     {
+      "id": "ref_clsx",
+      "label": "clsx",
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "App.tsx",
+      "file_type": "concept",
+      "norm_label": "clsx",
+      "source_file": "package.json",
+      "source_location": "L19"
+    },
+    {
       "id": "ref_jszip",
       "label": "jszip",
       "_origin": "ast",
@@ -4239,7 +3683,7 @@
       "file_type": "concept",
       "norm_label": "jszip",
       "source_file": "package.json",
-      "source_location": "L24"
+      "source_location": "L23"
     },
     {
       "id": "ref_lucide_react",
@@ -4250,7 +3694,7 @@
       "file_type": "concept",
       "norm_label": "lucide-react",
       "source_file": "package.json",
-      "source_location": "L25"
+      "source_location": "L24"
     },
     {
       "id": "ref_motion",
@@ -4261,7 +3705,7 @@
       "file_type": "concept",
       "norm_label": "motion",
       "source_file": "package.json",
-      "source_location": "L26"
+      "source_location": "L25"
     },
     {
       "id": "ref_react",
@@ -4272,16 +3716,16 @@
       "file_type": "concept",
       "norm_label": "react",
       "source_file": "package.json",
-      "source_location": "L28"
+      "source_location": "L27"
     },
     {
-      "id": "ref_react_dom",
-      "label": "react-dom",
+      "id": "ref_tailwind_merge",
+      "label": "tailwind-merge",
       "_origin": "ast",
       "community": 5,
       "community_name": "App.tsx",
       "file_type": "concept",
-      "norm_label": "react-dom",
+      "norm_label": "tailwind-merge",
       "source_file": "package.json",
       "source_location": "L29"
     },
@@ -4583,17 +4027,6 @@
       "source_location": "L22"
     },
     {
-      "id": "package_dependencies_googleapis",
-      "label": "googleapis",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "dependencies",
-      "file_type": "code",
-      "norm_label": "googleapis",
-      "source_file": "package.json",
-      "source_location": "L23"
-    },
-    {
       "id": "package_dependencies_jszip",
       "label": "jszip",
       "_origin": "ast",
@@ -4602,7 +4035,7 @@
       "file_type": "code",
       "norm_label": "jszip",
       "source_file": "package.json",
-      "source_location": "L24"
+      "source_location": "L23"
     },
     {
       "id": "package_dependencies_lucide_react",
@@ -4613,7 +4046,7 @@
       "file_type": "code",
       "norm_label": "lucide-react",
       "source_file": "package.json",
-      "source_location": "L25"
+      "source_location": "L24"
     },
     {
       "id": "package_dependencies_motion",
@@ -4624,7 +4057,7 @@
       "file_type": "code",
       "norm_label": "motion",
       "source_file": "package.json",
-      "source_location": "L26"
+      "source_location": "L25"
     },
     {
       "id": "package_dependencies_playwright_core",
@@ -4635,7 +4068,7 @@
       "file_type": "code",
       "norm_label": "playwright-core",
       "source_file": "package.json",
-      "source_location": "L27"
+      "source_location": "L26"
     },
     {
       "id": "package_dependencies_react",
@@ -4646,7 +4079,7 @@
       "file_type": "code",
       "norm_label": "react",
       "source_file": "package.json",
-      "source_location": "L28"
+      "source_location": "L27"
     },
     {
       "id": "package_dependencies_react_dom",
@@ -4657,7 +4090,7 @@
       "file_type": "code",
       "norm_label": "react-dom",
       "source_file": "package.json",
-      "source_location": "L29"
+      "source_location": "L28"
     },
     {
       "id": "package_dependencies_tailwind_merge",
@@ -4668,7 +4101,7 @@
       "file_type": "code",
       "norm_label": "tailwind-merge",
       "source_file": "package.json",
-      "source_location": "L30"
+      "source_location": "L29"
     },
     {
       "id": "package_dependencies_tailwindcss_vite",
@@ -4690,7 +4123,7 @@
       "file_type": "code",
       "norm_label": "tesseract.js",
       "source_file": "package.json",
-      "source_location": "L31"
+      "source_location": "L30"
     },
     {
       "id": "package_dependencies_vitejs_plugin_react",
@@ -4712,7 +4145,7 @@
       "file_type": "code",
       "norm_label": "zod",
       "source_file": "package.json",
-      "source_location": "L32"
+      "source_location": "L31"
     },
     {
       "id": "package_devdependencies",
@@ -4723,7 +4156,7 @@
       "file_type": "code",
       "norm_label": "devdependencies",
       "source_file": "package.json",
-      "source_location": "L34"
+      "source_location": "L33"
     },
     {
       "id": "package_devdependencies_autoprefixer",
@@ -4734,7 +4167,7 @@
       "file_type": "code",
       "norm_label": "autoprefixer",
       "source_file": "package.json",
-      "source_location": "L41"
+      "source_location": "L40"
     },
     {
       "id": "package_devdependencies_esbuild",
@@ -4745,7 +4178,7 @@
       "file_type": "code",
       "norm_label": "esbuild",
       "source_file": "package.json",
-      "source_location": "L42"
+      "source_location": "L41"
     },
     {
       "id": "package_devdependencies_tailwindcss",
@@ -4756,7 +4189,7 @@
       "file_type": "code",
       "norm_label": "tailwindcss",
       "source_file": "package.json",
-      "source_location": "L43"
+      "source_location": "L42"
     },
     {
       "id": "package_devdependencies_tsx",
@@ -4767,7 +4200,7 @@
       "file_type": "code",
       "norm_label": "tsx",
       "source_file": "package.json",
-      "source_location": "L44"
+      "source_location": "L43"
     },
     {
       "id": "package_devdependencies_types_compression",
@@ -4778,7 +4211,7 @@
       "file_type": "code",
       "norm_label": "@types/compression",
       "source_file": "package.json",
-      "source_location": "L35"
+      "source_location": "L34"
     },
     {
       "id": "package_devdependencies_types_express",
@@ -4789,7 +4222,7 @@
       "file_type": "code",
       "norm_label": "@types/express",
       "source_file": "package.json",
-      "source_location": "L36"
+      "source_location": "L35"
     },
     {
       "id": "package_devdependencies_types_jszip",
@@ -4800,7 +4233,7 @@
       "file_type": "code",
       "norm_label": "@types/jszip",
       "source_file": "package.json",
-      "source_location": "L37"
+      "source_location": "L36"
     },
     {
       "id": "package_devdependencies_types_node",
@@ -4811,7 +4244,7 @@
       "file_type": "code",
       "norm_label": "@types/node",
       "source_file": "package.json",
-      "source_location": "L38"
+      "source_location": "L37"
     },
     {
       "id": "package_devdependencies_types_react",
@@ -4822,7 +4255,7 @@
       "file_type": "code",
       "norm_label": "@types/react",
       "source_file": "package.json",
-      "source_location": "L39"
+      "source_location": "L38"
     },
     {
       "id": "package_devdependencies_types_react_dom",
@@ -4833,7 +4266,7 @@
       "file_type": "code",
       "norm_label": "@types/react-dom",
       "source_file": "package.json",
-      "source_location": "L40"
+      "source_location": "L39"
     },
     {
       "id": "package_devdependencies_typescript",
@@ -4844,7 +4277,7 @@
       "file_type": "code",
       "norm_label": "typescript",
       "source_file": "package.json",
-      "source_location": "L45"
+      "source_location": "L44"
     },
     {
       "id": "package_devdependencies_vite",
@@ -4855,7 +4288,7 @@
       "file_type": "code",
       "norm_label": "vite",
       "source_file": "package.json",
-      "source_location": "L46"
+      "source_location": "L45"
     },
     {
       "id": "public_apple_touch_icon_ios_pwa_branding",
@@ -4948,66 +4381,6 @@
       "source_url": null
     },
     {
-      "id": "ref_node_assert",
-      "label": "ref_node_assert",
-      "_origin": "semantic",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "ref_node_assert",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "ref_node_test",
-      "label": "ref_node_test",
-      "_origin": "semantic",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "ref_node_test",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "ref_node_dns",
-      "label": "ref_node_dns",
-      "_origin": "semantic",
-      "community": 18,
-      "community_name": "PageFetcher.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "ref_node_dns",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "ref_node_fs",
-      "label": "ref_node_fs",
-      "_origin": "semantic",
-      "community": 18,
-      "community_name": "PageFetcher.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "ref_node_fs",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "ref_domhandler",
-      "label": "ref_domhandler",
-      "_origin": "semantic",
-      "community": 2,
-      "community_name": "package.json",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "ref_domhandler",
-      "source_file": "",
-      "type": "external"
-    },
-    {
       "id": "ref_path",
       "label": "ref_path",
       "_origin": "semantic",
@@ -5016,6 +4389,18 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "ref_path",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "ref_node_assert",
+      "label": "ref_node_assert",
+      "_origin": "semantic",
+      "community": 5,
+      "community_name": "App.tsx",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "ref_node_assert",
       "source_file": "",
       "type": "external"
     },
@@ -5032,24 +4417,46 @@
       "type": "external"
     },
     {
-      "id": "ref_fs",
-      "label": "ref_fs",
-      "community": 19,
-      "community_name": "googleAuth.ts",
+      "id": "ref_domhandler",
+      "label": "ref_domhandler",
+      "community": 10,
+      "community_name": "page.ts",
       "external": true,
       "file_type": "concept",
-      "norm_label": "ref_fs",
+      "norm_label": "ref_domhandler",
       "source_file": "",
       "type": "external"
     },
     {
-      "id": "ref_google_auth_library",
-      "label": "ref_google_auth_library",
-      "community": 19,
-      "community_name": "googleAuth.ts",
+      "id": "ref_node_dns",
+      "label": "ref_node_dns",
+      "community": 18,
+      "community_name": "PageFetcher.ts",
       "external": true,
       "file_type": "concept",
-      "norm_label": "ref_google_auth_library",
+      "norm_label": "ref_node_dns",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "ref_node_fs",
+      "label": "ref_node_fs",
+      "community": 18,
+      "community_name": "PageFetcher.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "ref_node_fs",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "ref_node_test",
+      "label": "ref_node_test",
+      "community": 3,
+      "community_name": "AuditReportBuilder.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "ref_node_test",
       "source_file": "",
       "type": "external"
     }
@@ -5064,7 +4471,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L1087",
+      "source_location": "L1085",
       "weight": 1.0
     },
     {
@@ -5076,7 +4483,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L1090",
+      "source_location": "L1088",
       "weight": 1.0
     },
     {
@@ -5088,151 +4495,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L1073",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth_generateauthurl",
-      "target": "server_content_auditor_auth_googleauth_isgoogleoauthconfigured",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L89",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth_generateauthurl",
-      "target": "server_content_auditor_auth_googleauth_getoauth2client",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L95",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth_generateauthurl",
-      "target": "server_content_auditor_auth_googleauth_generateauthurl",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L96",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth_getauthstatus",
-      "target": "server_content_auditor_auth_googleauth_isgoogleoauthconfigured",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L70",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth_getauthstatus",
-      "target": "server_content_auditor_auth_googleauth_getoauth2client",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L75",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth_getgoogledocsclient",
-      "target": "server_content_auditor_auth_googleauth_getauthstatus",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L139",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth_getgoogledocsclient",
-      "target": "server_content_auditor_auth_googleauth_getoauth2client",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L146",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth_handleauthcallback",
-      "target": "server_content_auditor_auth_googleauth_getoauth2client",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L107",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth_logout",
-      "target": "server_content_auditor_auth_googleauth_getoauth2client",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L122",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_comparison_deterministiccomparator_comparenormalizedtrees",
-      "target": "server_content_auditor_comparison_deterministiccomparator_normalizeforcomparison",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L64",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_comparison_deterministiccomparator_comparenormalizedtrees",
-      "target": "server_content_auditor_comparison_deterministiccomparator_istextmatch",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L77",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_comparison_deterministiccomparator_istextmatch",
-      "target": "server_content_auditor_comparison_deterministiccomparator_normalizeforcomparison",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L29",
+      "source_location": "L1071",
       "weight": 1.0
     },
     {
@@ -5425,54 +4688,6 @@
       "context": "call",
       "source_file": "server/content-auditor/reference/GoogleDocParser.ts",
       "source_location": "L26",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_reference_googledocsparser_extractpreamblemetadata",
-      "target": "server_content_auditor_reference_googledocsparser_extractparagraphtext",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L98",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_reference_googledocsparser_parsegoogledoc",
-      "target": "server_content_auditor_reference_googledocsparser_extractparagraphtext",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L146",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_reference_googledocsparser_parsegoogledoc",
-      "target": "server_content_auditor_reference_googledocsparser_extractpreamblemetadata",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L159",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_reference_googledocsparser_parsegoogledoc",
-      "target": "server_content_auditor_reference_googledocsparser_determinelisttype",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L187",
       "weight": 1.0
     },
     {
@@ -5704,30 +4919,6 @@
       "weight": 1.0
     },
     {
-      "source": "server_content_auditor_webpage_domcontentextractor_extractwebsitesemantictree",
-      "target": "server_content_auditor_webpage_domcontentextractor_cleantext",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L62",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_webpage_domcontentextractor_extractwebsitesemantictree",
-      "target": "server_content_auditor_webpage_domcontentextractor_cleandom",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L69",
-      "weight": 1.0
-    },
-    {
       "source": "server_content_auditor_webpage_metadataextractor_extractpagemetadata",
       "target": "server_content_auditor_reference_referencenormalizer_normalizetext",
       "relation": "calls",
@@ -5808,7 +4999,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L192",
+      "source_location": "L191",
       "weight": 1.0
     },
     {
@@ -5820,7 +5011,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L137",
+      "source_location": "L136",
       "weight": 1.0
     },
     {
@@ -5832,7 +5023,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L174",
+      "source_location": "L173",
       "weight": 1.0
     },
     {
@@ -5844,7 +5035,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L99",
+      "source_location": "L98",
       "weight": 1.0
     },
     {
@@ -5856,7 +5047,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L90",
+      "source_location": "L89",
       "weight": 1.0
     },
     {
@@ -5868,7 +5059,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L486",
+      "source_location": "L485",
       "weight": 1.0
     },
     {
@@ -5880,7 +5071,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L199",
+      "source_location": "L198",
       "weight": 1.0
     },
     {
@@ -5892,7 +5083,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L200",
+      "source_location": "L199",
       "weight": 1.0
     },
     {
@@ -5904,7 +5095,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L247",
+      "source_location": "L246",
       "weight": 1.0
     },
     {
@@ -5916,7 +5107,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L304",
+      "source_location": "L303",
       "weight": 1.0
     },
     {
@@ -5928,7 +5119,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L73",
+      "source_location": "L72",
       "weight": 1.0
     },
     {
@@ -5940,7 +5131,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L80",
+      "source_location": "L79",
       "weight": 1.0
     },
     {
@@ -5988,7 +5179,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L1217",
+      "source_location": "L1180",
       "weight": 1.0
     },
     {
@@ -6000,7 +5191,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L487",
+      "source_location": "L485",
       "weight": 1.0
     },
     {
@@ -6012,7 +5203,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L559",
+      "source_location": "L557",
       "weight": 1.0
     },
     {
@@ -6024,7 +5215,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L840",
+      "source_location": "L803",
       "weight": 1.0
     },
     {
@@ -6504,7 +5695,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L1080",
+      "source_location": "L1078",
       "weight": 1.0
     },
     {
@@ -6516,7 +5707,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L198",
+      "source_location": "L197",
       "weight": 1.0
     },
     {
@@ -6528,7 +5719,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L485",
+      "source_location": "L484",
       "weight": 1.0
     },
     {
@@ -6540,7 +5731,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L689",
+      "source_location": "L687",
       "weight": 1.0
     },
     {
@@ -6552,7 +5743,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L698",
+      "source_location": "L696",
       "weight": 1.0
     },
     {
@@ -6564,7 +5755,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L708",
+      "source_location": "L706",
       "weight": 1.0
     },
     {
@@ -6576,19 +5767,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server.ts",
-      "source_location": "L83",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_reference_googledocsparser_parsegoogledoc",
-      "target": "server_content_auditor_reference_googledocsparser_parsegoogledoc_finalizependinglist",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L167",
+      "source_location": "L82",
       "weight": 1.0
     },
     {
@@ -6600,7 +5779,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L42",
+      "source_location": "L38",
       "weight": 1.0
     },
     {
@@ -6713,7 +5892,7 @@
     },
     {
       "source": "package",
-      "target": "ref_googleapis",
+      "target": "ref_jszip",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -6725,7 +5904,7 @@
     },
     {
       "source": "package",
-      "target": "ref_jszip",
+      "target": "ref_lucide_react",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -6737,7 +5916,7 @@
     },
     {
       "source": "package",
-      "target": "ref_lucide_react",
+      "target": "ref_motion",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -6749,7 +5928,7 @@
     },
     {
       "source": "package",
-      "target": "ref_motion",
+      "target": "ref_playwright_core",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -6761,7 +5940,7 @@
     },
     {
       "source": "package",
-      "target": "ref_playwright_core",
+      "target": "ref_react",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -6773,7 +5952,7 @@
     },
     {
       "source": "package",
-      "target": "ref_react",
+      "target": "ref_react_dom",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -6785,7 +5964,7 @@
     },
     {
       "source": "package",
-      "target": "ref_react_dom",
+      "target": "ref_tailwind_merge",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -6797,7 +5976,7 @@
     },
     {
       "source": "package",
-      "target": "ref_tailwind_merge",
+      "target": "ref_tesseract_js",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -6809,7 +5988,7 @@
     },
     {
       "source": "package",
-      "target": "ref_tesseract_js",
+      "target": "ref_zod",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -6821,18 +6000,6 @@
     },
     {
       "source": "package",
-      "target": "ref_zod",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "package.json",
-      "source_location": "L32",
-      "weight": 1.0
-    },
-    {
-      "source": "package",
       "target": "ref_types_compression",
       "relation": "imports",
       "_origin": "ast",
@@ -6840,7 +6007,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L35",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -6852,7 +6019,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L36",
+      "source_location": "L35",
       "weight": 1.0
     },
     {
@@ -6864,7 +6031,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L37",
+      "source_location": "L36",
       "weight": 1.0
     },
     {
@@ -6876,7 +6043,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L38",
+      "source_location": "L37",
       "weight": 1.0
     },
     {
@@ -6888,7 +6055,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L39",
+      "source_location": "L38",
       "weight": 1.0
     },
     {
@@ -6900,7 +6067,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L40",
+      "source_location": "L39",
       "weight": 1.0
     },
     {
@@ -6912,7 +6079,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L41",
+      "source_location": "L40",
       "weight": 1.0
     },
     {
@@ -6924,7 +6091,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L42",
+      "source_location": "L41",
       "weight": 1.0
     },
     {
@@ -6936,7 +6103,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L43",
+      "source_location": "L42",
       "weight": 1.0
     },
     {
@@ -6948,7 +6115,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L44",
+      "source_location": "L43",
       "weight": 1.0
     },
     {
@@ -6960,7 +6127,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L45",
+      "source_location": "L44",
       "weight": 1.0
     },
     {
@@ -6972,7 +6139,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "package.json",
-      "source_location": "L46",
+      "source_location": "L45",
       "weight": 1.0
     },
     {
@@ -6985,138 +6152,6 @@
       "context": "import",
       "source_file": "server.ts",
       "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "server",
-      "target": "server_content_auditor_auth_googleauthroutes_googleauthrouter",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server.ts",
-      "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauthroutes",
-      "target": "server_content_auditor_auth_googleauth_generateauthurl",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/auth/googleAuthRoutes.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauthroutes",
-      "target": "server_content_auditor_auth_googleauth_getauthstatus",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/auth/googleAuthRoutes.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauthroutes",
-      "target": "server_content_auditor_auth_googleauth_handleauthcallback",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/auth/googleAuthRoutes.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauthroutes",
-      "target": "server_content_auditor_auth_googleauth_logout",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/auth/googleAuthRoutes.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_comparison_deterministiccomparator",
-      "target": "server_content_auditor_types_normalized_auditsummary",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_comparison_deterministiccomparator",
-      "target": "server_content_auditor_types_normalized_comparisonstatus",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_comparison_deterministiccomparator",
-      "target": "server_content_auditor_types_normalized_contentauditreport",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_comparison_deterministiccomparator",
-      "target": "server_content_auditor_types_normalized_elementcomparisonresult",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_comparison_deterministiccomparator",
-      "target": "server_content_auditor_types_normalized_normalizeddocument",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_comparison_deterministiccomparator",
-      "target": "server_content_auditor_types_normalized_normalizedelement",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L1",
       "weight": 1.0
     },
     {
@@ -7588,66 +6623,6 @@
       "weight": 1.0
     },
     {
-      "source": "server_content_auditor_reference_googledocsparser",
-      "target": "server_content_auditor_types_normalized_headingtag",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_reference_googledocsparser",
-      "target": "server_content_auditor_types_normalized_listelement",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_reference_googledocsparser",
-      "target": "server_content_auditor_types_normalized_normalizeddocument",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_reference_googledocsparser",
-      "target": "server_content_auditor_types_normalized_normalizedelement",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_reference_googledocsparser",
-      "target": "server_content_auditor_types_normalized_semantictag",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
       "source": "server_content_auditor_reference_referenceparser",
       "target": "server_content_auditor_types_reference_contentreference",
       "relation": "imports",
@@ -7949,30 +6924,6 @@
     },
     {
       "source": "server_content_auditor_routes_contentauditroutes",
-      "target": "server_content_auditor_webpage_domcontentextractor_extractwebsitesemantictree",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L10",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_routes_contentauditroutes",
-      "target": "server_content_auditor_comparison_deterministiccomparator_comparenormalizedtrees",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L11",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_routes_contentauditroutes",
       "target": "server_content_auditor_webpage_pagefetcher_fetchwebpage",
       "relation": "imports",
       "_origin": "ast",
@@ -8041,54 +6992,6 @@
       "context": "import",
       "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
       "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_routes_contentauditroutes",
-      "target": "server_content_auditor_auth_googleauth_getauthstatus",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_routes_contentauditroutes",
-      "target": "server_content_auditor_auth_googleauth_getgoogledocsclient",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_routes_contentauditroutes",
-      "target": "server_content_auditor_reference_googledocsparser_extractgoogledocid",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L9",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_routes_contentauditroutes",
-      "target": "server_content_auditor_reference_googledocsparser_parsegoogledoc",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L9",
       "weight": 1.0
     },
     {
@@ -8248,66 +7151,6 @@
       "weight": 1.0
     },
     {
-      "source": "server_content_auditor_tests_googledocsaudit_test",
-      "target": "server_content_auditor_types_normalized_normalizeddocument",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/__tests__/googleDocsAudit.test.ts",
-      "source_location": "L10",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_tests_googledocsaudit_test",
-      "target": "server_content_auditor_reference_googledocsparser_extractgoogledocid",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/__tests__/googleDocsAudit.test.ts",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_tests_googledocsaudit_test",
-      "target": "server_content_auditor_reference_googledocsparser_parsegoogledoc",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/__tests__/googleDocsAudit.test.ts",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_tests_googledocsaudit_test",
-      "target": "server_content_auditor_webpage_domcontentextractor_extractwebsitesemantictree",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/__tests__/googleDocsAudit.test.ts",
-      "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_tests_googledocsaudit_test",
-      "target": "server_content_auditor_comparison_deterministiccomparator_comparenormalizedtrees",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/__tests__/googleDocsAudit.test.ts",
-      "source_location": "L9",
-      "weight": 1.0
-    },
-    {
       "source": "server_content_auditor_types_report",
       "target": "server_content_auditor_types_page_pageextractiondiagnostics",
       "relation": "imports",
@@ -8428,54 +7271,6 @@
       "weight": 1.0
     },
     {
-      "source": "server_content_auditor_webpage_domcontentextractor",
-      "target": "server_content_auditor_types_normalized_headingtag",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_webpage_domcontentextractor",
-      "target": "server_content_auditor_types_normalized_normalizeddocument",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_webpage_domcontentextractor",
-      "target": "server_content_auditor_types_normalized_normalizedelement",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_webpage_domcontentextractor",
-      "target": "server_content_auditor_types_normalized_semantictag",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
       "source": "server_content_auditor_webpage_metadataextractor",
       "target": "server_content_auditor_types_page_pageimage",
       "relation": "imports",
@@ -8593,66 +7388,6 @@
       "context": "import",
       "source_file": "src/components/tools/ContentChecker.tsx",
       "source_location": "L24",
-      "weight": 1.0
-    },
-    {
-      "source": "src_components_tools_contentchecker",
-      "target": "src_components_tools_googledocauditview_googledocauditview",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L25",
-      "weight": 1.0
-    },
-    {
-      "source": "src_components_tools_googledocauditview",
-      "target": "server_content_auditor_types_normalized_contentauditreport",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "src/components/tools/GoogleDocAuditView.tsx",
-      "source_location": "L21",
-      "weight": 1.0
-    },
-    {
-      "source": "src_components_tools_googledocauditview",
-      "target": "server_content_auditor_types_normalized_elementcomparisonresult",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "src/components/tools/GoogleDocAuditView.tsx",
-      "source_location": "L21",
-      "weight": 1.0
-    },
-    {
-      "source": "src_components_tools_googledocauditview",
-      "target": "server_content_auditor_types_normalized_normalizeddocument",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "src/components/tools/GoogleDocAuditView.tsx",
-      "source_location": "L21",
-      "weight": 1.0
-    },
-    {
-      "source": "src_components_tools_googledocauditview",
-      "target": "server_content_auditor_types_normalized_normalizedelement",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "src/components/tools/GoogleDocAuditView.tsx",
-      "source_location": "L21",
       "weight": 1.0
     },
     {
@@ -8953,104 +7688,6 @@
       "context": "import",
       "source_file": "server.ts",
       "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "server",
-      "target": "server_content_auditor_auth_googleauthroutes",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server.ts",
-      "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth",
-      "target": "ref_googleapis",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth",
-      "target": "ref_google_auth_library",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L2",
-      "type_only": true,
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth",
-      "target": "ref_fs",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth",
-      "target": "ref_path",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauthroutes",
-      "target": "ref_express",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/auth/googleAuthRoutes.ts",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauthroutes",
-      "target": "server_content_auditor_auth_googleauth",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/auth/googleAuthRoutes.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_comparison_deterministiccomparator",
-      "target": "server_content_auditor_types_normalized",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L1",
-      "type_only": true,
       "weight": 1.0
     },
     {
@@ -9396,32 +8033,6 @@
       "weight": 1.0
     },
     {
-      "source": "server_content_auditor_reference_googledocsparser",
-      "target": "ref_googleapis",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L1",
-      "type_only": true,
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_reference_googledocsparser",
-      "target": "server_content_auditor_types_normalized",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L2",
-      "type_only": true,
-      "weight": 1.0
-    },
-    {
       "source": "server_content_auditor_reference_referenceparser",
       "target": "server_content_auditor_types_reference",
       "relation": "imports_from",
@@ -9631,30 +8242,6 @@
     },
     {
       "source": "server_content_auditor_routes_contentauditroutes",
-      "target": "server_content_auditor_webpage_domcontentextractor",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L10",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_routes_contentauditroutes",
-      "target": "server_content_auditor_comparison_deterministiccomparator",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L11",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_routes_contentauditroutes",
       "target": "ref_zod",
       "relation": "imports_from",
       "_origin": "ast",
@@ -9723,30 +8310,6 @@
       "context": "import",
       "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
       "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_routes_contentauditroutes",
-      "target": "server_content_auditor_auth_googleauth",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_routes_contentauditroutes",
-      "target": "server_content_auditor_reference_googledocsparser",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L9",
       "weight": 1.0
     },
     {
@@ -9918,92 +8481,6 @@
       "weight": 1.0
     },
     {
-      "source": "server_content_auditor_tests_googledocsaudit_test",
-      "target": "ref_node_test",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/__tests__/googleDocsAudit.test.ts",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_tests_googledocsaudit_test",
-      "target": "server_content_auditor_types_normalized",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/__tests__/googleDocsAudit.test.ts",
-      "source_location": "L10",
-      "type_only": true,
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_tests_googledocsaudit_test",
-      "target": "ref_node_assert",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/__tests__/googleDocsAudit.test.ts",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_tests_googledocsaudit_test",
-      "target": "ref_googleapis",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/__tests__/googleDocsAudit.test.ts",
-      "source_location": "L3",
-      "type_only": true,
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_tests_googledocsaudit_test",
-      "target": "server_content_auditor_reference_googledocsparser",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/__tests__/googleDocsAudit.test.ts",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_tests_googledocsaudit_test",
-      "target": "server_content_auditor_webpage_domcontentextractor",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/__tests__/googleDocsAudit.test.ts",
-      "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_tests_googledocsaudit_test",
-      "target": "server_content_auditor_comparison_deterministiccomparator",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/__tests__/googleDocsAudit.test.ts",
-      "source_location": "L9",
-      "weight": 1.0
-    },
-    {
       "source": "server_content_auditor_types_report",
       "target": "server_content_auditor_types_page",
       "relation": "imports_from",
@@ -10075,31 +8552,6 @@
       "context": "import",
       "source_file": "server/content-auditor/webpage/ContentExtractor.ts",
       "source_location": "L5",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_webpage_domcontentextractor",
-      "target": "ref_cheerio",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_webpage_domcontentextractor",
-      "target": "server_content_auditor_types_normalized",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L2",
-      "type_only": true,
       "weight": 1.0
     },
     {
@@ -10392,55 +8844,6 @@
       "context": "import",
       "source_file": "src/components/tools/ContentChecker.tsx",
       "source_location": "L24",
-      "weight": 1.0
-    },
-    {
-      "source": "src_components_tools_contentchecker",
-      "target": "src_components_tools_googledocauditview",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L25",
-      "weight": 1.0
-    },
-    {
-      "source": "src_components_tools_googledocauditview",
-      "target": "ref_react",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "src/components/tools/GoogleDocAuditView.tsx",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "src_components_tools_googledocauditview",
-      "target": "ref_lucide_react",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "src/components/tools/GoogleDocAuditView.tsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "src_components_tools_googledocauditview",
-      "target": "server_content_auditor_types_normalized",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "src/components/tools/GoogleDocAuditView.tsx",
-      "source_location": "L21",
-      "type_only": true,
       "weight": 1.0
     },
     {
@@ -10840,54 +9243,6 @@
       "weight": 1.0
     },
     {
-      "source": "server_content_auditor_types_normalized_headingelement",
-      "target": "server_content_auditor_types_normalized_basenormalizedelement",
-      "relation": "inherits",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "type",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L19",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized_listelement",
-      "target": "server_content_auditor_types_normalized_basenormalizedelement",
-      "relation": "inherits",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "type",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L30",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized_paragraphelement",
-      "target": "server_content_auditor_types_normalized_basenormalizedelement",
-      "relation": "inherits",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "type",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L25",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized_tableelement",
-      "target": "server_content_auditor_types_normalized_basenormalizedelement",
-      "relation": "inherits",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "type",
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L36",
-      "weight": 1.0
-    },
-    {
       "source": "agents_rules_git",
       "target": "agents_rules_git_git_conventional_commits_rules",
       "relation": "contains",
@@ -11016,7 +9371,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L34",
+      "source_location": "L33",
       "weight": 1.0
     },
     {
@@ -11131,7 +9486,7 @@
     },
     {
       "source": "package_dependencies",
-      "target": "package_dependencies_googleapis",
+      "target": "package_dependencies_jszip",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -11142,7 +9497,7 @@
     },
     {
       "source": "package_dependencies",
-      "target": "package_dependencies_jszip",
+      "target": "package_dependencies_lucide_react",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -11153,7 +9508,7 @@
     },
     {
       "source": "package_dependencies",
-      "target": "package_dependencies_lucide_react",
+      "target": "package_dependencies_motion",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -11164,7 +9519,7 @@
     },
     {
       "source": "package_dependencies",
-      "target": "package_dependencies_motion",
+      "target": "package_dependencies_playwright_core",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -11175,7 +9530,7 @@
     },
     {
       "source": "package_dependencies",
-      "target": "package_dependencies_playwright_core",
+      "target": "package_dependencies_react",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -11186,7 +9541,7 @@
     },
     {
       "source": "package_dependencies",
-      "target": "package_dependencies_react",
+      "target": "package_dependencies_react_dom",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -11197,7 +9552,7 @@
     },
     {
       "source": "package_dependencies",
-      "target": "package_dependencies_react_dom",
+      "target": "package_dependencies_tailwind_merge",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -11208,7 +9563,7 @@
     },
     {
       "source": "package_dependencies",
-      "target": "package_dependencies_tailwind_merge",
+      "target": "package_dependencies_tesseract_js",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -11219,24 +9574,13 @@
     },
     {
       "source": "package_dependencies",
-      "target": "package_dependencies_tesseract_js",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "package.json",
-      "source_location": "L31",
-      "weight": 1.0
-    },
-    {
-      "source": "package_dependencies",
       "target": "package_dependencies_zod",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L32",
+      "source_location": "L31",
       "weight": 1.0
     },
     {
@@ -11247,7 +9591,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L35",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -11258,7 +9602,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L36",
+      "source_location": "L35",
       "weight": 1.0
     },
     {
@@ -11269,7 +9613,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L37",
+      "source_location": "L36",
       "weight": 1.0
     },
     {
@@ -11280,7 +9624,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L38",
+      "source_location": "L37",
       "weight": 1.0
     },
     {
@@ -11291,7 +9635,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L39",
+      "source_location": "L38",
       "weight": 1.0
     },
     {
@@ -11302,7 +9646,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L40",
+      "source_location": "L39",
       "weight": 1.0
     },
     {
@@ -11313,7 +9657,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L41",
+      "source_location": "L40",
       "weight": 1.0
     },
     {
@@ -11324,7 +9668,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L42",
+      "source_location": "L41",
       "weight": 1.0
     },
     {
@@ -11335,7 +9679,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L43",
+      "source_location": "L42",
       "weight": 1.0
     },
     {
@@ -11346,7 +9690,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L44",
+      "source_location": "L43",
       "weight": 1.0
     },
     {
@@ -11357,7 +9701,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L45",
+      "source_location": "L44",
       "weight": 1.0
     },
     {
@@ -11368,7 +9712,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "package.json",
-      "source_location": "L46",
+      "source_location": "L45",
       "weight": 1.0
     },
     {
@@ -11456,7 +9800,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L103",
+      "source_location": "L102",
       "weight": 1.0
     },
     {
@@ -11467,7 +9811,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L117",
+      "source_location": "L116",
       "weight": 1.0
     },
     {
@@ -11478,7 +9822,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L1212",
+      "source_location": "L1210",
       "weight": 1.0
     },
     {
@@ -11489,7 +9833,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L126",
+      "source_location": "L125",
       "weight": 1.0
     },
     {
@@ -11500,7 +9844,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L130",
+      "source_location": "L129",
       "weight": 1.0
     },
     {
@@ -11511,7 +9855,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L187",
+      "source_location": "L186",
       "weight": 1.0
     },
     {
@@ -11522,7 +9866,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L20",
+      "source_location": "L19",
       "weight": 1.0
     },
     {
@@ -11533,7 +9877,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L33",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -11544,7 +9888,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L42",
+      "source_location": "L41",
       "weight": 1.0
     },
     {
@@ -11555,7 +9899,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L52",
+      "source_location": "L51",
       "weight": 1.0
     },
     {
@@ -11566,7 +9910,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L592",
+      "source_location": "L591",
       "weight": 1.0
     },
     {
@@ -11577,7 +9921,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L676",
+      "source_location": "L674",
       "weight": 1.0
     },
     {
@@ -11588,7 +9932,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L702",
+      "source_location": "L700",
       "weight": 1.0
     },
     {
@@ -11599,7 +9943,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L79",
+      "source_location": "L78",
       "weight": 1.0
     },
     {
@@ -11610,7 +9954,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L88",
+      "source_location": "L87",
       "weight": 1.0
     },
     {
@@ -11621,139 +9965,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server.ts",
-      "source_location": "L96",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth",
-      "target": "server_content_auditor_auth_googleauth_handleauthcallback",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L106",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth",
-      "target": "server_content_auditor_auth_googleauth_logout",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L121",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth",
-      "target": "server_content_auditor_auth_googleauth_getgoogledocsclient",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L138",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth",
-      "target": "server_content_auditor_auth_googleauth_getoauth2client",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L14",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth",
-      "target": "server_content_auditor_auth_googleauth_isgoogleoauthconfigured",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L59",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth",
-      "target": "server_content_auditor_auth_googleauth_token_path",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L6",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth",
-      "target": "server_content_auditor_auth_googleauth_getauthstatus",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L69",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauth",
-      "target": "server_content_auditor_auth_googleauth_generateauthurl",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/auth/googleAuth.ts",
-      "source_location": "L88",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_auth_googleauthroutes",
-      "target": "server_content_auditor_auth_googleauthroutes_googleauthrouter",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/auth/googleAuthRoutes.ts",
-      "source_location": "L9",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_comparison_deterministiccomparator",
-      "target": "server_content_auditor_comparison_deterministiccomparator_normalizeforcomparison",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L14",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_comparison_deterministiccomparator",
-      "target": "server_content_auditor_comparison_deterministiccomparator_istextmatch",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L28",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_comparison_deterministiccomparator",
-      "target": "server_content_auditor_comparison_deterministiccomparator_comparenormalizedtrees",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L49",
+      "source_location": "L95",
       "weight": 1.0
     },
     {
@@ -11933,61 +10145,6 @@
       "weight": 1.0
     },
     {
-      "source": "server_content_auditor_reference_googledocsparser",
-      "target": "server_content_auditor_reference_googledocsparser_parsegoogledoc",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L138",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_reference_googledocsparser",
-      "target": "server_content_auditor_reference_googledocsparser_extractgoogledocid",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L21",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_reference_googledocsparser",
-      "target": "server_content_auditor_reference_googledocsparser_extractparagraphtext",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L57",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_reference_googledocsparser",
-      "target": "server_content_auditor_reference_googledocsparser_determinelisttype",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L71",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_reference_googledocsparser",
-      "target": "server_content_auditor_reference_googledocsparser_extractpreamblemetadata",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/reference/googleDocsParser.ts",
-      "source_location": "L91",
-      "weight": 1.0
-    },
-    {
       "source": "server_content_auditor_reference_referencenormalizer",
       "target": "server_content_auditor_reference_referencenormalizer_decodehtmlentities",
       "relation": "contains",
@@ -12132,24 +10289,13 @@
     },
     {
       "source": "server_content_auditor_routes_contentauditroutes",
-      "target": "server_content_auditor_routes_contentauditroutes_contentauditrouter",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L13",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_routes_contentauditroutes",
       "target": "server_content_auditor_routes_contentauditroutes_analyzerequestschema",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L16",
+      "source_location": "L12",
       "weight": 1.0
     },
     {
@@ -12160,7 +10306,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L33",
+      "source_location": "L29",
       "weight": 1.0
     },
     {
@@ -12171,161 +10317,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L38",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
-      "source": "server_content_auditor_types_normalized",
-      "target": "server_content_auditor_types_normalized_headingtag",
+      "source": "server_content_auditor_routes_contentauditroutes",
+      "target": "server_content_auditor_routes_contentauditroutes_contentauditrouter",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized",
-      "target": "server_content_auditor_types_normalized_normalizedelementtype",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L10",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized",
-      "target": "server_content_auditor_types_normalized_basenormalizedelement",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L12",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized",
-      "target": "server_content_auditor_types_normalized_headingelement",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L19",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized",
-      "target": "server_content_auditor_types_normalized_paragraphelement",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L25",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized",
-      "target": "server_content_auditor_types_normalized_semantictag",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized",
-      "target": "server_content_auditor_types_normalized_listelement",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L30",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized",
-      "target": "server_content_auditor_types_normalized_tableelement",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L36",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized",
-      "target": "server_content_auditor_types_normalized_normalizedelement",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L42",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized",
-      "target": "server_content_auditor_types_normalized_normalizeddocument",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L48",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized",
-      "target": "server_content_auditor_types_normalized_comparisonstatus",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L59",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized",
-      "target": "server_content_auditor_types_normalized_elementcomparisonresult",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L61",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized",
-      "target": "server_content_auditor_types_normalized_auditsummary",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L82",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_types_normalized",
-      "target": "server_content_auditor_types_normalized_contentauditreport",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/types/normalized.ts",
-      "source_location": "L92",
+      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
+      "source_location": "L9",
       "weight": 1.0
     },
     {
@@ -12703,39 +10706,6 @@
       "weight": 1.0
     },
     {
-      "source": "server_content_auditor_webpage_domcontentextractor",
-      "target": "server_content_auditor_webpage_domcontentextractor_cleandom",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L12",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_webpage_domcontentextractor",
-      "target": "server_content_auditor_webpage_domcontentextractor_cleantext",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L42",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_webpage_domcontentextractor",
-      "target": "server_content_auditor_webpage_domcontentextractor_extractwebsitesemantictree",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/webpage/domContentExtractor.ts",
-      "source_location": "L55",
-      "weight": 1.0
-    },
-    {
       "source": "server_content_auditor_webpage_maincontentresolver",
       "target": "server_content_auditor_webpage_maincontentresolver_chrome_selectors",
       "relation": "contains",
@@ -13073,7 +11043,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L102",
+      "source_location": "L101",
       "weight": 1.0
     },
     {
@@ -13084,7 +11054,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L110",
+      "source_location": "L109",
       "weight": 1.0
     },
     {
@@ -13095,7 +11065,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L118",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -13106,7 +11076,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L126",
+      "source_location": "L125",
       "weight": 1.0
     },
     {
@@ -13117,7 +11087,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L140",
+      "source_location": "L139",
       "weight": 1.0
     },
     {
@@ -13128,7 +11098,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L153",
+      "source_location": "L152",
       "weight": 1.0
     },
     {
@@ -13139,7 +11109,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L164",
+      "source_location": "L163",
       "weight": 1.0
     },
     {
@@ -13150,7 +11120,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L181",
+      "source_location": "L180",
       "weight": 1.0
     },
     {
@@ -13161,7 +11131,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L206",
+      "source_location": "L205",
       "weight": 1.0
     },
     {
@@ -13172,7 +11142,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L244",
+      "source_location": "L243",
       "weight": 1.0
     },
     {
@@ -13183,7 +11153,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L27",
+      "source_location": "L26",
       "weight": 1.0
     },
     {
@@ -13194,7 +11164,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L39",
+      "source_location": "L38",
       "weight": 1.0
     },
     {
@@ -13205,7 +11175,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L49",
+      "source_location": "L48",
       "weight": 1.0
     },
     {
@@ -13216,7 +11186,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L66",
+      "source_location": "L65",
       "weight": 1.0
     },
     {
@@ -13227,7 +11197,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L79",
+      "source_location": "L78",
       "weight": 1.0
     },
     {
@@ -13238,7 +11208,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L85",
+      "source_location": "L84",
       "weight": 1.0
     },
     {
@@ -13249,29 +11219,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/tools/ContentChecker.tsx",
-      "source_location": "L91",
-      "weight": 1.0
-    },
-    {
-      "source": "src_components_tools_googledocauditview",
-      "target": "src_components_tools_googledocauditview_googleauthstatus",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/components/tools/GoogleDocAuditView.tsx",
-      "source_location": "L28",
-      "weight": 1.0
-    },
-    {
-      "source": "src_components_tools_googledocauditview",
-      "target": "src_components_tools_googledocauditview_googledocauditview",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/components/tools/GoogleDocAuditView.tsx",
-      "source_location": "L34",
+      "source_location": "L90",
       "weight": 1.0
     },
     {
@@ -14556,5 +12504,5 @@
       "source_file": "public/favicon.svg"
     }
   ],
-  "built_at_commit": "e5514947daa1c99ec5415c5409b1aa7716c6af64"
+  "built_at_commit": "a338c1e0a212152e42a2618d4d9414e6349f1c9b"
 }
