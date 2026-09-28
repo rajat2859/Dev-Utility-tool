@@ -82,8 +82,22 @@ export default function GoogleDocAuditView() {
     checkAuth();
   }, []);
 
-  const handleLogin = () => {
-    window.location.href = '/api/google/auth/start';
+  const handleLogin = async () => {
+    try {
+      setError(null);
+      const res = await fetch('/api/google/auth/start?format=json');
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(
+          data.error || 'Failed to start Google sign-in. Please ensure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are configured in your .env file.'
+        );
+      }
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to start Google sign-in.');
+    }
   };
 
   const handleLogout = async () => {
@@ -189,6 +203,11 @@ export default function GoogleDocAuditView() {
                     <CheckCircle2 className="h-3 w-3" />
                     Connected
                   </span>
+                ) : !authStatus.configured ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                    <AlertTriangle className="h-3 w-3" />
+                    OAuth Not Configured
+                  </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
                     <AlertTriangle className="h-3 w-3" />
@@ -199,6 +218,8 @@ export default function GoogleDocAuditView() {
               <p className="text-xs text-slate-500 mt-0.5">
                 {authStatus.authenticated
                   ? 'Access granted to read Google Docs via official Google Docs API.'
+                  : !authStatus.configured
+                  ? 'Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file to enable Google Docs sign-in.'
                   : 'Sign in to let Content Audit read document structure directly from Google Docs.'}
               </p>
             </div>
