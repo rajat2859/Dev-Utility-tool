@@ -118,7 +118,11 @@ export function extractWebsiteSemanticTree(
 
     // Check headings (h1..h6)
     if (/^h[1-6]$/.test(tagName)) {
-      const text = normalizeText($el.text());
+      const rawText = normalizeText($el.text());
+      const cleanText = rawText
+        .replace(/^(?:<[hH][1-6]>|\[[hH][1-6]\]|[hH][1-6][:—–-])\s*/, '')
+        .trim();
+      const text = cleanText || rawText;
       if (!text) return;
 
       elementIndex++;

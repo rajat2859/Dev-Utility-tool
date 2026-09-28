@@ -1,64 +1,85 @@
 import { google, type docs_v1 } from 'googleapis';
 
+export type GoogleDocData =
+  | (docs_v1.Schema$Document & { isHtml?: false })
+  | { isHtml: true; html: string; title?: string };
+
 /**
- * Fetches a publicly accessible Google Doc using the backend Google API key.
+ * Fetches a publicly accessible Google Doc.
  *
- * Requirements:
- * - Reads GOOGLE_API_KEY from backend environment only.
+ * Behavior:
+ * - If GOOGLE_API_KEY is configured in backend environment, uses Google Docs API.
+ * - If GOOGLE_API_KEY is missing or restricted, falls back to Google's public export
+ *   for documents shared as "Anyone with the link can view".
  * - If the document is restricted/private, returns a friendly actionable message.
- * - Handles 404, 429 rate limits, and network errors without exposing stack traces.
  */
 export async function fetchPublicGoogleDoc(
   documentId: string
-): Promise<docs_v1.Schema$Document> {
+): Promise<GoogleDocData> {
   const apiKey = process.env.GOOGLE_API_KEY?.trim();
 
-  if (!apiKey) {
-    throw new Error(
-      'Google API key is not configured. Please set GOOGLE_API_KEY in your environment (.env file).'
-    );
-  }
-
-  const docs = google.docs({ version: 'v1', auth: apiKey });
-
-  try {
-    const response = await docs.documents.get({
-      documentId,
-    });
-
-    if (!response.data) {
-      throw new Error('Google Docs API returned an empty response.');
-    }
-
-    return response.data;
-  } catch (err: any) {
-    const status = err.status || err.code || (err.response && err.response.status);
-
-    if (status === 403) {
-      throw new Error(
-        'This Google Doc could not be read publicly.\n\nMake sure sharing is set to:\nAnyone with the link → Viewer'
+  // 1. If API key is present, attempt official Google Docs API v1 first
+  if (apiKey) {
+    try {
+      const docs = google.docs({ version: 'v1', auth: apiKey });
+      const response = await docs.documents.get({ documentId });
+      if (response.data) {
+        return response.data;
+      }
+    } catch (apiErr: any) {
+      const status = apiErr.status || apiErr.code || (apiErr.response && apiErr.response.status);
+      console.warn(
+        `[GoogleDocsService] API key fetch failed (status ${status}), attempting public export fallback...`
       );
     }
+  }
 
-    if (status === 404) {
+  // 2. Fetch public document export (supported natively by Google Docs for shared links)
+  try {
+    const exportUrl = `https://docs.google.com/document/d/${encodeURIComponent(documentId)}/export?format=html`;
+    const res = await fetch(exportUrl, {
+      signal: AbortSignal.timeout(15000),
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      },
+    });
+
+    if (res.status === 404) {
       throw new Error(
         'Google Doc not found. Please check that the URL is correct and the document exists.'
       );
     }
 
-    if (status === 429) {
+    if (!res.ok) {
+      throw new Error(`Google Doc export returned HTTP ${res.status}.`);
+    }
+
+    const html = await res.text();
+    // Check if Google redirected to a sign-in wall (meaning link sharing is disabled)
+    if (html.includes('ServiceLogin') || html.includes('accounts.google.com')) {
       throw new Error(
-        'Google Docs API rate limit exceeded. Please wait a moment and try again.'
+        'This Google Doc could not be read publicly.\n\nMake sure sharing is set to:\nAnyone with the link → Viewer'
       );
     }
 
+    return { isHtml: true, html, title: '' };
+  } catch (err: any) {
     const message = err.message || 'Failed to fetch Google Doc.';
-    if (message.includes('API key not valid')) {
+    if (!apiKey) {
       throw new Error(
-        'The configured GOOGLE_API_KEY is invalid or does not have Google Docs API enabled in Google Cloud Console.'
+        `Google API key is not configured. Public document fetch failed: ${message}. Please set GOOGLE_API_KEY in your environment (.env file) or ensure sharing is set to "Anyone with the link → Viewer".`
       );
     }
 
-    throw new Error(`Google Docs API error (${status || 'UNKNOWN'}): ${message}`);
+    if (
+      message.includes('Anyone with the link') ||
+      message.includes('Google Doc not found')
+    ) {
+      throw err;
+    }
+
+    throw new Error(`Failed to fetch Google Doc: ${message}`);
   }
 }
+

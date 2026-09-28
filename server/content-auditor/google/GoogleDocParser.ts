@@ -6,6 +6,8 @@ import type {
   ListElement,
 } from '../types/normalized';
 import { normalizeText } from '../utils/textNormalizer';
+import { extractWebsiteSemanticTree } from '../webpage/domContentExtractor';
+import type { GoogleDocData } from './GoogleDocsService';
 
 /**
  * Extracts raw textual content from a Google Docs paragraph element
@@ -76,7 +78,7 @@ function extractPreambleMetadata(
 }
 
 /**
- * Parses a Google Doc API response into a normalized semantic content tree.
+ * Parses a Google Doc API response or public HTML export into a normalized semantic content tree.
  *
  * Requirements:
  * - Scans from the FIRST HEADING_1 onward.
@@ -88,7 +90,17 @@ function extractPreambleMetadata(
  * - Maps tables -> table
  * - Ignores fonts, sizes, colors, and layout noise.
  */
-export function parseGoogleDoc(doc: docs_v1.Schema$Document): NormalizedDocument {
+export function parseGoogleDoc(doc: GoogleDocData): NormalizedDocument {
+  // If document was fetched as public HTML export, parse using DOM semantic extractor
+  if ('isHtml' in doc && doc.isHtml) {
+    const tree = extractWebsiteSemanticTree(doc.html);
+    const hasH1 = tree.elements.some((el) => el.type === 'heading' && el.tag === 'h1');
+    if (!hasH1) {
+      throw new Error('No Heading 1 was found in the Google Doc.');
+    }
+    return tree;
+  }
+
   const content = doc.body?.content || [];
 
   // 1. Locate the index of the first HEADING_1
@@ -165,12 +177,15 @@ export function parseGoogleDoc(doc: docs_v1.Schema$Document): NormalizedDocument
       if (headingMatch) {
         const level = parseInt(headingMatch[1], 10);
         const tag = `h${level}` as HeadingTag;
+        const cleanHeading = text
+          .replace(/^(?:<[hH][1-6]>|\[[hH][1-6]\]|[hH][1-6][:—–-])\s*/, '')
+          .trim();
         elements.push({
           id: `doc-el-${elementIndex}`,
           type: 'heading',
           tag,
           level,
-          text,
+          text: cleanHeading || text,
         });
       } else {
         elements.push({
