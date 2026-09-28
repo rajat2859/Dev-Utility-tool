@@ -16,7 +16,8 @@
   "14": "Apple Touch & PWA Branding",
   "15": "Favicon & Visual Identity",
   "16": "Git & Conventional Commits Rules",
-  "17": "GoogleDocParser.ts",
+  "17": "ContentExtractor.ts",
   "18": "PageFetcher.ts",
-  "19": "googleAuth.ts"
+  "19": "ref_fs",
+  "20": "ref_google_auth_library"
 }
