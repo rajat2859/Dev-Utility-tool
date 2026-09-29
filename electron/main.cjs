@@ -7,6 +7,7 @@ const dotenv = require('dotenv');
 const SERVER_STARTUP_TIMEOUT_MS = 60000;
 const SERVER_HEALTH_POLL_INTERVAL_MS = 40;
 const LOCAL_HOST = '127.0.0.1';
+const RESPONSIVE_PREVIEW_PARTITION = 'persist:responsive-preview';
 const DEFAULT_WINDOW_SIZE = { width: 1400, height: 900 };
 
 const appContentDirectory = app.isPackaged
@@ -128,6 +129,7 @@ function createMainWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      webviewTag: true,
       preload: path.join(__dirname, 'preload.cjs'),
     },
   });
@@ -144,6 +146,24 @@ function createMainWindow() {
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('will-attach-webview', (event, webPreferences, webviewParams) => {
+    if (!/^https?:\/\//i.test(webviewParams.src)) {
+      event.preventDefault();
+      return;
+    }
+    delete webPreferences.preloadURL;
+    webPreferences.preload = path.join(__dirname, 'preview-preload.cjs');
+    webPreferences.nodeIntegration = false;
+    webPreferences.contextIsolation = true;
+    webviewParams.partition = RESPONSIVE_PREVIEW_PARTITION;
+  });
+  mainWindow.webContents.on('did-attach-webview', (_event, previewContents) => {
+    previewContents.setWindowOpenHandler(({ url }) => {
+      shell.openExternal(url);
+      return { action: 'deny' };
+    });
   });
 
   mainWindow.on('close', () => saveWindowState(mainWindow));

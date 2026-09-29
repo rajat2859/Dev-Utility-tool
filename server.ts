@@ -703,7 +703,7 @@ function toJsLiteral(value: string): string {
 
 // Runs inside the previewed page. Dependency-free and defensive on purpose: a
 // throw in here would take the user's site down with it.
-function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string): string {
+function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, interceptLinks = true): string {
   const userAgent = RESPONSIVE_UA[uaKey] || RESPONSIVE_UA.desktop;
   const touch = uaKey === "mobile" || uaKey === "tablet";
 
@@ -714,6 +714,7 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string): str
   var UA_KEY = __UA_KEY__;
   var UA = __UA__;
   var TOUCH = __TOUCH__;
+  var INTERCEPT_LINKS = __INTERCEPT_LINKS__;
 
   try {
     Object.defineProperty(navigator, "userAgent", { get: function () { return UA; }, configurable: true });
@@ -1019,6 +1020,7 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string): str
 
   // Keep in-page navigation inside the proxy so measurement survives a click.
   document.addEventListener("click", function (event) {
+    if (!INTERCEPT_LINKS) return;
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
     var anchor = event.target && event.target.closest ? event.target.closest("a[href]") : null;
     if (!anchor) return;
@@ -1072,7 +1074,8 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string): str
     .replace("__REAL_URL__", toJsLiteral(realUrl))
     .replace("__UA_KEY__", toJsLiteral(uaKey))
     .replace("__UA__", toJsLiteral(userAgent))
-    .replace("__TOUCH__", String(touch));
+    .replace("__TOUCH__", String(touch))
+    .replace("__INTERCEPT_LINKS__", String(interceptLinks));
 }
 
 function buildPreviewErrorPage(frameId: string, targetUrl: string, message: string): string {
@@ -1093,7 +1096,16 @@ function buildPreviewErrorPage(frameId: string, targetUrl: string, message: stri
 // to load" — without it, a server predating the proxy route just renders the
 // /api/* catch-all's JSON 404 inside the device screen.
 app.get("/api/responsive/status", (req, res) => {
-  res.json({ ok: true, allowsPrivateHosts: ALLOW_PRIVATE_PREVIEW_HOSTS });
+  res.json({ ok: true, allowsPrivateHosts: ALLOW_PRIVATE_PREVIEW_HOSTS, userAgents: RESPONSIVE_UA });
+});
+
+// The desktop app previews sites in a real browser view instead of the proxy, and injects this
+// same probe into the live page. Links are left alone there so the page navigates natively.
+app.get("/api/responsive/probe.js", (req, res) => {
+  const uaKey = ["mobile", "tablet", "desktop"].includes(String(req.query.ua)) ? String(req.query.ua) : "desktop";
+  res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  res.send(buildPreviewProbe(String(req.query.fid || "frame"), String(req.query.url || ""), uaKey, false));
 });
 
 app.get("/api/responsive/proxy", async (req, res) => {

@@ -33,6 +33,12 @@ export interface DesktopUpdateState {
   errorMessage: string | null;
 }
 
+export type PreviewWebviewElement = HTMLElement & {
+  send: (channel: string, ...args: unknown[]) => void;
+  executeJavaScript: (code: string) => Promise<unknown>;
+  getURL: () => string;
+};
+
 declare global {
   interface Window {
     desktopUpdater?: {

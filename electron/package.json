@@ -31,6 +31,7 @@
     "files": [
       "main.cjs",
       "preload.cjs",
+      "preview-preload.cjs",
       "splash.html",
       "auto-update.cjs",
       "build/server.cjs",

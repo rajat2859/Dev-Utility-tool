@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { copyText } from '../../lib/utils';
+import type { PreviewWebviewElement } from '../../types';
 
 type Group = 'mobile' | 'tablet' | 'desktop' | 'custom';
 type Brand = 'apple' | 'samsung' | 'google' | 'microsoft' | 'windows';
@@ -122,6 +123,8 @@ const DEVICE_STORAGE_KEY = 'dev_tools_preview_device';
 const MAX_RECENT_URLS = 6;
 const PROBE_TIMEOUT_MS = 18000;
 const PROXY_ENDPOINT = '/api/responsive/proxy';
+const PROBE_ENDPOINT = '/api/responsive/probe.js';
+const IS_DESKTOP_APP = Boolean(window.desktopUpdater);
 const FRAME_ID = 'stage';
 const ZOOM_STEPS = [1, 0.75, 0.5, 0.33, 0.25];
 const POP_HEADER_HEIGHT = 52;
@@ -188,13 +191,88 @@ function emptyReport(): Report {
   return { status: 'pending', overflow: false, clipped: false, overflowAmount: 0, viewportWidth: 0, documentWidth: 0, scrollHeight: 0, ghosts: 0, offenders: [], since: Date.now() };
 }
 
+type ProbeMessage = Record<string, unknown>;
+
+// The desktop app previews the real site in a browser view (not the proxy), so links, logins and
+// cookies behave like a real browser. The layout probe is injected into each page it loads.
+function LiveWebview({
+  startUrl, userAgent, uaKey, width, height, title, registerFrame, onProbeMessage, onNavigated,
+}: {
+  startUrl: string; userAgent: string; uaKey: string; width: number; height: number; title: string;
+  registerFrame: (element: HTMLElement | null) => void;
+  onProbeMessage: (message: ProbeMessage) => void;
+  onNavigated: (url: string, isInPage: boolean) => void;
+}) {
+  const webviewRef = useRef<PreviewWebviewElement | null>(null);
+
+  useEffect(() => {
+    const webview = webviewRef.current;
+    if (!webview) return;
+
+    const injectProbe = () => {
+      const probeUrl = `${PROBE_ENDPOINT}?${new URLSearchParams({ fid: FRAME_ID, ua: uaKey, url: webview.getURL() })}`;
+      fetch(probeUrl, { cache: 'no-store' })
+        .then((response) => response.text())
+        .then((probeSource) => webview.executeJavaScript(probeSource))
+        .catch(() => { /* the page still renders; it just is not measured */ });
+    };
+    const forwardProbeMessage = (event: Event) => {
+      const { channel, args } = event as Event & { channel: string; args: unknown[] };
+      if (channel === 'rp-probe') onProbeMessage(args[0] as ProbeMessage);
+    };
+    const reportNavigation = (event: Event) => {
+      const { url, isMainFrame } = event as Event & { url: string; isMainFrame?: boolean };
+      if (isMainFrame === false) return;
+      onNavigated(url, event.type === 'did-navigate-in-page');
+    };
+    const reportLoadFailure = (event: Event) => {
+      const { errorCode, errorDescription, isMainFrame } = event as Event & { errorCode: number; errorDescription: string; isMainFrame: boolean };
+      // -3 is a navigation superseded by another one, not a failure.
+      if (!isMainFrame || errorCode === -3) return;
+      onProbeMessage({ type: 'error', message: errorDescription || 'The page could not be loaded.' });
+    };
+
+    webview.addEventListener('dom-ready', injectProbe);
+    webview.addEventListener('ipc-message', forwardProbeMessage);
+    webview.addEventListener('did-navigate', reportNavigation);
+    webview.addEventListener('did-navigate-in-page', reportNavigation);
+    webview.addEventListener('did-fail-load', reportLoadFailure);
+    return () => {
+      webview.removeEventListener('dom-ready', injectProbe);
+      webview.removeEventListener('ipc-message', forwardProbeMessage);
+      webview.removeEventListener('did-navigate', reportNavigation);
+      webview.removeEventListener('did-navigate-in-page', reportNavigation);
+      webview.removeEventListener('did-fail-load', reportLoadFailure);
+    };
+  }, [uaKey, onProbeMessage, onNavigated]);
+
+  return (
+    <webview
+      ref={(element) => {
+        webviewRef.current = element as PreviewWebviewElement | null;
+        registerFrame(element);
+      }}
+      title={title}
+      src={startUrl}
+      useragent={userAgent}
+      style={{ display: 'flex', width, height, background: '#fff' }}
+    />
+  );
+}
+
 function DeviceShell({
   device, url, rotated, scale, frameKey, report, serviceReady, popped, onTogglePopped, registerFrame,
+  userAgents, onProbeMessage, onNavigated,
 }: {
   device: Device; url: string; rotated: boolean; scale: number; frameKey: number;
   report: Report; serviceReady: boolean; popped: boolean; onTogglePopped: () => void;
-  registerFrame: (element: HTMLIFrameElement | null) => void;
+  registerFrame: (element: HTMLElement | null) => void;
+  userAgents: Record<string, string> | null;
+  onProbeMessage: (message: ProbeMessage) => void;
+  onNavigated: (url: string, isInPage: boolean) => void;
 }) {
+  const uaKey = uaKeyFor(device.group, device.width);
+  const liveStartUrl = useMemo(() => url, [device.id, rotated, frameKey]);
   const width = rotated ? device.height : device.width;
   const height = rotated ? device.width : device.height;
   const metrics = chromeMetrics(device.group, device.width);
@@ -262,14 +340,29 @@ function DeviceShell({
               so the page still lays out at exactly `width` CSS pixels. */}
           {serviceReady ? (
             <div style={{ width, height, transform: `scale(${scale})`, transformOrigin: 'top left', willChange: 'transform' }}>
-              <iframe
-                key={`${device.id}-${rotated}-${frameKey}`}
-                ref={registerFrame}
-                title={`${device.label} preview of ${displayUrl(url)}`}
-                src={frameSource(url, device, frameKey)}
-                className="block border-0 bg-white"
-                style={{ width, height }}
-              />
+              {IS_DESKTOP_APP && userAgents ? (
+                <LiveWebview
+                  key={`${device.id}-${rotated}-${frameKey}`}
+                  startUrl={liveStartUrl}
+                  userAgent={userAgents[uaKey]}
+                  uaKey={uaKey}
+                  width={width}
+                  height={height}
+                  title={`${device.label} preview of ${displayUrl(url)}`}
+                  registerFrame={registerFrame}
+                  onProbeMessage={onProbeMessage}
+                  onNavigated={onNavigated}
+                />
+              ) : (
+                <iframe
+                  key={`${device.id}-${rotated}-${frameKey}`}
+                  ref={registerFrame}
+                  title={`${device.label} preview of ${displayUrl(url)}`}
+                  src={frameSource(url, device, frameKey)}
+                  className="block border-0 bg-white"
+                  style={{ width, height }}
+                />
+              )}
             </div>
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-slate-50 p-4 text-center">
@@ -323,6 +416,7 @@ export default function ResponsivePreview() {
   const [customWidth, setCustomWidth] = useState('414');
   const [customHeight, setCustomHeight] = useState('896');
   const [serviceReady, setServiceReady] = useState<boolean | null>(null);
+  const [userAgents, setUserAgents] = useState<Record<string, string> | null>(null);
   const [sizeError, setSizeError] = useState('');
   const [copied, setCopied] = useState(false);
   const [showOffenders, setShowOffenders] = useState(false);
@@ -330,7 +424,7 @@ export default function ResponsivePreview() {
   const poppedRef = useRef(false);
 
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const frameRef = useRef<HTMLIFrameElement | null>(null);
+  const frameRef = useRef<HTMLElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const controlsRef = useRef<HTMLDivElement | null>(null);
   const [stageWidth, setStageWidth] = useState(0);
@@ -382,12 +476,16 @@ export default function ResponsivePreview() {
 
   const scale = zoom === 'fit' ? fitScale : zoom;
 
-  const registerFrame = useCallback((element: HTMLIFrameElement | null) => {
+  const registerFrame = useCallback((element: HTMLElement | null) => {
     frameRef.current = element;
   }, []);
 
   const sendToFrame = useCallback((message: Record<string, unknown>) => {
-    try { frameRef.current?.contentWindow?.postMessage({ source: 'rp-host', ...message }, '*'); } catch { /* frame gone */ }
+    const frame = frameRef.current;
+    try {
+      if (frame instanceof HTMLIFrameElement) frame.contentWindow?.postMessage({ source: 'rp-host', ...message }, '*');
+      else (frame as PreviewWebviewElement | null)?.send('rp-host', message);
+    } catch { /* frame gone */ }
   }, []);
 
   useEffect(() => {
@@ -453,38 +551,50 @@ export default function ResponsivePreview() {
     return () => cancelAnimationFrame(frame);
   }, [popped, measureStage]);
 
-  // The probe injected by /api/responsive/proxy reports the real layout back.
+  // The probe injected into the previewed page reports the real layout back.
+  const handleProbeMessage = useCallback((data: ProbeMessage) => {
+    if (!data || typeof data !== 'object') return;
+
+    if (data.type === 'metrics') {
+      setReport({
+        status: 'ready',
+        overflow: Boolean(data.overflow),
+        clipped: Boolean(data.clipped),
+        overflowAmount: Number(data.overflowAmount) || 0,
+        viewportWidth: Number(data.viewportWidth) || 0,
+        documentWidth: Number(data.documentWidth) || 0,
+        scrollHeight: Number(data.scrollHeight) || 0,
+        ghosts: Number(data.ghosts) || 0,
+        offenders: Array.isArray(data.offenders) ? data.offenders : [],
+        since: Date.now(),
+      });
+    } else if (data.type === 'error') {
+      setReport({ ...emptyReport(), status: 'error', message: String(data.message || 'The page could not be loaded.') });
+    } else if (data.type === 'navigate' && typeof data.url === 'string') {
+      setUrlInput(data.url);
+      setPreviewUrl(data.url);
+      setReport(emptyReport());
+    }
+  }, []);
+
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       const data = event.data;
-      if (!data || typeof data !== 'object' || data.source !== 'rp-probe') return;
-      if (data.frameId !== FRAME_ID) return;
-
-      if (data.type === 'metrics') {
-        setReport({
-          status: 'ready',
-          overflow: Boolean(data.overflow),
-          clipped: Boolean(data.clipped),
-          overflowAmount: Number(data.overflowAmount) || 0,
-          viewportWidth: Number(data.viewportWidth) || 0,
-          documentWidth: Number(data.documentWidth) || 0,
-          scrollHeight: Number(data.scrollHeight) || 0,
-          ghosts: Number(data.ghosts) || 0,
-          offenders: Array.isArray(data.offenders) ? data.offenders : [],
-          since: Date.now(),
-        });
-      } else if (data.type === 'error') {
-        setReport({ ...emptyReport(), status: 'error', message: String(data.message || 'The page could not be loaded.') });
-      } else if (data.type === 'navigate' && typeof data.url === 'string') {
-        setUrlInput(data.url);
-        setPreviewUrl(data.url);
-        setReport(emptyReport());
-      }
+      if (!data || typeof data !== 'object' || data.source !== 'rp-probe' || data.frameId !== FRAME_ID) return;
+      handleProbeMessage(data);
     };
 
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, []);
+  }, [handleProbeMessage]);
+
+  // The live browser view navigates on its own, so the address bar follows it. A hash or
+  // history change keeps the same document, so the probe has to be asked to measure again.
+  const handleLiveNavigation = useCallback((url: string, isInPage: boolean) => {
+    setUrlInput(url);
+    setPreviewUrl(url);
+    if (isInPage) setTimeout(() => sendToFrame({ type: 'rescan' }), 300);
+  }, [sendToFrame]);
 
   // Anything that remounts the frame invalidates the measurement with it.
   useEffect(() => {
@@ -510,7 +620,11 @@ export default function ResponsivePreview() {
     let cancelled = false;
     fetch('/api/responsive/status', { cache: 'no-store' })
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
-      .then((data) => { if (!cancelled) setServiceReady(Boolean(data?.ok)); })
+      .then((data) => {
+        if (cancelled) return;
+        setServiceReady(Boolean(data?.ok));
+        setUserAgents(data?.userAgents ?? null);
+      })
       .catch(() => { if (!cancelled) setServiceReady(false); });
     return () => { cancelled = true; };
   }, []);
@@ -962,6 +1076,9 @@ export default function ResponsivePreview() {
             popped={popped}
             onTogglePopped={() => setPopped((value) => !value)}
             registerFrame={registerFrame}
+            userAgents={userAgents}
+            onProbeMessage={handleProbeMessage}
+            onNavigated={handleLiveNavigation}
           />
         </motion.div>
       </section>
