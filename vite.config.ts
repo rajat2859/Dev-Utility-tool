@@ -13,7 +13,7 @@ export default defineConfig(() => {
     },
     server: {
       hmr: false,
-      watch: process.env.DISABLE_HMR === 'true' ? null : { ignored: ['**/.desktop-profile/**'] },
+      watch: process.env.DISABLE_HMR === 'true' ? null : { ignored: ['**/.desktop-profile/**', '**/electron/**'] },
     },
   };
 });

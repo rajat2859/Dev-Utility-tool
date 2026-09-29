@@ -1,0 +1,50 @@
+{
+  "name": "utility-tool-manager-desktop",
+  "productName": "Utility Tool Manager",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Windows desktop shell for the Utility Tool Manager web app",
+  "main": "main.cjs",
+  "scripts": {
+    "prepare-content": "node scripts/build-app-content.mjs",
+    "start": "npm run prepare-content && electron .",
+    "pack": "npm run prepare-content && electron-builder --win --dir",
+    "dist": "npm run prepare-content && electron-builder --win"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "playwright-core": "^1.63.0",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.utilitytoolmanager.desktop",
+    "productName": "Utility Tool Manager",
+    "asar": false,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "build/server.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      { "from": "../dist", "to": "app-content/dist" },
+      { "from": "../eng.traineddata", "to": "app-content/eng.traineddata" },
+      { "from": "../.env.example", "to": "app-content/.env.example" }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    }
+  }
+}
