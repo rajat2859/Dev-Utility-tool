@@ -37,6 +37,11 @@ function cleanDom($: cheerio.CheerioAPI): void {
   ).remove();
 }
 
+function separateBlockLevelText($: cheerio.CheerioAPI): void {
+  $('br').replaceWith(' ');
+  $('p, li, ul, ol, div, tr, td, th, h1, h2, h3, h4, h5, h6').append(' ');
+}
+
 /**
  * Extracts semantic content from a webpage HTML string, starting strictly from the first <h1>.
  *
@@ -61,6 +66,7 @@ export function extractWebsiteSemanticTree(
   );
 
   cleanDom($);
+  separateBlockLevelText($);
 
   // Determine root container to scan
   let $scope: cheerio.Cheerio<any> = $('body');

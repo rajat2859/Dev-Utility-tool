@@ -575,6 +575,22 @@ describe('Deterministic Comparator', () => {
     assert.match(tableComp.detail, /Expected: "₹999", Found: "₹1,299"/);
   });
 
+  test('keeps words apart when table cells contain block-level or line-break markup', () => {
+    const cellMarkupVariants = [
+      'Email<br>Phone',
+      '<p>Email</p><p>Phone</p>',
+      '<ul><li>Email</li><li>Phone</li></ul>',
+    ];
+
+    for (const cellMarkup of cellMarkupVariants) {
+      const websiteTree = extractWebsiteSemanticTree(
+        `<main><h1>Pricing</h1><table><tr><td>Support</td><td>${cellMarkup}</td></tr></table></main>`
+      );
+      const table = websiteTree.elements.find((element) => element.type === 'table');
+      assert.deepEqual(table?.type === 'table' && table.rows, [['Support', 'Email Phone']], cellMarkup);
+    }
+  });
+
   test('tracks extra elements found on website that were not in reference', () => {
     const refDoc: NormalizedDocument = {
       elements: [
