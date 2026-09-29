@@ -118,6 +118,10 @@ function isGenericTextBlock(element: NormalizedElement): boolean {
   return element.type === 'paragraph' && element.sourceTag !== undefined;
 }
 
+function pairingGroupOf(element: NormalizedElement): 'text' | 'list' | 'table' {
+  return element.type === 'heading' || element.type === 'paragraph' ? 'text' : element.type;
+}
+
 function describeElement(element: NormalizedElement, tag: string = element.tag) {
   return {
     tag,
@@ -228,9 +232,9 @@ export function compareNormalizedTrees(
     const gapReferenceIndexes = unmatchedReferenceIndexes.filter((r) => anchorsBefore(r, 0) === gap);
     const gapWebsiteIndexes = unmatchedWebsiteIndexes.filter((w) => anchorsBefore(w, 1) === gap);
 
-    (['heading', 'paragraph', 'list', 'table'] as const).forEach((elementType) => {
-      const referenceCandidates = gapReferenceIndexes.filter((r) => refElements[r].type === elementType);
-      const websiteCandidates = gapWebsiteIndexes.filter((w) => webElements[w].type === elementType);
+    (['text', 'list', 'table'] as const).forEach((pairingGroup) => {
+      const referenceCandidates = gapReferenceIndexes.filter((r) => pairingGroupOf(refElements[r]) === pairingGroup);
+      const websiteCandidates = gapWebsiteIndexes.filter((w) => pairingGroupOf(webElements[w]) === pairingGroup);
       const sameCount = referenceCandidates.length === websiteCandidates.length;
       const unpairedWebsite = new Set(websiteCandidates);
 
@@ -238,7 +242,11 @@ export function compareNormalizedTrees(
         const positional = sameCount ? websiteCandidates[position] : undefined;
         let chosen: number | undefined;
 
-        if (positional !== undefined && !isGenericTextBlock(webElements[positional])) {
+        if (
+          positional !== undefined &&
+          webElements[positional].type === refElements[r].type &&
+          !isGenericTextBlock(webElements[positional])
+        ) {
           chosen = positional;
         } else {
           let bestSimilarity = MINIMUM_WORD_SIMILARITY_FOR_PAIRING;
@@ -279,17 +287,6 @@ export function compareNormalizedTrees(
     const reference = describeElement(ref) as ElementComparisonResult['reference'];
 
     if (pairedByPositionReferenceIndexes.has(r)) {
-      if (ref.type === 'list' && web.type === 'list' && ref.tag !== web.tag) {
-        return {
-          id,
-          order,
-          status: 'WRONG_TAG',
-          reference,
-          website: describeElement(web),
-          message: `List type differs: expected <${ref.tag}> but found <${web.tag}>.`,
-        };
-      }
-
       let message = 'Content differs from reference.';
       if (ref.type === 'list' && web.type === 'list') {
         const listComparison = compareListDetails(ref.items, web.items);
@@ -299,7 +296,12 @@ export function compareNormalizedTrees(
         const tableComparison = compareTableDetails(ref.rows, web.rows);
         if (!tableComparison.matches) message = tableComparison.detail;
       }
-      return { id, order, status: 'CONTENT_MISMATCH', reference, website: describeElement(web), message };
+
+      const pageTag = ref.tag === web.tag ? web.tag : pageTagOf(web);
+      if (ref.tag !== web.tag) {
+        message += ` Tag also differs: page uses <${pageTag}> instead of expected <${ref.tag}>.`;
+      }
+      return { id, order, status: 'CONTENT_MISMATCH', reference, website: describeElement(web, pageTag), message };
     }
 
     if (outOfOrderReferenceIndexes.has(r)) {
