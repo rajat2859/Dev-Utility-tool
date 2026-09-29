@@ -591,6 +591,25 @@ describe('Deterministic Comparator', () => {
     }
   });
 
+  test('keeps header, aside, and form content inside the main content area but drops page chrome outside it', () => {
+    const websiteTree = extractWebsiteSemanticTree(
+      `<header><p>Site tagline</p></header>
+       <aside><p>Site promo</p></aside>
+       <main>
+         <article>
+           <header class="entry-header"><h1>Best Pizza</h1></header>
+           <aside><p>Key takeaway text.</p></aside>
+           <form><p>Contact us today.</p></form>
+         </article>
+       </main>`
+    );
+
+    assert.deepEqual(
+      websiteTree.elements.map((element) => element.text),
+      ['Best Pizza', 'Key takeaway text.', 'Contact us today.']
+    );
+  });
+
   test('tracks extra elements found on website that were not in reference', () => {
     const refDoc: NormalizedDocument = {
       elements: [

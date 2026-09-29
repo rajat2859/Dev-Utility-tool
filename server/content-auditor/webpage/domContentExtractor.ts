@@ -7,10 +7,16 @@ import type {
 } from '../types/normalized';
 import { normalizeText } from '../utils/textNormalizer';
 
+const DEFAULT_CONTENT_ROOT_SELECTOR = 'main, [role="main"], article, #content, .main-content';
+
 /**
  * Strips script, style, navigation, footer, and interactive chrome elements.
  */
-function cleanDom($: cheerio.CheerioAPI): void {
+function cleanDom($: cheerio.CheerioAPI, contentRootSelector: string): void {
+  $('header, aside, form')
+    .filter((_, element) => $(element).closest(contentRootSelector).length === 0)
+    .remove();
+
   $(
     [
       'script',
@@ -18,11 +24,8 @@ function cleanDom($: cheerio.CheerioAPI): void {
       'noscript',
       'svg',
       'nav',
-      'header',
       'footer',
-      'aside',
       'iframe',
-      'form',
       '[role="navigation"]',
       '[role="banner"]',
       '[role="contentinfo"]',
@@ -65,7 +68,8 @@ export function extractWebsiteSemanticTree(
       ''
   );
 
-  cleanDom($);
+  const contentRootSelector = options?.selector || DEFAULT_CONTENT_ROOT_SELECTOR;
+  cleanDom($, contentRootSelector);
   separateBlockLevelText($);
 
   // Determine root container to scan
@@ -76,7 +80,7 @@ export function extractWebsiteSemanticTree(
       $scope = $custom;
     }
   } else {
-    const $main = $('main, [role="main"], article, #content, .main-content');
+    const $main = $(DEFAULT_CONTENT_ROOT_SELECTOR);
     if ($main.length > 0) {
       $scope = $main.first();
     }
