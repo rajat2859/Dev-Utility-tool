@@ -738,6 +738,100 @@ describe('Deterministic Comparator', () => {
     assert.equal(report.results[1].status, 'PASS');
   });
 
+  test('reports both the content difference and the tag difference when text and tag both differ', () => {
+    const heading = (tag: 'h2' | 'h3', text: string) => ({
+      id: `${tag}-${text}`,
+      type: 'heading' as const,
+      tag,
+      level: Number(tag[1]),
+      text,
+    });
+    const list = (tag: 'ul' | 'ol', items: string[]) => ({
+      id: `${tag}-${items[0]}`,
+      type: 'list' as const,
+      tag,
+      items,
+      text: items.join(' • '),
+    });
+
+    const headingReport = compareNormalizedTrees(
+      { elements: [heading('h2', 'Our Services Overview')] },
+      { elements: [heading('h3', 'Our Service Overview')] }
+    );
+    assert.equal(headingReport.results[0].status, 'CONTENT_MISMATCH');
+    assert.equal(headingReport.results[0].website?.tag, 'h3');
+    assert.match(headingReport.results[0].message, /Tag also differs: page uses <h3> instead of expected <h2>/);
+
+    const listReport = compareNormalizedTrees(
+      { elements: [list('ul', ['SEO Services', 'Web Design'])] },
+      { elements: [list('ol', ['SEO Service', 'Web Designing'])] }
+    );
+    assert.equal(listReport.results[0].status, 'CONTENT_MISMATCH');
+    assert.equal(listReport.summary.status, 'FAIL');
+    assert.match(listReport.results[0].message, /Tag also differs: page uses <ol> instead of expected <ul>/);
+  });
+
+  test('reports an edited heading built as a button or div as a content mismatch with the page tag, not as missing', () => {
+    const referenceTree: NormalizedDocument = {
+      elements: [{ id: '1', type: 'heading', tag: 'h3', level: 3, text: 'How long does delivery take?' }],
+    };
+
+    for (const questionTag of ['button', 'div', 'summary']) {
+      const websiteTree = extractWebsiteSemanticTree(
+        `<main><h1>Pizza FAQ</h1><${questionTag}>How long does delivery really take?</${questionTag}></main>`
+      );
+      const [, question] = compareNormalizedTrees(
+        { elements: [{ id: '0', type: 'heading', tag: 'h1', level: 1, text: 'Pizza FAQ' }, ...referenceTree.elements] },
+        websiteTree
+      ).results;
+
+      assert.equal(question.status, 'CONTENT_MISMATCH', questionTag);
+      assert.equal(question.website?.tag, questionTag);
+      assert.match(question.message, new RegExp(`page uses <${questionTag}> instead of expected <h3>`));
+    }
+  });
+
+  test('does not pair a reference heading with unrelated page text', () => {
+    const report = compareNormalizedTrees(
+      { elements: [{ id: '1', type: 'heading', tag: 'h2', level: 2, text: 'Our Services' }] },
+      { elements: [{ id: 'a', type: 'paragraph', tag: 'p', sourceTag: 'div', text: 'Call now for a free quote' }] }
+    );
+
+    assert.equal(report.results[0].status, 'MISSING');
+  });
+
+  test('reports a moved heading whose text also differs as a content mismatch that is out of position, not as missing', () => {
+    const heading = (id: string, text: string) => ({ id, type: 'heading' as const, tag: 'h2' as const, level: 2, text });
+    const paragraph = (id: string, text: string) => ({ id, type: 'paragraph' as const, tag: 'p' as const, text });
+
+    const report = compareNormalizedTrees(
+      {
+        elements: [
+          paragraph('r1', 'Intro copy for the guide.'),
+          heading('r2', 'Frequently Asked Questions'),
+          paragraph('r3', 'Answer to the first question.'),
+          heading('r4', '- Final Thoughts on Choosing'),
+          paragraph('r5', 'Closing advice text.'),
+        ],
+      },
+      {
+        elements: [
+          paragraph('w1', 'Intro copy for the guide.'),
+          heading('w2', 'Final Thoughts on Choosing'),
+          paragraph('w3', 'Closing advice text.'),
+          heading('w4', 'Frequently Asked Questions'),
+          paragraph('w5', 'Answer to the first question.'),
+        ],
+      }
+    );
+
+    const movedHeading = report.results[3];
+    assert.equal(movedHeading.status, 'CONTENT_MISMATCH');
+    assert.equal(movedHeading.outOfOrder, true);
+    assert.match(movedHeading.message, /Also out of position: found as page element #2/);
+    assert.equal(report.summary.missing, 0);
+  });
+
   test('tracks extra elements found on website that were not in reference', () => {
     const refDoc: NormalizedDocument = {
       elements: [

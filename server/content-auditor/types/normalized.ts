@@ -78,6 +78,7 @@ export interface ElementComparisonResult {
     rows?: string[][];
   };
   message: string;
+  outOfOrder?: boolean;
 }
 
 export interface AuditSummary {
