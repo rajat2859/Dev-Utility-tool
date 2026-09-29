@@ -3,25 +3,25 @@ import type {
   NormalizedElement,
   ContentAuditReport,
   ElementComparisonResult,
-  ComparisonStatus,
   AuditSummary,
 } from '../types/normalized';
 import { normalizeText, areTextsMatching } from '../utils/textNormalizer';
+
+const HEADING_MARKER_PATTERN = /^(?:<[hH][1-6]>|\[[hH][1-6]\]|[hH][1-6][:—–-])\s*/;
+
+/**
+ * Text used to decide whether two elements say the same thing. Tolerates whitespace and
+ * punctuation normalization plus editorial heading tags (e.g. "<H1> Title" vs "Title").
+ */
+function textMatchKey(text: string): string {
+  return normalizeText(text).replace(HEADING_MARKER_PATTERN, '').trim();
+}
 
 /**
  * Checks if two text strings match after normalization.
  */
 export function isTextMatch(a: string, b: string): boolean {
-  if (areTextsMatching(a, b)) return true;
-  // Lowercase check
-  const normA = normalizeText(a).toLowerCase();
-  const normB = normalizeText(b).toLowerCase();
-  if (normA === normB) return true;
-
-  // Resilience against editorial heading tags (e.g. "<H1> Title" vs "Title")
-  const cleanA = normA.replace(/^(?:<[hH][1-6]>|\[[hH][1-6]\]|[hH][1-6][:—–-])\s*/, '').trim();
-  const cleanB = normB.replace(/^(?:<[hH][1-6]>|\[[hH][1-6]\]|[hH][1-6][:—–-])\s*/, '').trim();
-  return cleanA === cleanB;
+  return textMatchKey(a) === textMatchKey(b);
 }
 
 /**
@@ -101,13 +101,91 @@ export function compareTableDetails(
   return { matches: true, detail: 'All table rows and cells match.' };
 }
 
+const MINIMUM_WORD_SIMILARITY_FOR_PAIRING = 0.25;
+
+function wordSimilarity(a: string, b: string): number {
+  const wordsOfA = new Set(normalizeText(a).toLowerCase().split(' ').filter(Boolean));
+  const wordsOfB = new Set(normalizeText(b).toLowerCase().split(' ').filter(Boolean));
+  if (wordsOfA.size === 0 || wordsOfB.size === 0) return 0;
+  let sharedWords = 0;
+  wordsOfA.forEach((word) => {
+    if (wordsOfB.has(word)) sharedWords++;
+  });
+  return (2 * sharedWords) / (wordsOfA.size + wordsOfB.size);
+}
+
+function isGenericTextBlock(element: NormalizedElement): boolean {
+  return element.type === 'paragraph' && element.sourceTag !== undefined;
+}
+
+function describeElement(element: NormalizedElement, tag: string = element.tag) {
+  return {
+    tag,
+    type: element.type,
+    text: element.text,
+    items: element.type === 'list' ? element.items : undefined,
+    rows: element.type === 'table' ? element.rows : undefined,
+  };
+}
+
+function pageTagOf(element: NormalizedElement): string {
+  return element.type === 'paragraph' && element.sourceTag ? element.sourceTag : element.tag;
+}
+
 /**
- * Deterministically compares reference content against website content in document order.
+ * Longest in-order run of elements whose text is identical. Among equally long runs,
+ * prefers pairs that also share the same tag.
+ */
+function alignElementsWithIdenticalText(
+  referenceElements: NormalizedElement[],
+  referenceKeys: string[],
+  websiteElements: NormalizedElement[],
+  websiteKeys: string[]
+): Array<[number, number]> {
+  const referenceCount = referenceElements.length;
+  const websiteCount = websiteElements.length;
+  const scoreOfPair = (r: number, w: number) =>
+    referenceKeys[r] !== websiteKeys[w] ? 0 : referenceElements[r].tag === websiteElements[w].tag ? 1001 : 1000;
+
+  const bestScore = Array.from({ length: referenceCount + 1 }, () => new Array<number>(websiteCount + 1).fill(0));
+  for (let r = 1; r <= referenceCount; r++) {
+    for (let w = 1; w <= websiteCount; w++) {
+      const pairScore = scoreOfPair(r - 1, w - 1);
+      bestScore[r][w] = Math.max(
+        bestScore[r - 1][w],
+        bestScore[r][w - 1],
+        pairScore > 0 ? bestScore[r - 1][w - 1] + pairScore : 0
+      );
+    }
+  }
+
+  const alignedPairs: Array<[number, number]> = [];
+  let r = referenceCount;
+  let w = websiteCount;
+  while (r > 0 && w > 0) {
+    const pairScore = scoreOfPair(r - 1, w - 1);
+    if (pairScore > 0 && bestScore[r][w] === bestScore[r - 1][w - 1] + pairScore) {
+      alignedPairs.push([r - 1, w - 1]);
+      r--;
+      w--;
+    } else if (bestScore[r - 1][w] >= bestScore[r][w - 1]) {
+      r--;
+    } else {
+      w--;
+    }
+  }
+  return alignedPairs.reverse();
+}
+
+/**
+ * Deterministically compares reference content against website content.
  *
- * Outcomes for each reference element:
- * - PASS: tag matches, text matches (normalized)
- * - WRONG_TAG: text matches, but semantic tag differs (e.g. h2 vs h3, or h2 vs p)
- * - CONTENT_MISMATCH: structure exists in corresponding position, but text differs
+ * Elements whose text is identical are aligned in document order, so extra blocks on the page
+ * (banners, CTAs, share buttons) never break the matching. Outcomes for each reference element:
+ * - PASS: tag matches, text matches (normalized, case-sensitive)
+ * - WRONG_TAG: text matches, but semantic tag differs (e.g. h2 vs h3, or h3 vs a <button>)
+ * - WRONG_ORDER: text exists on the page, but not in the position the reference expects
+ * - CONTENT_MISMATCH: an element of the same kind sits where the reference expects it, but text differs
  * - MISSING: reference item was not found on the webpage
  *
  * Extra elements on the website are tracked separately in `extraWebsiteElements`.
@@ -118,240 +196,163 @@ export function compareNormalizedTrees(
 ): ContentAuditReport {
   const refElements = refDoc.elements || [];
   const webElements = webDoc.elements || [];
+  const refKeys = refElements.map((element) => textMatchKey(element.text));
+  const webKeys = webElements.map((element) => textMatchKey(element.text));
 
-  const results: ElementComparisonResult[] = [];
-  const matchedWebIndices = new Set<number>();
+  const websiteIndexByReferenceIndex = new Map<number, number>();
+  const outOfOrderReferenceIndexes = new Set<number>();
+  const claimedWebsiteIndexes = new Set<number>();
 
-  let webCursor = 0;
+  const alignedPairs = alignElementsWithIdenticalText(refElements, refKeys, webElements, webKeys);
+  alignedPairs.forEach(([r, w]) => {
+    websiteIndexByReferenceIndex.set(r, w);
+    claimedWebsiteIndexes.add(w);
+  });
 
-  for (let r = 0; r < refElements.length; r++) {
-    const ref = refElements[r];
-    const refOrder = r + 1;
+  refElements.forEach((_, r) => {
+    if (websiteIndexByReferenceIndex.has(r)) return;
+    const w = webKeys.findIndex((key, index) => key === refKeys[r] && !claimedWebsiteIndexes.has(index));
+    if (w === -1) return;
+    websiteIndexByReferenceIndex.set(r, w);
+    outOfOrderReferenceIndexes.add(r);
+    claimedWebsiteIndexes.add(w);
+  });
 
-    // 1. Search for exact text match with same tag (PASS) within lookahead window
-    let foundWebIndex = -1;
-    let isSameTag = false;
+  const anchorsBefore = (position: number, side: 0 | 1) =>
+    alignedPairs.filter((pair) => pair[side] < position).length;
+  const pairedByPositionReferenceIndexes = new Set<number>();
+  const unmatchedReferenceIndexes = refElements.map((_, r) => r).filter((r) => !websiteIndexByReferenceIndex.has(r));
+  const unmatchedWebsiteIndexes = webElements.map((_, w) => w).filter((w) => !claimedWebsiteIndexes.has(w));
 
-    const LOOKAHEAD_WINDOW = 15;
-    const maxLookahead = Math.min(webElements.length, webCursor + LOOKAHEAD_WINDOW);
+  for (let gap = 0; gap <= alignedPairs.length; gap++) {
+    const gapReferenceIndexes = unmatchedReferenceIndexes.filter((r) => anchorsBefore(r, 0) === gap);
+    const gapWebsiteIndexes = unmatchedWebsiteIndexes.filter((w) => anchorsBefore(w, 1) === gap);
 
-    // Look for exact text + same tag
-    for (let w = webCursor; w < maxLookahead; w++) {
-      if (matchedWebIndices.has(w)) continue;
-      const web = webElements[w];
-      if (ref.tag === web.tag && isTextMatch(ref.text, web.text)) {
-        foundWebIndex = w;
-        isSameTag = true;
-        break;
-      }
-    }
+    (['heading', 'paragraph', 'list', 'table'] as const).forEach((elementType) => {
+      const referenceCandidates = gapReferenceIndexes.filter((r) => refElements[r].type === elementType);
+      const websiteCandidates = gapWebsiteIndexes.filter((w) => webElements[w].type === elementType);
+      const sameCount = referenceCandidates.length === websiteCandidates.length;
+      const unpairedWebsite = new Set(websiteCandidates);
 
-    // 2. If not found, look for exact text with different tag (WRONG_TAG)
-    if (foundWebIndex === -1) {
-      for (let w = webCursor; w < maxLookahead; w++) {
-        if (matchedWebIndices.has(w)) continue;
-        const web = webElements[w];
-        if (isTextMatch(ref.text, web.text)) {
-          foundWebIndex = w;
-          isSameTag = false;
-          break;
-        }
-      }
-    }
+      referenceCandidates.forEach((r, position) => {
+        const positional = sameCount ? websiteCandidates[position] : undefined;
+        let chosen: number | undefined;
 
-    // 3. If exact text match was found:
-    if (foundWebIndex >= 0) {
-      const web = webElements[foundWebIndex];
-      matchedWebIndices.add(foundWebIndex);
-      webCursor = foundWebIndex + 1;
-
-      if (isSameTag) {
-        results.push({
-          id: `comp-${refOrder}`,
-          order: refOrder,
-          status: 'PASS',
-          reference: {
-            tag: ref.tag,
-            type: ref.type,
-            text: ref.text,
-            items: ref.type === 'list' ? ref.items : undefined,
-            rows: ref.type === 'table' ? ref.rows : undefined,
-          },
-          website: {
-            tag: web.tag,
-            type: web.type,
-            text: web.text,
-            items: web.type === 'list' ? web.items : undefined,
-            rows: web.type === 'table' ? web.rows : undefined,
-          },
-          message: 'Tag and content match reference.',
-        });
-      } else {
-        results.push({
-          id: `comp-${refOrder}`,
-          order: refOrder,
-          status: 'WRONG_TAG',
-          reference: {
-            tag: ref.tag,
-            type: ref.type,
-            text: ref.text,
-            items: ref.type === 'list' ? ref.items : undefined,
-            rows: ref.type === 'table' ? ref.rows : undefined,
-          },
-          website: {
-            tag: web.tag,
-            type: web.type,
-            text: web.text,
-            items: web.type === 'list' ? web.items : undefined,
-            rows: web.type === 'table' ? web.rows : undefined,
-          },
-          message: `Text matches, but tag is <${web.tag}> instead of expected <${ref.tag}>.`,
-        });
-      }
-      continue;
-    }
-
-    // 4. If no exact text match was found, inspect candidate at webCursor for structural match
-    let candidateWebIndex = -1;
-    for (let w = webCursor; w < Math.min(webElements.length, webCursor + 3); w++) {
-      if (!matchedWebIndices.has(w)) {
-        candidateWebIndex = w;
-        break;
-      }
-    }
-
-    if (candidateWebIndex >= 0) {
-      const candidateWeb = webElements[candidateWebIndex];
-
-      // Check if this website candidate element is an exact match for an upcoming reference element
-      let matchesFutureRef = false;
-      for (let futureR = r + 1; futureR < Math.min(refElements.length, r + 5); futureR++) {
-        if (isTextMatch(refElements[futureR].text, candidateWeb.text)) {
-          matchesFutureRef = true;
-          break;
-        }
-      }
-
-      if (!matchesFutureRef && (candidateWeb.tag === ref.tag || candidateWeb.type === ref.type)) {
-        matchedWebIndices.add(candidateWebIndex);
-        webCursor = candidateWebIndex + 1;
-
-        let detailMsg = `Content differs from reference. Expected "${ref.text.slice(0, 60)}" but found "${candidateWeb.text.slice(0, 60)}".`;
-
-        // Check for specific list failure detail
-        if (ref.type === 'list' && candidateWeb.type === 'list') {
-          if (ref.tag !== candidateWeb.tag) {
-            results.push({
-              id: `comp-${refOrder}`,
-              order: refOrder,
-              status: 'WRONG_TAG',
-              reference: {
-                tag: ref.tag,
-                type: ref.type,
-                text: ref.text,
-                items: ref.items,
-              },
-              website: {
-                tag: candidateWeb.tag,
-                type: candidateWeb.type,
-                text: candidateWeb.text,
-                items: candidateWeb.items,
-              },
-              message: `List type differs: expected <${ref.tag}> but found <${candidateWeb.tag}>.`,
-            });
-            continue;
-          }
-
-          const listComp = compareListDetails(ref.items, candidateWeb.items);
-          if (!listComp.matches) {
-            detailMsg = listComp.detail;
-          }
+        if (positional !== undefined && !isGenericTextBlock(webElements[positional])) {
+          chosen = positional;
+        } else {
+          let bestSimilarity = MINIMUM_WORD_SIMILARITY_FOR_PAIRING;
+          unpairedWebsite.forEach((w) => {
+            const similarity = wordSimilarity(refElements[r].text, webElements[w].text);
+            if (similarity >= bestSimilarity) {
+              bestSimilarity = similarity;
+              chosen = w;
+            }
+          });
         }
 
-        // Check for specific table failure detail
-        if (ref.type === 'table' && candidateWeb.type === 'table') {
-          const tableComp = compareTableDetails(ref.rows, candidateWeb.rows);
-          if (!tableComp.matches) {
-            detailMsg = tableComp.detail;
-          }
-        }
-
-        results.push({
-          id: `comp-${refOrder}`,
-          order: refOrder,
-          status: 'CONTENT_MISMATCH',
-          reference: {
-            tag: ref.tag,
-            type: ref.type,
-            text: ref.text,
-            items: ref.type === 'list' ? ref.items : undefined,
-            rows: ref.type === 'table' ? ref.rows : undefined,
-          },
-          website: {
-            tag: candidateWeb.tag,
-            type: candidateWeb.type,
-            text: candidateWeb.text,
-            items: candidateWeb.type === 'list' ? candidateWeb.items : undefined,
-            rows: candidateWeb.type === 'table' ? candidateWeb.rows : undefined,
-          },
-          message: detailMsg,
-        });
-        continue;
-      }
-    }
-
-    // 5. Otherwise, reference element was not found on webpage -> MISSING
-    results.push({
-      id: `comp-${refOrder}`,
-      order: refOrder,
-      status: 'MISSING',
-      reference: {
-        tag: ref.tag,
-        type: ref.type,
-        text: ref.text,
-        items: ref.type === 'list' ? ref.items : undefined,
-        rows: ref.type === 'table' ? ref.rows : undefined,
-      },
-      message: `Reference element <${ref.tag}> was not found on the webpage.`,
+        if (chosen === undefined) return;
+        unpairedWebsite.delete(chosen);
+        websiteIndexByReferenceIndex.set(r, chosen);
+        claimedWebsiteIndexes.add(chosen);
+        pairedByPositionReferenceIndexes.add(r);
+      });
     });
   }
 
-  // Collect any website elements that were never matched
-  const extraWebsiteElements: NormalizedElement[] = [];
-  for (let w = 0; w < webElements.length; w++) {
-    if (!matchedWebIndices.has(w)) {
-      extraWebsiteElements.push(webElements[w]);
+  const results: ElementComparisonResult[] = refElements.map((ref, r) => {
+    const order = r + 1;
+    const id = `comp-${order}`;
+    const websiteIndex = websiteIndexByReferenceIndex.get(r);
+
+    if (websiteIndex === undefined) {
+      return {
+        id,
+        order,
+        status: 'MISSING',
+        reference: describeElement(ref) as ElementComparisonResult['reference'],
+        message: `Reference element <${ref.tag}> was not found on the webpage.`,
+      };
     }
-  }
 
-  // Calculate summary counts
-  let passedCount = 0;
-  let wrongTagCount = 0;
-  let mismatchCount = 0;
-  let missingCount = 0;
+    const web = webElements[websiteIndex];
+    const reference = describeElement(ref) as ElementComparisonResult['reference'];
 
-  for (const res of results) {
-    if (res.status === 'PASS') passedCount++;
-    else if (res.status === 'WRONG_TAG') wrongTagCount++;
-    else if (res.status === 'CONTENT_MISMATCH') mismatchCount++;
-    else if (res.status === 'MISSING') missingCount++;
-  }
+    if (pairedByPositionReferenceIndexes.has(r)) {
+      if (ref.type === 'list' && web.type === 'list' && ref.tag !== web.tag) {
+        return {
+          id,
+          order,
+          status: 'WRONG_TAG',
+          reference,
+          website: describeElement(web),
+          message: `List type differs: expected <${ref.tag}> but found <${web.tag}>.`,
+        };
+      }
 
-  let overallStatus: 'PASS' | 'PASS_WITH_WARNINGS' | 'FAIL' = 'PASS';
-  if (missingCount > 0 || mismatchCount > 0) {
-    overallStatus = 'FAIL';
-  } else if (wrongTagCount > 0) {
-    overallStatus = 'PASS_WITH_WARNINGS';
-  }
+      let message = 'Content differs from reference.';
+      if (ref.type === 'list' && web.type === 'list') {
+        const listComparison = compareListDetails(ref.items, web.items);
+        if (!listComparison.matches) message = listComparison.detail;
+      }
+      if (ref.type === 'table' && web.type === 'table') {
+        const tableComparison = compareTableDetails(ref.rows, web.rows);
+        if (!tableComparison.matches) message = tableComparison.detail;
+      }
+      return { id, order, status: 'CONTENT_MISMATCH', reference, website: describeElement(web), message };
+    }
+
+    if (outOfOrderReferenceIndexes.has(r)) {
+      return {
+        id,
+        order,
+        status: 'WRONG_ORDER',
+        reference,
+        website: describeElement(web),
+        message: 'Text was found on the page, but not in the position the reference expects.',
+      };
+    }
+
+    if (ref.tag === web.tag) {
+      return {
+        id,
+        order,
+        status: 'PASS',
+        reference,
+        website: describeElement(web),
+        message: 'Tag and content match reference.',
+      };
+    }
+
+    const pageTag = pageTagOf(web);
+    return {
+      id,
+      order,
+      status: 'WRONG_TAG',
+      reference,
+      website: describeElement(web, pageTag),
+      message: `Text matches, but page uses <${pageTag}> instead of expected <${ref.tag}>.`,
+    };
+  });
+
+  const extraWebsiteElements = webElements.filter((_, w) => !claimedWebsiteIndexes.has(w));
+  const countOf = (status: ElementComparisonResult['status']) =>
+    results.filter((result) => result.status === status).length;
 
   const summary: AuditSummary = {
     total: results.length,
-    passed: passedCount,
-    wrongTag: wrongTagCount,
-    contentMismatch: mismatchCount,
-    missing: missingCount,
+    passed: countOf('PASS'),
+    wrongTag: countOf('WRONG_TAG'),
+    wrongOrder: countOf('WRONG_ORDER'),
+    contentMismatch: countOf('CONTENT_MISMATCH'),
+    missing: countOf('MISSING'),
     extraOnWebsite: extraWebsiteElements.length,
-    status: overallStatus,
+    status:
+      countOf('MISSING') + countOf('CONTENT_MISMATCH') > 0
+        ? 'FAIL'
+        : countOf('WRONG_TAG') + countOf('WRONG_ORDER') > 0
+        ? 'PASS_WITH_WARNINGS'
+        : 'PASS',
   };
 
   return {
