@@ -5,6 +5,11 @@ import { extractPageAuditModel } from '../webpage/ContentExtractor';
 import { parseReference } from '../reference/ReferenceParser';
 import { buildContentAuditReport, type SelectedCheckOptions } from '../report/AuditReportBuilder';
 import { normalizeUrl } from '../../../src/lib/utils';
+import { extractGoogleDocId } from '../google/GoogleDocUrl';
+import { fetchPublicGoogleDoc } from '../google/GoogleDocsService';
+import { parseGoogleDoc } from '../google/GoogleDocParser';
+import { extractWebsiteSemanticTree } from '../webpage/domContentExtractor';
+import { compareNormalizedTrees } from '../comparison/deterministicComparator';
 
 export const contentAuditRouter = Router();
 
@@ -351,3 +356,134 @@ contentAuditRouter.post('/analyze', async (req: Request, res: Response) => {
     });
   }
 });
+
+// 4. Preview Google Doc Semantic Tree (Public Google Docs API)
+contentAuditRouter.post('/preview-doc', async (req: Request, res: Response) => {
+  try {
+    const rawDocUrl = req.body.googleDocUrl || req.body.docUrl;
+    if (!rawDocUrl || typeof rawDocUrl !== 'string' || !rawDocUrl.trim()) {
+      return res.status(400).json({
+        errorType: 'INPUT_INVALID',
+        error: 'Google Doc URL is required.',
+      });
+    }
+
+    let docId: string;
+    try {
+      docId = extractGoogleDocId(rawDocUrl);
+    } catch (urlErr: any) {
+      return res.status(400).json({
+        errorType: 'INVALID_DOC_URL',
+        error: urlErr.message,
+      });
+    }
+
+    const docData = await fetchPublicGoogleDoc(docId);
+    const referenceTree = parseGoogleDoc(docData);
+
+    return res.json({
+      success: true,
+      referenceTree,
+    });
+  } catch (err: any) {
+    return res.status(400).json({
+      errorType: 'PREVIEW_FAILED',
+      error: err.message || 'Failed to extract semantic content from Google Doc.',
+    });
+  }
+});
+
+// 5. Full End-to-End Content Audit (Public Google Doc vs Website)
+contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
+  const auditId = `audit-doc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const startTime = Date.now();
+
+  try {
+    const rawDocUrl = req.body.googleDocUrl || req.body.docUrl;
+    const rawTargetUrl = req.body.targetUrl || req.body.url;
+    const contentSelector = req.body.contentSelector;
+
+    if (!rawDocUrl || typeof rawDocUrl !== 'string' || !rawDocUrl.trim()) {
+      return res.status(400).json({
+        errorType: 'INPUT_INVALID',
+        error: 'Google Doc URL is required.',
+      });
+    }
+
+    if (!rawTargetUrl || typeof rawTargetUrl !== 'string' || !rawTargetUrl.trim()) {
+      return res.status(400).json({
+        errorType: 'INPUT_INVALID',
+        error: 'Target Website URL is required.',
+      });
+    }
+
+    // Step 1: Validate and extract document ID
+    let docId: string;
+    try {
+      docId = extractGoogleDocId(rawDocUrl);
+    } catch (urlErr: any) {
+      return res.status(400).json({
+        errorType: 'INVALID_DOC_URL',
+        error: urlErr.message,
+      });
+    }
+
+    // Step 2: Fetch public Google Doc via Google Docs API
+    let docData;
+    try {
+      docData = await fetchPublicGoogleDoc(docId);
+    } catch (apiErr: any) {
+      return res.status(400).json({
+        errorType: 'DOC_FETCH_FAILED',
+        error: apiErr.message || 'Failed to fetch public Google Doc.',
+      });
+    }
+
+    // Step 3: Parse Google Doc strictly starting from first HEADING_1
+    let referenceTree;
+    try {
+      referenceTree = parseGoogleDoc(docData);
+    } catch (parseErr: any) {
+      return res.status(400).json({
+        errorType: 'REFERENCE_PARSE_FAILED',
+        error: parseErr.message,
+      });
+    }
+
+    // Step 4: Fetch target website
+    const sanitizedUrl = normalizeUrl(rawTargetUrl);
+    let pageHtml = '';
+    try {
+      const fetched = await fetchWebpage(sanitizedUrl);
+      pageHtml = fetched.html;
+    } catch (fetchErr: any) {
+      const msg = fetchErr.message || String(fetchErr);
+      const errorType = msg.includes('Security validation') ? 'BLOCKED_URL' : 'FETCH_FAILED';
+      console.warn(`[ContentAuditor ${auditId}] Webpage fetch failed for ${sanitizeForLog(sanitizedUrl)}:`, msg);
+      return res.status(400).json({ errorType, error: msg });
+    }
+
+    // Step 5: Extract website semantic content tree starting from first <h1>
+    const websiteTree = extractWebsiteSemanticTree(pageHtml, { selector: contentSelector });
+
+    // Step 6: Deterministic comparison
+    const auditReport = compareNormalizedTrees(referenceTree, websiteTree);
+
+    const duration = Date.now() - startTime;
+    console.log(
+      `[ContentAuditor ${auditId}] Completed public doc audit for "${sanitizeForLog(sanitizedUrl)}" in ${duration}ms. Status: ${auditReport.summary.status}. Total: ${auditReport.summary.total}. Passed: ${auditReport.summary.passed}.`
+    );
+
+    return res.json({
+      success: true,
+      report: auditReport,
+    });
+  } catch (err: any) {
+    console.error(`[ContentAuditor ${auditId}] Internal audit failure:`, err);
+    return res.status(500).json({
+      errorType: 'INTERNAL_ERROR',
+      error: `Internal audit failure: ${err.message || err}`,
+    });
+  }
+});
+

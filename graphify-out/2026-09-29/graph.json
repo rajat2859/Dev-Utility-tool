@@ -203,19 +203,6 @@
       "source_location": "L49"
     },
     {
-      "id": "server_content_auditor_google_googledocsservice_googledocdata",
-      "label": "GoogleDocData",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "googledocdata",
-      "source_file": "server/content-auditor/google/GoogleDocsService.ts",
-      "source_location": "L3"
-    },
-    {
       "id": "server_content_auditor_report_auditreportbuilder_selectedcheckoptions",
       "label": "SelectedCheckOptions",
       "_callable": true,
@@ -469,7 +456,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "referenceinput",
       "source_file": "server/content-auditor/reference/ReferenceParser.ts",
@@ -482,7 +469,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "ocrextractionresult",
       "source_file": "server/content-auditor/reference/ScreenshotOcr.ts",
@@ -495,7 +482,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "ocrtileresult",
       "source_file": "server/content-auditor/reference/ScreenshotOcr.ts",
@@ -508,7 +495,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "contentreference",
       "source_file": "server/content-auditor/types/reference.ts",
@@ -521,7 +508,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "referenceblock",
       "source_file": "server/content-auditor/types/reference.ts",
@@ -534,7 +521,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "referenceblocktype",
       "source_file": "server/content-auditor/types/reference.ts",
@@ -547,7 +534,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "referencefaq",
       "source_file": "server/content-auditor/types/reference.ts",
@@ -560,7 +547,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "referenceheading",
       "source_file": "server/content-auditor/types/reference.ts",
@@ -573,7 +560,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "referencetable",
       "source_file": "server/content-auditor/types/reference.ts",
@@ -586,7 +573,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "maincontentresult",
       "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
@@ -599,7 +586,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "pagemetadata",
       "source_file": "server/content-auditor/webpage/MetadataExtractor.ts",
@@ -1515,7 +1502,7 @@
       "file_type": "code",
       "norm_label": "comparelistdetails()",
       "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L31"
+      "source_location": "L24"
     },
     {
       "id": "server_content_auditor_comparison_deterministiccomparator_comparenormalizedtrees",
@@ -1527,7 +1514,7 @@
       "file_type": "code",
       "norm_label": "comparenormalizedtrees()",
       "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L115"
+      "source_location": "L108"
     },
     {
       "id": "server_content_auditor_comparison_deterministiccomparator_comparetabledetails",
@@ -1539,7 +1526,7 @@
       "file_type": "code",
       "norm_label": "comparetabledetails()",
       "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L69"
+      "source_location": "L62"
     },
     {
       "id": "server_content_auditor_comparison_deterministiccomparator_istextmatch",
@@ -1563,7 +1550,7 @@
       "file_type": "code",
       "norm_label": "determinelisttype()",
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L26"
+      "source_location": "L24"
     },
     {
       "id": "server_content_auditor_google_googledocparser_extractparagraphtext",
@@ -1575,7 +1562,7 @@
       "file_type": "code",
       "norm_label": "extractparagraphtext()",
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L16"
+      "source_location": "L14"
     },
     {
       "id": "server_content_auditor_google_googledocparser_extractpreamblemetadata",
@@ -1587,7 +1574,7 @@
       "file_type": "code",
       "norm_label": "extractpreamblemetadata()",
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L46"
+      "source_location": "L44"
     },
     {
       "id": "server_content_auditor_google_googledocparser_parsegoogledoc",
@@ -1599,7 +1586,7 @@
       "file_type": "code",
       "norm_label": "parsegoogledoc()",
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L93"
+      "source_location": "L91"
     },
     {
       "id": "server_content_auditor_google_googledocparser_parsegoogledoc_finalizependinglist",
@@ -1611,7 +1598,7 @@
       "file_type": "code",
       "norm_label": "finalizependinglist()",
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L132"
+      "source_location": "L120"
     },
     {
       "id": "server_content_auditor_google_googledocsservice_fetchpublicgoogledoc",
@@ -1623,7 +1610,7 @@
       "file_type": "code",
       "norm_label": "fetchpublicgoogledoc()",
       "source_file": "server/content-auditor/google/GoogleDocsService.ts",
-      "source_location": "L16"
+      "source_location": "L11"
     },
     {
       "id": "server_content_auditor_google_googledocurl_extractgoogledocid",
@@ -1715,7 +1702,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "extractlabeledfield()",
       "source_file": "server/content-auditor/reference/GoogleDocParser.ts",
@@ -1727,7 +1714,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "isheadingline()",
       "source_file": "server/content-auditor/reference/GoogleDocParser.ts",
@@ -1739,7 +1726,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "parsegoogledocreference()",
       "source_file": "server/content-auditor/reference/GoogleDocParser.ts",
@@ -1751,7 +1738,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "canonicalize()",
       "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
@@ -1763,7 +1750,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "decodehtmlentities()",
       "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
@@ -1775,7 +1762,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "normalizetext()",
       "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
@@ -1787,7 +1774,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "tokenizewords()",
       "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
@@ -1799,7 +1786,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "parsereference()",
       "source_file": "server/content-auditor/reference/ReferenceParser.ts",
@@ -1811,7 +1798,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "getimagedimensions()",
       "source_file": "server/content-auditor/reference/ScreenshotOcr.ts",
@@ -1823,7 +1810,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "performtiledocr()",
       "source_file": "server/content-auditor/reference/ScreenshotOcr.ts",
@@ -1835,7 +1822,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "extractpageauditmodel()",
       "source_file": "server/content-auditor/webpage/ContentExtractor.ts",
@@ -1847,7 +1834,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "sanitizeandparsejsonld()",
       "source_file": "server/content-auditor/webpage/ContentExtractor.ts",
@@ -1859,7 +1846,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "resolvemaincontent()",
       "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
@@ -1871,7 +1858,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "extractpagemetadata()",
       "source_file": "server/content-auditor/webpage/MetadataExtractor.ts",
@@ -2697,6 +2684,17 @@
       "source_location": "L19"
     },
     {
+      "id": "server_content_auditor_routes_contentauditroutes_contentauditrouter",
+      "label": "contentAuditRouter",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "server.ts",
+      "file_type": "code",
+      "norm_label": "contentauditrouter",
+      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
+      "source_location": "L14"
+    },
+    {
       "id": "server_html_named_entities",
       "label": "HTML_NAMED_ENTITIES",
       "_origin": "ast",
@@ -2827,17 +2825,6 @@
       "norm_label": "analyzerequestschema",
       "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
       "source_location": "L17"
-    },
-    {
-      "id": "server_content_auditor_routes_contentauditroutes_contentauditrouter",
-      "label": "contentAuditRouter",
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "contentAuditRoutes.ts",
-      "file_type": "code",
-      "norm_label": "contentauditrouter",
-      "source_file": "server/content-auditor/routes/contentAuditRoutes.ts",
-      "source_location": "L14"
     },
     {
       "id": "server_content_auditor_routes_contentauditroutes_resolvedocschema",
@@ -3109,7 +3096,7 @@
       "label": "reference/GoogleDocParser.ts",
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "reference/googledocparser.ts",
       "source_file": "server/content-auditor/reference/GoogleDocParser.ts",
@@ -3120,7 +3107,7 @@
       "label": "ReferenceNormalizer.ts",
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "referencenormalizer.ts",
       "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
@@ -3131,7 +3118,7 @@
       "label": "HTML_ENTITIES",
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "html_entities",
       "source_file": "server/content-auditor/reference/ReferenceNormalizer.ts",
@@ -3142,7 +3129,7 @@
       "label": "ReferenceParser.ts",
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "referenceparser.ts",
       "source_file": "server/content-auditor/reference/ReferenceParser.ts",
@@ -3153,7 +3140,7 @@
       "label": "ScreenshotOcr.ts",
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "screenshotocr.ts",
       "source_file": "server/content-auditor/reference/ScreenshotOcr.ts",
@@ -3164,10 +3151,21 @@
       "label": "reference.ts",
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "reference.ts",
       "source_file": "server/content-auditor/types/reference.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "server_content_auditor_webpage_contentextractor",
+      "label": "ContentExtractor.ts",
+      "_origin": "ast",
+      "community": 17,
+      "community_name": "ContentExtractor.ts",
+      "file_type": "code",
+      "norm_label": "contentextractor.ts",
+      "source_file": "server/content-auditor/webpage/ContentExtractor.ts",
       "source_location": "L1"
     },
     {
@@ -3175,7 +3173,7 @@
       "label": "MainContentResolver.ts",
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "maincontentresolver.ts",
       "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
@@ -3186,7 +3184,7 @@
       "label": "CHROME_SELECTORS",
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "chrome_selectors",
       "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
@@ -3197,7 +3195,7 @@
       "label": "COMMON_CONTENT_SELECTORS",
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "common_content_selectors",
       "source_file": "server/content-auditor/webpage/MainContentResolver.ts",
@@ -3208,7 +3206,7 @@
       "label": "MetadataExtractor.ts",
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "code",
       "norm_label": "metadataextractor.ts",
       "source_file": "server/content-auditor/webpage/MetadataExtractor.ts",
@@ -3219,7 +3217,7 @@
       "label": "cheerio",
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "concept",
       "norm_label": "cheerio",
       "source_file": "package.json",
@@ -3230,7 +3228,7 @@
       "label": "tesseract.js",
       "_origin": "ast",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "file_type": "concept",
       "norm_label": "tesseract.js",
       "source_file": "package.json",
@@ -3488,6 +3486,17 @@
       "norm_label": "esbuild",
       "source_file": "package.json",
       "source_location": "L42"
+    },
+    {
+      "id": "ref_react_dom",
+      "label": "react-dom",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "package.json",
+      "file_type": "concept",
+      "norm_label": "react-dom",
+      "source_file": "package.json",
+      "source_location": "L29"
     },
     {
       "id": "ref_tailwind_merge",
@@ -3762,17 +3771,6 @@
       "file_type": "code",
       "norm_label": "report.ts",
       "source_file": "server/content-auditor/types/report.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "server_content_auditor_webpage_contentextractor",
-      "label": "ContentExtractor.ts",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "AuditReportBuilder.ts",
-      "file_type": "code",
-      "norm_label": "contentextractor.ts",
-      "source_file": "server/content-auditor/webpage/ContentExtractor.ts",
       "source_location": "L1"
     },
     {
@@ -4214,17 +4212,6 @@
       "norm_label": "react",
       "source_file": "package.json",
       "source_location": "L28"
-    },
-    {
-      "id": "ref_react_dom",
-      "label": "react-dom",
-      "_origin": "ast",
-      "community": 5,
-      "community_name": "App.tsx",
-      "file_type": "concept",
-      "norm_label": "react-dom",
-      "source_file": "package.json",
-      "source_location": "L29"
     },
     {
       "id": "src_components_tools_gradientgenerator",
@@ -4889,6 +4876,18 @@
       "source_url": null
     },
     {
+      "id": "ref_node_assert",
+      "label": "ref_node_assert",
+      "_origin": "semantic",
+      "community": 10,
+      "community_name": "contentAuditRoutes.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "ref_node_assert",
+      "source_file": "",
+      "type": "external"
+    },
+    {
       "id": "ref_node_test",
       "label": "ref_node_test",
       "_origin": "semantic",
@@ -4905,7 +4904,7 @@
       "label": "ref_domhandler",
       "_origin": "semantic",
       "community": 17,
-      "community_name": "normalizeText",
+      "community_name": "ContentExtractor.ts",
       "external": true,
       "file_type": "concept",
       "norm_label": "ref_domhandler",
@@ -4973,18 +4972,6 @@
       "type": "external"
     },
     {
-      "id": "ref_node_assert",
-      "label": "ref_node_assert",
-      "_origin": "semantic",
-      "community": 5,
-      "community_name": "App.tsx",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "ref_node_assert",
-      "source_file": "",
-      "type": "external"
-    },
-    {
       "id": "src_index",
       "label": "src_index",
       "_origin": "semantic",
@@ -5043,7 +5030,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L38",
+      "source_location": "L31",
       "weight": 1.0
     },
     {
@@ -5055,7 +5042,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L142",
+      "source_location": "L135",
       "weight": 1.0
     },
     {
@@ -5067,7 +5054,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L265",
+      "source_location": "L258",
       "weight": 1.0
     },
     {
@@ -5079,7 +5066,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L273",
+      "source_location": "L266",
       "weight": 1.0
     },
     {
@@ -5091,7 +5078,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L92",
+      "source_location": "L85",
       "weight": 1.0
     },
     {
@@ -5295,7 +5282,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L19",
+      "source_location": "L17",
       "weight": 1.0
     },
     {
@@ -5307,19 +5294,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L53",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_google_googledocparser_parsegoogledoc",
-      "target": "server_content_auditor_google_googledocparser_extractparagraphtext",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L111",
+      "source_location": "L51",
       "weight": 1.0
     },
     {
@@ -5331,7 +5306,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L124",
+      "source_location": "L112",
       "weight": 1.0
     },
     {
@@ -5343,7 +5318,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L152",
+      "source_location": "L140",
       "weight": 1.0
     },
     {
@@ -5355,19 +5330,19 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L216",
+      "source_location": "L201",
       "weight": 1.0
     },
     {
       "source": "server_content_auditor_google_googledocparser_parsegoogledoc",
-      "target": "server_content_auditor_webpage_domcontentextractor_extractwebsitesemantictree",
+      "target": "server_content_auditor_google_googledocparser_extractparagraphtext",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L96",
+      "source_location": "L99",
       "weight": 1.0
     },
     {
@@ -6519,7 +6494,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L132",
+      "source_location": "L120",
       "weight": 1.0
     },
     {
@@ -7412,18 +7387,6 @@
     },
     {
       "source": "server_content_auditor_google_googledocparser",
-      "target": "server_content_auditor_google_googledocsservice_googledocdata",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L10",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_google_googledocparser",
       "target": "server_content_auditor_types_normalized_headingtag",
       "relation": "imports",
       "_origin": "ast",
@@ -7480,18 +7443,6 @@
       "context": "import",
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
       "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_google_googledocparser",
-      "target": "server_content_auditor_webpage_domcontentextractor_extractwebsitesemantictree",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L9",
       "weight": 1.0
     },
     {
@@ -9291,19 +9242,6 @@
     },
     {
       "source": "server_content_auditor_google_googledocparser",
-      "target": "server_content_auditor_google_googledocsservice",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L10",
-      "type_only": true,
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_google_googledocparser",
       "target": "server_content_auditor_types_normalized",
       "relation": "imports_from",
       "_origin": "ast",
@@ -9325,18 +9263,6 @@
       "context": "import",
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
       "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_google_googledocparser",
-      "target": "server_content_auditor_webpage_domcontentextractor",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L9",
       "weight": 1.0
     },
     {
@@ -11647,7 +11573,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L115",
+      "source_location": "L108",
       "weight": 1.0
     },
     {
@@ -11669,7 +11595,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L31",
+      "source_location": "L24",
       "weight": 1.0
     },
     {
@@ -11680,7 +11606,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server/content-auditor/comparison/deterministicComparator.ts",
-      "source_location": "L69",
+      "source_location": "L62",
       "weight": 1.0
     },
     {
@@ -11834,7 +11760,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L16",
+      "source_location": "L14",
       "weight": 1.0
     },
     {
@@ -11845,7 +11771,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L26",
+      "source_location": "L24",
       "weight": 1.0
     },
     {
@@ -11856,7 +11782,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L46",
+      "source_location": "L44",
       "weight": 1.0
     },
     {
@@ -11867,7 +11793,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server/content-auditor/google/GoogleDocParser.ts",
-      "source_location": "L93",
+      "source_location": "L91",
       "weight": 1.0
     },
     {
@@ -11878,18 +11804,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server/content-auditor/google/GoogleDocsService.ts",
-      "source_location": "L16",
-      "weight": 1.0
-    },
-    {
-      "source": "server_content_auditor_google_googledocsservice",
-      "target": "server_content_auditor_google_googledocsservice_googledocdata",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "server/content-auditor/google/GoogleDocsService.ts",
-      "source_location": "L3",
+      "source_location": "L11",
       "weight": 1.0
     },
     {
@@ -14505,5 +14420,5 @@
       "source_file": "public/favicon.svg"
     }
   ],
-  "built_at_commit": "9a77c088150847039ce829f48fce932c9b09d706"
+  "built_at_commit": "242d7ebe7ac0f3395e3f4ebae930e4f7f3accd17"
 }
