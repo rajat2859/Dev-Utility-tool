@@ -610,6 +610,17 @@ describe('Deterministic Comparator', () => {
     );
   });
 
+  test('treats text that differs only by capitalization as a content mismatch', () => {
+    const referenceTree: NormalizedDocument = {
+      elements: [{ id: '1', type: 'heading', tag: 'h1', level: 1, text: 'Our Services' }],
+    };
+    const websiteTree: NormalizedDocument = {
+      elements: [{ id: '1', type: 'heading', tag: 'h1', level: 1, text: 'our services' }],
+    };
+
+    assert.equal(compareNormalizedTrees(referenceTree, websiteTree).results[0].status, 'CONTENT_MISMATCH');
+  });
+
   test('tracks extra elements found on website that were not in reference', () => {
     const refDoc: NormalizedDocument = {
       elements: [

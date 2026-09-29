@@ -13,15 +13,11 @@ import { normalizeText, areTextsMatching } from '../utils/textNormalizer';
  */
 export function isTextMatch(a: string, b: string): boolean {
   if (areTextsMatching(a, b)) return true;
-  // Lowercase check
-  const normA = normalizeText(a).toLowerCase();
-  const normB = normalizeText(b).toLowerCase();
-  if (normA === normB) return true;
 
   // Resilience against editorial heading tags (e.g. "<H1> Title" vs "Title")
-  const cleanA = normA.replace(/^(?:<[hH][1-6]>|\[[hH][1-6]\]|[hH][1-6][:—–-])\s*/, '').trim();
-  const cleanB = normB.replace(/^(?:<[hH][1-6]>|\[[hH][1-6]\]|[hH][1-6][:—–-])\s*/, '').trim();
-  return cleanA === cleanB;
+  const withoutHeadingMarker = (text: string) =>
+    normalizeText(text).replace(/^(?:<[hH][1-6]>|\[[hH][1-6]\]|[hH][1-6][:—–-])\s*/, '').trim();
+  return withoutHeadingMarker(a) === withoutHeadingMarker(b);
 }
 
 /**
