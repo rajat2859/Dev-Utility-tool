@@ -18,6 +18,49 @@ import type {
   NormalizedElement,
 } from '../../../server/content-auditor/types/normalized';
 
+interface StructuredElementContentProps {
+  tag: string;
+  text: string;
+  items?: string[];
+  rows?: string[][];
+}
+
+function StructuredElementContent({ tag, text, items, rows }: StructuredElementContentProps) {
+  if ((tag === 'ul' || tag === 'ol') && items?.length) {
+    const ListTag = tag;
+    const listStyle = tag === 'ol' ? 'list-decimal' : 'list-disc';
+    return (
+      <ListTag className={`${listStyle} pl-5 space-y-1 text-slate-800 font-medium leading-relaxed`}>
+        {items.map((listItemText, index) => (
+          <li key={index}>{listItemText}</li>
+        ))}
+      </ListTag>
+    );
+  }
+
+  if (tag === 'table' && rows?.length) {
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-slate-800 font-medium">
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cellText, cellIndex) => (
+                  <td key={cellIndex} className="border border-slate-200 px-2 py-1 align-top">
+                    {cellText}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  return <p className="text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">{text}</p>;
+}
+
 export default function GoogleDocAuditView() {
   const [docUrl, setDocUrl] = useState<string>('');
   const [targetUrl, setTargetUrl] = useState<string>('');
@@ -457,9 +500,7 @@ export default function GoogleDocAuditView() {
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                             Reference (Google Doc)
                           </span>
-                          <p className="text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">
-                            {item.reference.text}
-                          </p>
+                          <StructuredElementContent {...item.reference} />
                         </div>
 
                         {/* Website Element */}
@@ -474,9 +515,7 @@ export default function GoogleDocAuditView() {
                             Live Website
                           </span>
                           {item.website ? (
-                            <p className="text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">
-                              {item.website.text}
-                            </p>
+                            <StructuredElementContent {...item.website} />
                           ) : (
                             <p className="text-rose-600 font-medium italic">
                               Element was not detected on the live webpage.
@@ -525,9 +564,12 @@ export default function GoogleDocAuditView() {
                     >
                       &lt;{el.tag}&gt;
                     </span>
-                    <div className="text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">
-                      {el.text}
-                    </div>
+                    <StructuredElementContent
+                      tag={el.tag}
+                      text={el.text}
+                      items={el.type === 'list' ? el.items : undefined}
+                      rows={el.type === 'table' ? el.rows : undefined}
+                    />
                   </div>
                 ))}
               </div>
@@ -568,9 +610,12 @@ export default function GoogleDocAuditView() {
                     >
                       &lt;{el.tag}&gt;
                     </span>
-                    <div className="text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">
-                      {el.text}
-                    </div>
+                    <StructuredElementContent
+                      tag={el.tag}
+                      text={el.text}
+                      items={el.type === 'list' ? el.items : undefined}
+                      rows={el.type === 'table' ? el.rows : undefined}
+                    />
                   </div>
                 ))}
               </div>
