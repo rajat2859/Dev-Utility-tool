@@ -1,18 +1,48 @@
-const { app, BrowserWindow, Menu, dialog, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, screen, shell } = require('electron');
 const fs = require('node:fs');
 const net = require('node:net');
 const path = require('node:path');
 const dotenv = require('dotenv');
-const { registerAutoUpdate } = require('./auto-update.cjs');
 
 const SERVER_STARTUP_TIMEOUT_MS = 60000;
+const SERVER_HEALTH_POLL_INTERVAL_MS = 40;
 const LOCAL_HOST = '127.0.0.1';
+const DEFAULT_WINDOW_SIZE = { width: 1400, height: 900 };
 
 const appContentDirectory = app.isPackaged
   ? path.join(process.resourcesPath, 'app-content')
   : path.resolve(__dirname, '..');
 
 let mainWindow = null;
+let appServerUrl = null;
+
+// Caches V8-compiled code of the ~MB server bundle on disk so later launches skip the compile step.
+require('node:module').enableCompileCache(path.join(app.getPath('userData'), 'compile-cache'));
+
+const windowStatePath = path.join(app.getPath('userData'), 'window-state.json');
+
+function readWindowState() {
+  try {
+    return JSON.parse(fs.readFileSync(windowStatePath, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+function isVisibleOnSomeDisplay(bounds) {
+  return screen.getAllDisplays().some(({ workArea }) =>
+    bounds.x < workArea.x + workArea.width && bounds.x + bounds.width > workArea.x &&
+    bounds.y < workArea.y + workArea.height && bounds.y + bounds.height > workArea.y);
+}
+
+function saveWindowState(window) {
+  const windowState = { ...window.getNormalBounds(), isMaximized: window.isMaximized() };
+  try {
+    fs.writeFileSync(windowStatePath, JSON.stringify(windowState));
+  } catch (writeError) {
+    console.error('Could not save window state:', writeError);
+  }
+}
 
 function findFreePort() {
   return new Promise((resolve, reject) => {
@@ -44,7 +74,7 @@ async function waitForServerToBeHealthy(serverUrl) {
     } catch {
       // The server is still starting.
     }
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await new Promise((resolve) => setTimeout(resolve, SERVER_HEALTH_POLL_INTERVAL_MS));
   }
   throw new Error(`The app server did not start within ${SERVER_STARTUP_TIMEOUT_MS / 1000} seconds.`);
 }
@@ -83,12 +113,17 @@ function buildApplicationMenu() {
   ]);
 }
 
-function createMainWindow(serverUrl) {
+function createMainWindow() {
+  const storedWindowState = readWindowState();
+  const savedWindowState = isVisibleOnSomeDisplay(storedWindowState) ? storedWindowState : {};
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
+    width: DEFAULT_WINDOW_SIZE.width,
+    height: DEFAULT_WINDOW_SIZE.height,
+    ...savedWindowState,
     minWidth: 900,
     minHeight: 600,
+    show: false,
+    autoHideMenuBar: true,
     backgroundColor: '#0f172a',
     webPreferences: {
       contextIsolation: true,
@@ -96,9 +131,11 @@ function createMainWindow(serverUrl) {
       preload: path.join(__dirname, 'preload.cjs'),
     },
   });
+  if (savedWindowState.isMaximized) mainWindow.maximize();
+  mainWindow.webContents.setVisualZoomLevelLimits(1, 1);
 
   const keepInsideApp = (event, targetUrl) => {
-    if (!targetUrl.startsWith(serverUrl)) {
+    if (!targetUrl.startsWith(appServerUrl)) {
       event.preventDefault();
       shell.openExternal(targetUrl);
     }
@@ -109,10 +146,14 @@ function createMainWindow(serverUrl) {
     return { action: 'deny' };
   });
 
+  mainWindow.on('close', () => saveWindowState(mainWindow));
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
-  mainWindow.loadURL(serverUrl);
+
+  const splashIsVisible = new Promise((resolve) => mainWindow.once('ready-to-show', resolve));
+  mainWindow.loadFile(path.join(__dirname, 'splash.html'));
+  return splashIsVisible.then(() => mainWindow.show());
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -126,9 +167,11 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(async () => {
     Menu.setApplicationMenu(buildApplicationMenu());
-    registerAutoUpdate(() => mainWindow);
     try {
-      createMainWindow(await startServer());
+      await createMainWindow();
+      appServerUrl = await startServer();
+      require('./auto-update.cjs').registerAutoUpdate(() => mainWindow);
+      mainWindow?.loadURL(appServerUrl);
     } catch (startupError) {
       dialog.showErrorBox('Utility Tool Manager could not start', String(startupError.stack || startupError));
       app.quit();
