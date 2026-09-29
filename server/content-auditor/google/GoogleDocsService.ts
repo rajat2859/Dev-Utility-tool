@@ -1,4 +1,4 @@
-import { google, type docs_v1 } from 'googleapis';
+import type { docs_v1 } from 'googleapis';
 
 export type GoogleDocData =
   | (docs_v1.Schema$Document & { isHtml?: false })
@@ -21,16 +21,18 @@ export async function fetchPublicGoogleDoc(
   // 1. If API key is present, attempt official Google Docs API v1 first
   if (apiKey) {
     try {
-      const docs = google.docs({ version: 'v1', auth: apiKey });
-      const response = await docs.documents.get({ documentId });
-      if (response.data) {
-        return response.data;
-      }
-    } catch (apiErr: any) {
-      const status = apiErr.status || apiErr.code || (apiErr.response && apiErr.response.status);
-      console.warn(
-        `[GoogleDocsService] API key fetch failed (status ${status}), attempting public export fallback...`
+      const apiResponse = await fetch(
+        `https://docs.googleapis.com/v1/documents/${encodeURIComponent(documentId)}?key=${encodeURIComponent(apiKey)}`,
+        { signal: AbortSignal.timeout(15000) }
       );
+      if (apiResponse.ok) {
+        return (await apiResponse.json()) as docs_v1.Schema$Document;
+      }
+      console.warn(
+        `[GoogleDocsService] API key fetch failed (status ${apiResponse.status}), attempting public export fallback...`
+      );
+    } catch {
+      console.warn('[GoogleDocsService] API key fetch failed, attempting public export fallback...');
     }
   }
 
