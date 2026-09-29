@@ -11,6 +11,7 @@ const toolsMap: Record<string, () => Promise<any>> = {
   'password': () => import('./components/tools/PasswordGenerator'),
   'content-checker': () => import('./components/tools/ContentChecker'),
   'responsive-preview': () => import('./components/tools/ResponsivePreview'),
+  'settings': () => import('./components/Settings'),
 };
 
 const ImageConverter = lazy(toolsMap['image']);
@@ -20,6 +21,7 @@ const ContentChecker = lazy(toolsMap['content-checker']);
 const ResponsivePreview = lazy(toolsMap['responsive-preview']);
 const SeoChecker = lazy(toolsMap['seo-checker']);
 const HtmlCleaner = lazy(toolsMap['html-cleaner']);
+const Settings = lazy(toolsMap['settings']);
 
 // Global prefetch helper for instant tool opening on hover
 export const prefetchTool = (toolId: string) => {
@@ -102,6 +104,8 @@ export default function App() {
         return <ContentChecker />;
       case 'responsive-preview':
         return <ResponsivePreview />;
+      case 'settings':
+        return <Settings />;
       default:
         return (
           <DashboardGrid 
@@ -132,6 +136,8 @@ export default function App() {
         return 'Content & Schema Audit QA';
       case 'responsive-preview':
         return 'Responsive Multi-Device Preview';
+      case 'settings':
+        return 'Settings';
       default:
         return 'Developer & Web QA Utilities';
     }
