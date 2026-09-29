@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const net = require('node:net');
 const path = require('node:path');
 const dotenv = require('dotenv');
+const { registerAutoUpdate } = require('./auto-update.cjs');
 
 const SERVER_STARTUP_TIMEOUT_MS = 60000;
 const LOCAL_HOST = '127.0.0.1';
@@ -89,7 +90,11 @@ function createMainWindow(serverUrl) {
     minWidth: 900,
     minHeight: 600,
     backgroundColor: '#0f172a',
-    webPreferences: { contextIsolation: true, nodeIntegration: false },
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, 'preload.cjs'),
+    },
   });
 
   const keepInsideApp = (event, targetUrl) => {
@@ -121,6 +126,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(async () => {
     Menu.setApplicationMenu(buildApplicationMenu());
+    registerAutoUpdate(() => mainWindow);
     try {
       createMainWindow(await startServer());
     } catch (startupError) {

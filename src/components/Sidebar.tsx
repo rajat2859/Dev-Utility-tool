@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileImage, Paintbrush, Key, X, Menu, ShieldCheck, Wrench, FileCode, Search, MonitorSmartphone } from 'lucide-react';
+import { LayoutDashboard, FileImage, Paintbrush, Key, X, Menu, ShieldCheck, Wrench, FileCode, Search, MonitorSmartphone, Settings } from 'lucide-react';
 import { prefetchTool } from '../App';
 
 interface SidebarProps {
@@ -29,6 +29,8 @@ const menuItems: MenuItem[] = [
   { id: 'password', name: 'Password Generator', icon: Key },
 ];
 
+const settingsItem: MenuItem = { id: 'settings', name: 'Settings', icon: Settings };
+
 export default function Sidebar({
   currentView,
   onSelectView,
@@ -36,6 +38,42 @@ export default function Sidebar({
   isNavigationReachable,
   onToggleDrawer,
 }: SidebarProps) {
+  const renderMenuButton = (item: MenuItem) => {
+    const Icon = item.icon;
+    const isActive = currentView === item.id;
+    return (
+      <button
+        key={item.id}
+        title={item.name}
+        aria-label={item.name}
+        aria-current={isActive ? 'page' : undefined}
+        onMouseEnter={() => prefetchTool(item.id)}
+        onFocus={() => prefetchTool(item.id)}
+        onClick={() => {
+          onSelectView(item.id);
+          if (isDrawerOpen) onToggleDrawer();
+        }}
+        className={`w-full flex items-center justify-between md:justify-center gap-2.5 px-3 md:px-0 h-10 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+          isActive
+            ? 'bg-blue-600 text-white font-semibold'
+            : 'text-slate-400 hover:bg-slate-700 hover:text-white'
+        }`}
+      >
+        <span className="flex items-center gap-2.5 min-w-0">
+          <Icon className="h-4 w-4 shrink-0" />
+          <span className="md:hidden truncate">{item.name}</span>
+        </span>
+        {item.badge && (
+          <span className={`md:hidden text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md border tracking-wide ${
+            isActive ? 'bg-white/20 text-white border-white/30' : item.badgeColor
+          }`}>
+            {item.badge}
+          </span>
+        )}
+      </button>
+    );
+  };
+
   return (
     <>
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between z-30">
@@ -74,42 +112,12 @@ export default function Sidebar({
         </div>
 
         <nav className="flex-1 px-3 md:px-2 py-3 space-y-1 overflow-y-auto">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentView === item.id;
-            return (
-              <button
-                key={item.id}
-                title={item.name}
-                aria-label={item.name}
-                aria-current={isActive ? 'page' : undefined}
-                onMouseEnter={() => prefetchTool(item.id)}
-                onFocus={() => prefetchTool(item.id)}
-                onClick={() => {
-                  onSelectView(item.id);
-                  if (isDrawerOpen) onToggleDrawer();
-                }}
-                className={`w-full flex items-center justify-between md:justify-center gap-2.5 px-3 md:px-0 h-10 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                  isActive
-                    ? 'bg-blue-600 text-white font-semibold'
-                    : 'text-slate-400 hover:bg-slate-700 hover:text-white'
-                }`}
-              >
-                <span className="flex items-center gap-2.5 min-w-0">
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="md:hidden truncate">{item.name}</span>
-                </span>
-                {item.badge && (
-                  <span className={`md:hidden text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md border tracking-wide ${
-                    isActive ? 'bg-white/20 text-white border-white/30' : item.badgeColor
-                  }`}>
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          {menuItems.map(renderMenuButton)}
         </nav>
+
+        <div className="shrink-0 px-3 md:px-2 py-3 border-t border-slate-800">
+          {renderMenuButton(settingsItem)}
+        </div>
       </aside>
     </>
   );

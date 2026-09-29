@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "dotenv": "^17.2.3",
+    "electron-updater": "^6.8.9",
     "playwright-core": "^1.63.0",
     "tesseract.js": "^7.0.0"
   },
@@ -29,6 +30,8 @@
     },
     "files": [
       "main.cjs",
+      "preload.cjs",
+      "auto-update.cjs",
       "build/server.cjs",
       "package.json"
     ],
@@ -41,6 +44,12 @@
       "target": [
         { "target": "nsis", "arch": ["x64"] }
       ]
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "rajat2859",
+      "repo": "Dev-Utility-tool",
+      "releaseType": "release"
     },
     "nsis": {
       "oneClick": true,
