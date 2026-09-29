@@ -1,0 +1,47 @@
+name: Release desktop app
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  publish-windows-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            electron/package-lock.json
+
+      - name: Verify tag matches desktop app version
+        shell: bash
+        run: |
+          appVersion=$(node -p "require('./electron/package.json').version")
+          if [ "v$appVersion" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match electron/package.json version $appVersion"
+            exit 1
+          fi
+
+      - name: Install web app dependencies
+        run: npm ci
+
+      - name: Install desktop app dependencies
+        working-directory: electron
+        run: npm ci
+
+      - name: Build and publish installer to GitHub Releases
+        working-directory: electron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm run prepare-content
+          npx electron-builder --win --publish always
