@@ -232,7 +232,7 @@ export function compareNormalizedTrees(
         matchedWebIndices.add(candidateWebIndex);
         webCursor = candidateWebIndex + 1;
 
-        let detailMsg = `Content differs from reference. Expected "${ref.text.slice(0, 60)}" but found "${candidateWeb.text.slice(0, 60)}".`;
+        let detailMsg = 'Content differs from reference.';
 
         // Check for specific list failure detail
         if (ref.type === 'list' && candidateWeb.type === 'list') {

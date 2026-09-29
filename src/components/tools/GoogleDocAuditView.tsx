@@ -17,28 +17,106 @@ import type {
   NormalizedDocument,
   NormalizedElement,
 } from '../../../server/content-auditor/types/normalized';
+import { computeWordDiff } from '../../../server/content-auditor/comparison/diff';
 
 interface StructuredElementContentProps {
   tag: string;
   text: string;
   items?: string[];
   rows?: string[][];
+  side?: 'reference' | 'website';
+  counterpart?: { tag: string; text: string; items?: string[]; rows?: string[][] };
 }
 
-function StructuredElementContent({ tag, text, items, rows }: StructuredElementContentProps) {
+const DIFF_HIGHLIGHT_STYLE = {
+  reference: 'bg-rose-200 text-rose-900 rounded px-0.5',
+  website: 'bg-amber-200 text-amber-900 rounded px-0.5',
+};
+
+function HighlightedText({
+  text,
+  counterpartText,
+  side,
+}: {
+  text: string;
+  counterpartText?: string;
+  side: 'reference' | 'website';
+}) {
+  if (counterpartText === undefined) return <>{text}</>;
+
+  const words =
+    side === 'reference'
+      ? computeWordDiff(text, counterpartText, true).filter((word) => !word.added)
+      : computeWordDiff(counterpartText, text, true).filter((word) => !word.removed);
+
+  return (
+    <>
+      {words.map((word, index) => (
+        <React.Fragment key={index}>
+          {index > 0 && ' '}
+          {word.added || word.removed ? (
+            <mark className={DIFF_HIGHLIGHT_STYLE[side]}>{word.value}</mark>
+          ) : (
+            word.value
+          )}
+        </React.Fragment>
+      ))}
+    </>
+  );
+}
+
+function pairListItemsForDiff(ownItems: string[], otherItems: string[]): string[] {
+  const counterparts: string[] = new Array(ownItems.length).fill('');
+  const claimedOtherIndexes = new Set<number>();
+  const unmatchedOwnIndexes: number[] = [];
+
+  ownItems.forEach((ownItem, ownIndex) => {
+    const identicalIndex = otherItems.findIndex(
+      (otherItem, otherIndex) => !claimedOtherIndexes.has(otherIndex) && otherItem === ownItem
+    );
+    if (identicalIndex >= 0) {
+      claimedOtherIndexes.add(identicalIndex);
+      counterparts[ownIndex] = ownItem;
+    } else {
+      unmatchedOwnIndexes.push(ownIndex);
+    }
+  });
+
+  const unclaimedOtherItems = otherItems.filter((_, otherIndex) => !claimedOtherIndexes.has(otherIndex));
+  unmatchedOwnIndexes.forEach((ownIndex, position) => {
+    counterparts[ownIndex] = unclaimedOtherItems[position] ?? '';
+  });
+
+  return counterparts;
+}
+
+function StructuredElementContent({
+  tag,
+  text,
+  items,
+  rows,
+  side = 'reference',
+  counterpart,
+}: StructuredElementContentProps) {
+  const isComparable = counterpart !== undefined;
+
   if ((tag === 'ul' || tag === 'ol') && items?.length) {
     const ListTag = tag;
     const listStyle = tag === 'ol' ? 'list-decimal' : 'list-disc';
+    const counterpartItems = isComparable && counterpart.items ? pairListItemsForDiff(items, counterpart.items) : undefined;
     return (
       <ListTag className={`${listStyle} pl-5 space-y-1 text-slate-800 font-medium leading-relaxed`}>
         {items.map((listItemText, index) => (
-          <li key={index}>{listItemText}</li>
+          <li key={index}>
+            <HighlightedText text={listItemText} counterpartText={counterpartItems?.[index]} side={side} />
+          </li>
         ))}
       </ListTag>
     );
   }
 
   if (tag === 'table' && rows?.length) {
+    const counterpartRows = isComparable ? counterpart.rows : undefined;
     return (
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-slate-800 font-medium">
@@ -47,7 +125,11 @@ function StructuredElementContent({ tag, text, items, rows }: StructuredElementC
               <tr key={rowIndex}>
                 {row.map((cellText, cellIndex) => (
                   <td key={cellIndex} className="border border-slate-200 px-2 py-1 align-top">
-                    {cellText}
+                    <HighlightedText
+                      text={cellText}
+                      counterpartText={counterpartRows ? counterpartRows[rowIndex]?.[cellIndex] ?? '' : undefined}
+                      side={side}
+                    />
                   </td>
                 ))}
               </tr>
@@ -58,7 +140,11 @@ function StructuredElementContent({ tag, text, items, rows }: StructuredElementC
     );
   }
 
-  return <p className="text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">{text}</p>;
+  return (
+    <p className="text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">
+      <HighlightedText text={text} counterpartText={counterpart?.text} side={side} />
+    </p>
+  );
 }
 
 export default function GoogleDocAuditView() {
@@ -500,7 +586,11 @@ export default function GoogleDocAuditView() {
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                             Reference (Google Doc)
                           </span>
-                          <StructuredElementContent {...item.reference} />
+                          <StructuredElementContent
+                            {...item.reference}
+                            side="reference"
+                            counterpart={item.status === 'CONTENT_MISMATCH' ? item.website : undefined}
+                          />
                         </div>
 
                         {/* Website Element */}
@@ -515,7 +605,11 @@ export default function GoogleDocAuditView() {
                             Live Website
                           </span>
                           {item.website ? (
-                            <StructuredElementContent {...item.website} />
+                            <StructuredElementContent
+                              {...item.website}
+                              side="website"
+                              counterpart={item.status === 'CONTENT_MISMATCH' ? item.reference : undefined}
+                            />
                           ) : (
                             <p className="text-rose-600 font-medium italic">
                               Element was not detected on the live webpage.

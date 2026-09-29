@@ -11,6 +11,7 @@ import {
   compareListDetails,
   compareTableDetails,
 } from '../comparison/deterministicComparator';
+import { computeWordDiff } from '../comparison/diff';
 import type { NormalizedDocument } from '../types/normalized';
 
 describe('Shared Text Normalizer', () => {
@@ -619,6 +620,20 @@ describe('Deterministic Comparator', () => {
     };
 
     assert.equal(compareNormalizedTrees(referenceTree, websiteTree).results[0].status, 'CONTENT_MISMATCH');
+  });
+
+  test('word diff reports capitalization-only differences when case sensitivity is requested', () => {
+    assert.ok(computeWordDiff('Our Services', 'our services').every((word) => !word.added && !word.removed));
+
+    const caseSensitiveDiff = computeWordDiff('Our Services', 'our services', true);
+    assert.deepEqual(
+      caseSensitiveDiff.filter((word) => word.removed).map((word) => word.value),
+      ['Our', 'Services']
+    );
+    assert.deepEqual(
+      caseSensitiveDiff.filter((word) => word.added).map((word) => word.value),
+      ['our', 'services']
+    );
   });
 
   test('tracks extra elements found on website that were not in reference', () => {

@@ -3,7 +3,8 @@ import type { DiffWord } from '../types/report';
 /**
  * Computes deterministic word-level differences between expected and actual text using LCS.
  */
-export function computeWordDiff(expected: string, actual: string): DiffWord[] {
+export function computeWordDiff(expected: string, actual: string, caseSensitive = false): DiffWord[] {
+  const comparisonKey = (word: string) => (caseSensitive ? word : word.toLowerCase());
   const expWords = expected.trim().split(/\s+/).filter(Boolean);
   const actWords = actual.trim().split(/\s+/).filter(Boolean);
 
@@ -23,9 +24,9 @@ export function computeWordDiff(expected: string, actual: string): DiffWord[] {
   const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
 
   for (let i = 1; i <= n; i++) {
-    const w1 = expWords[i - 1].toLowerCase();
+    const w1 = comparisonKey(expWords[i - 1]);
     for (let j = 1; j <= m; j++) {
-      const w2 = actWords[j - 1].toLowerCase();
+      const w2 = comparisonKey(actWords[j - 1]);
       if (w1 === w2) {
         dp[i][j] = dp[i - 1][j - 1] + 1;
       } else {
@@ -40,7 +41,7 @@ export function computeWordDiff(expected: string, actual: string): DiffWord[] {
   let j = m;
 
   while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && expWords[i - 1].toLowerCase() === actWords[j - 1].toLowerCase()) {
+    if (i > 0 && j > 0 && comparisonKey(expWords[i - 1]) === comparisonKey(actWords[j - 1])) {
       result.unshift({ value: actWords[j - 1] });
       i--;
       j--;
