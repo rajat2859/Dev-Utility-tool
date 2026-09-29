@@ -800,6 +800,38 @@ describe('Deterministic Comparator', () => {
     assert.equal(report.results[0].status, 'MISSING');
   });
 
+  test('reports a moved heading whose text also differs as a content mismatch that is out of position, not as missing', () => {
+    const heading = (id: string, text: string) => ({ id, type: 'heading' as const, tag: 'h2' as const, level: 2, text });
+    const paragraph = (id: string, text: string) => ({ id, type: 'paragraph' as const, tag: 'p' as const, text });
+
+    const report = compareNormalizedTrees(
+      {
+        elements: [
+          paragraph('r1', 'Intro copy for the guide.'),
+          heading('r2', 'Frequently Asked Questions'),
+          paragraph('r3', 'Answer to the first question.'),
+          heading('r4', '- Final Thoughts on Choosing'),
+          paragraph('r5', 'Closing advice text.'),
+        ],
+      },
+      {
+        elements: [
+          paragraph('w1', 'Intro copy for the guide.'),
+          heading('w2', 'Final Thoughts on Choosing'),
+          paragraph('w3', 'Closing advice text.'),
+          heading('w4', 'Frequently Asked Questions'),
+          paragraph('w5', 'Answer to the first question.'),
+        ],
+      }
+    );
+
+    const movedHeading = report.results[3];
+    assert.equal(movedHeading.status, 'CONTENT_MISMATCH');
+    assert.equal(movedHeading.outOfOrder, true);
+    assert.match(movedHeading.message, /Also out of position: found as page element #2/);
+    assert.equal(report.summary.missing, 0);
+  });
+
   test('tracks extra elements found on website that were not in reference', () => {
     const refDoc: NormalizedDocument = {
       elements: [

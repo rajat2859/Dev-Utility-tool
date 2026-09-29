@@ -225,6 +225,7 @@ export function compareNormalizedTrees(
   const anchorsBefore = (position: number, side: 0 | 1) =>
     alignedPairs.filter((pair) => pair[side] < position).length;
   const pairedByPositionReferenceIndexes = new Set<number>();
+  const pairedOutOfPositionReferenceIndexes = new Set<number>();
   const unmatchedReferenceIndexes = refElements.map((_, r) => r).filter((r) => !websiteIndexByReferenceIndex.has(r));
   const unmatchedWebsiteIndexes = webElements.map((_, w) => w).filter((w) => !claimedWebsiteIndexes.has(w));
 
@@ -268,6 +269,27 @@ export function compareNormalizedTrees(
     });
   }
 
+  refElements.forEach((ref, r) => {
+    if (websiteIndexByReferenceIndex.has(r)) return;
+
+    let mostSimilarWebsiteIndex: number | undefined;
+    let bestSimilarity = MINIMUM_WORD_SIMILARITY_FOR_PAIRING;
+    webElements.forEach((web, w) => {
+      if (claimedWebsiteIndexes.has(w) || pairingGroupOf(web) !== pairingGroupOf(ref)) return;
+      const similarity = wordSimilarity(ref.text, web.text);
+      if (similarity >= bestSimilarity) {
+        bestSimilarity = similarity;
+        mostSimilarWebsiteIndex = w;
+      }
+    });
+
+    if (mostSimilarWebsiteIndex === undefined) return;
+    websiteIndexByReferenceIndex.set(r, mostSimilarWebsiteIndex);
+    claimedWebsiteIndexes.add(mostSimilarWebsiteIndex);
+    pairedByPositionReferenceIndexes.add(r);
+    pairedOutOfPositionReferenceIndexes.add(r);
+  });
+
   const results: ElementComparisonResult[] = refElements.map((ref, r) => {
     const order = r + 1;
     const id = `comp-${order}`;
@@ -301,7 +323,19 @@ export function compareNormalizedTrees(
       if (ref.tag !== web.tag) {
         message += ` Tag also differs: page uses <${pageTag}> instead of expected <${ref.tag}>.`;
       }
-      return { id, order, status: 'CONTENT_MISMATCH', reference, website: describeElement(web, pageTag), message };
+      const isOutOfPosition = pairedOutOfPositionReferenceIndexes.has(r);
+      if (isOutOfPosition) {
+        message += ` Also out of position: found as page element #${websiteIndex + 1}.`;
+      }
+      return {
+        id,
+        order,
+        status: 'CONTENT_MISMATCH',
+        reference,
+        website: describeElement(web, pageTag),
+        message,
+        ...(isOutOfPosition && { outOfOrder: true }),
+      };
     }
 
     if (outOfOrderReferenceIndexes.has(r)) {
@@ -311,7 +345,7 @@ export function compareNormalizedTrees(
         status: 'WRONG_ORDER',
         reference,
         website: describeElement(web),
-        message: 'Text was found on the page, but not in the position the reference expects.',
+        message: `Text was found on the page as element #${websiteIndex + 1}, but not in the position the reference expects.`,
       };
     }
 

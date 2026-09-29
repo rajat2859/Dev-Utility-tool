@@ -583,6 +583,11 @@ export default function GoogleDocAuditView() {
                           <span className="text-xs font-mono font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
                             &lt;{item.reference.tag}&gt;
                           </span>
+                          {item.outOfOrder && (
+                            <span className="text-xs font-mono font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                              &#8644; out of order
+                            </span>
+                          )}
                           {item.website && item.website.tag !== item.reference.tag && (
                             <span className="text-xs font-mono font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
                               &rarr; &lt;{item.website.tag}&gt; on page
