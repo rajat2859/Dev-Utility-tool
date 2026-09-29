@@ -378,21 +378,21 @@ export default function GoogleDocAuditView() {
                     {report.summary.status === 'PASS'
                       ? 'AUDIT PASS — Strict Match'
                       : report.summary.status === 'PASS_WITH_WARNINGS'
-                      ? 'PASS WITH WARNINGS — Tag Variations'
+                      ? 'PASS WITH WARNINGS — Tag or Order Variations'
                       : 'AUDIT FAIL — Differences Detected'}
                   </h3>
                   <p className="text-xs opacity-80 mt-0.5">
                     {report.summary.status === 'PASS'
                       ? 'All reference headings, paragraphs, lists, and tables match the live webpage structure.'
                       : report.summary.status === 'PASS_WITH_WARNINGS'
-                      ? 'Content text matches the reference, but semantic HTML tag levels differ (e.g. H2 vs H3).'
+                      ? 'Content text matches the reference, but semantic HTML tags (e.g. H2 vs H3, or a heading built as a button) or the order of elements differ.'
                       : 'Mismatched copy or missing elements were identified between the Google Doc and the live site.'}
                   </p>
                 </div>
               </div>
 
               {/* Metric badges */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center text-xs">
                 <div className="bg-white/80 border border-slate-200/80 rounded-xl px-2.5 py-1.5 shadow-2xs">
                   <span className="block text-[10px] uppercase font-bold text-slate-500">
                     Total
@@ -415,6 +415,14 @@ export default function GoogleDocAuditView() {
                   </span>
                   <span className="text-sm font-bold text-amber-700">
                     {report.summary.wrongTag}
+                  </span>
+                </div>
+                <div className="bg-white/80 border border-amber-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
+                  <span className="block text-[10px] uppercase font-bold text-amber-700">
+                    Wrong Order
+                  </span>
+                  <span className="text-sm font-bold text-amber-700">
+                    {report.summary.wrongOrder}
                   </span>
                 </div>
                 <div className="bg-white/80 border border-rose-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
@@ -500,7 +508,7 @@ export default function GoogleDocAuditView() {
                       : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
                   }`}
                 >
-                  Issues ({report.summary.wrongTag + report.summary.contentMismatch + report.summary.missing})
+                  Issues ({report.summary.wrongTag + report.summary.wrongOrder + report.summary.contentMismatch + report.summary.missing})
                 </button>
                 <button
                   type="button"
@@ -538,6 +546,12 @@ export default function GoogleDocAuditView() {
                           badge: 'bg-amber-100 text-amber-800 border-amber-200',
                           border: 'border-amber-200 bg-amber-50/20',
                           label: 'WRONG TAG',
+                        }
+                      : item.status === 'WRONG_ORDER'
+                      ? {
+                          badge: 'bg-amber-100 text-amber-800 border-amber-200',
+                          border: 'border-amber-200 bg-amber-50/20',
+                          label: 'WRONG ORDER',
                         }
                       : item.status === 'CONTENT_MISMATCH'
                       ? {

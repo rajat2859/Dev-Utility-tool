@@ -636,6 +636,108 @@ describe('Deterministic Comparator', () => {
     );
   });
 
+  test('finds FAQ questions and answers in any accordion markup, warning when a question is not a heading', () => {
+    const faqReference: NormalizedDocument = {
+      elements: [
+        { id: '1', type: 'heading', tag: 'h1', level: 1, text: 'Pizza FAQ' },
+        { id: '2', type: 'heading', tag: 'h3', level: 3, text: 'How long is delivery?' },
+        { id: '3', type: 'paragraph', tag: 'p', text: 'Delivery takes 30 minutes.' },
+      ],
+    };
+    const accordionMarkupByFramework: Record<string, { markup: string; questionTag: string }> = {
+      bootstrap: {
+        markup:
+          '<div class="accordion"><h3 class="accordion-header"><button>How long is delivery?</button></h3><div class="collapse"><div class="accordion-body">Delivery takes 30 minutes.</div></div></div>',
+        questionTag: 'h3',
+      },
+      elementor: {
+        markup:
+          '<div class="elementor-tab-title"><a href="#">How long is delivery?</a></div><div class="elementor-tab-content"><p>Delivery takes 30 minutes.</p></div>',
+        questionTag: 'div',
+      },
+      tailwindAlpine: {
+        markup:
+          '<div x-data="{open:false}"><button @click="open=!open"><span>How long is delivery?</span><svg></svg></button><div x-show="open">Delivery takes 30 minutes.</div></div>',
+        questionTag: 'button',
+      },
+      detailsSummary: {
+        markup: '<details><summary>How long is delivery?</summary><p>Delivery takes 30 minutes.</p></details>',
+        questionTag: 'summary',
+      },
+      definitionList: {
+        markup: '<dl><dt>How long is delivery?</dt><dd>Delivery takes 30 minutes.</dd></dl>',
+        questionTag: 'dt',
+      },
+    };
+
+    for (const [framework, { markup, questionTag }] of Object.entries(accordionMarkupByFramework)) {
+      const websiteTree = extractWebsiteSemanticTree(`<main><h1>Pizza FAQ</h1>${markup}</main>`);
+      const [, question, answer] = compareNormalizedTrees(faqReference, websiteTree).results;
+
+      assert.equal(answer.status, 'PASS', `${framework} answer`);
+      if (questionTag === 'h3') {
+        assert.equal(question.status, 'PASS', `${framework} question`);
+      } else {
+        assert.equal(question.status, 'WRONG_TAG', `${framework} question`);
+        assert.match(question.message, new RegExp(`page uses <${questionTag}> instead of expected <h3>`));
+      }
+    }
+  });
+
+  test('matches in document order even when many extra blocks sit between reference elements', () => {
+    const referenceTree: NormalizedDocument = {
+      elements: [
+        { id: '1', type: 'paragraph', tag: 'p', text: 'First paragraph.' },
+        { id: '2', type: 'paragraph', tag: 'p', text: 'Second paragraph.' },
+      ],
+    };
+    const extraParagraphs = Array.from({ length: 30 }, (_, index) => ({
+      id: `extra-${index}`,
+      type: 'paragraph' as const,
+      tag: 'p' as const,
+      text: `Unrelated banner ${index}`,
+    }));
+    const websiteTree: NormalizedDocument = {
+      elements: [
+        { id: 'a', type: 'paragraph', tag: 'p', text: 'First paragraph.' },
+        ...extraParagraphs,
+        { id: 'b', type: 'paragraph', tag: 'p', text: 'Second paragraph.' },
+      ],
+    };
+
+    const report = compareNormalizedTrees(referenceTree, websiteTree);
+    assert.equal(report.summary.status, 'PASS');
+    assert.equal(report.summary.extraOnWebsite, 30);
+  });
+
+  test('reports WRONG_ORDER for text that exists on the page in a different position', () => {
+    const paragraph = (id: string, text: string) => ({ id, type: 'paragraph' as const, tag: 'p' as const, text });
+    const report = compareNormalizedTrees(
+      { elements: [paragraph('1', 'Alpha text'), paragraph('2', 'Beta text')] },
+      { elements: [paragraph('a', 'Beta text'), paragraph('b', 'Alpha text')] }
+    );
+
+    assert.equal(report.summary.status, 'PASS_WITH_WARNINGS');
+    assert.equal(report.summary.wrongOrder, 1);
+    assert.equal(report.results.filter((result) => result.status === 'PASS').length, 1);
+  });
+
+  test('reports a missing reference paragraph as MISSING instead of pairing it with unrelated page text', () => {
+    const paragraph = (id: string, text: string) => ({ id, type: 'paragraph' as const, tag: 'p' as const, text });
+    const report = compareNormalizedTrees(
+      { elements: [paragraph('1', 'Our pizza uses fresh tomatoes and basil.'), paragraph('2', 'Closing paragraph here.')] },
+      {
+        elements: [
+          { ...paragraph('a', 'Call now for a free quote'), sourceTag: 'div' },
+          paragraph('b', 'Closing paragraph here.'),
+        ],
+      }
+    );
+
+    assert.equal(report.results[0].status, 'MISSING');
+    assert.equal(report.results[1].status, 'PASS');
+  });
+
   test('tracks extra elements found on website that were not in reference', () => {
     const refDoc: NormalizedDocument = {
       elements: [

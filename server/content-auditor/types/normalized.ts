@@ -25,6 +25,7 @@ export interface HeadingElement extends BaseNormalizedElement {
 export interface ParagraphElement extends BaseNormalizedElement {
   type: 'paragraph';
   tag: 'p';
+  sourceTag?: string;
 }
 
 export interface ListElement extends BaseNormalizedElement {
@@ -56,7 +57,7 @@ export interface NormalizedDocument {
   };
 }
 
-export type ComparisonStatus = 'PASS' | 'WRONG_TAG' | 'CONTENT_MISMATCH' | 'MISSING';
+export type ComparisonStatus = 'PASS' | 'WRONG_TAG' | 'WRONG_ORDER' | 'CONTENT_MISMATCH' | 'MISSING';
 
 export interface ElementComparisonResult {
   id: string;
@@ -83,6 +84,7 @@ export interface AuditSummary {
   total: number;
   passed: number;
   wrongTag: number;
+  wrongOrder: number;
   contentMismatch: number;
   missing: number;
   extraOnWebsite: number;
