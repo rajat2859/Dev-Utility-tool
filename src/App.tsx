@@ -7,6 +7,7 @@ const toolsMap: Record<string, () => Promise<any>> = {
   'seo-checker': () => import('./components/tools/SeoChecker'),
   'html-cleaner': () => import('./components/tools/HtmlCleaner'),
   'image': () => import('./components/tools/ImageConverter'),
+  'schema-generator': () => import('./components/tools/SchemaGenerator'),
   'gradient': () => import('./components/tools/GradientGenerator'),
   'password': () => import('./components/tools/PasswordGenerator'),
   'content-checker': () => import('./components/tools/ContentChecker'),
@@ -15,6 +16,7 @@ const toolsMap: Record<string, () => Promise<any>> = {
 };
 
 const ImageConverter = lazy(toolsMap['image']);
+const SchemaGenerator = lazy(toolsMap['schema-generator']);
 const GradientGenerator = lazy(toolsMap['gradient']);
 const PasswordGenerator = lazy(toolsMap['password']);
 const ContentChecker = lazy(toolsMap['content-checker']);
@@ -96,6 +98,8 @@ export default function App() {
         return <HtmlCleaner />;
       case 'image':
         return <ImageConverter />;
+      case 'schema-generator':
+        return <SchemaGenerator />;
       case 'gradient':
         return <GradientGenerator />;
       case 'password':
@@ -128,6 +132,8 @@ export default function App() {
         return 'HTML Cleaner & Markdown Converter';
       case 'image':
         return 'Image Format Converter';
+      case 'schema-generator':
+        return 'Schema Markup Generator';
       case 'gradient':
         return 'CSS Gradient & Color Palette Studio';
       case 'password':

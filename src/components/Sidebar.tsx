@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileImage, Paintbrush, Key, X, Menu, ShieldCheck, Wrench, FileCode, Search, MonitorSmartphone, Settings } from 'lucide-react';
+import { LayoutDashboard, FileImage, Paintbrush, Key, X, Menu, ShieldCheck, Wrench, FileCode, Search, MonitorSmartphone, Settings, Braces } from 'lucide-react';
 import { prefetchTool } from '../App';
 
 interface SidebarProps {
@@ -23,6 +23,7 @@ const menuItems: MenuItem[] = [
   { id: 'seo-checker', name: 'SEO & Schema', icon: Search, badge: 'AI', badgeColor: 'text-sky-300 bg-sky-950 border-sky-800' },
   { id: 'content-checker', name: 'Content Audit', icon: ShieldCheck, badge: 'AI', badgeColor: 'text-indigo-300 bg-indigo-950 border-indigo-800' },
   { id: 'responsive-preview', name: 'Responsive Preview', icon: MonitorSmartphone, badge: 'NEW', badgeColor: 'text-emerald-300 bg-emerald-950 border-emerald-800' },
+  { id: 'schema-generator', name: 'Schema Generator', icon: Braces, badge: 'NEW', badgeColor: 'text-emerald-300 bg-emerald-950 border-emerald-800' },
   { id: 'html-cleaner', name: 'HTML Cleaner', icon: FileCode },
   { id: 'image', name: 'Image Converter', icon: FileImage },
   { id: 'gradient', name: 'Gradient Studio', icon: Paintbrush },

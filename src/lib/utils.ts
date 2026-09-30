@@ -135,3 +135,30 @@ export function sanitizeAndParseJsonLd(rawJsonLd: string): any {
   }
 }
 
+
+
+export interface FaqEntry {
+  question: string;
+  answer: string;
+}
+
+export function buildFaqSchemaMarkup(faqEntries: FaqEntry[]): string {
+  const filledEntries = faqEntries
+    .map(({ question, answer }) => ({ question: question.trim(), answer: answer.trim() }))
+    .filter(({ question, answer }) => question && answer);
+
+  if (filledEntries.length === 0) return '';
+
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: filledEntries.map(({ question, answer }) => ({
+      '@type': 'Question',
+      name: question,
+      acceptedAnswer: { '@type': 'Answer', text: answer },
+    })),
+  };
+
+  const schemaJson = JSON.stringify(faqSchema, null, 2).replace(/<\/(script)/gi, '<\\/$1');
+  return `<script type="application/ld+json">\n${schemaJson}\n</script>`;
+}

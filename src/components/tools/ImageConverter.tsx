@@ -31,6 +31,20 @@ interface ImageFile {
   errorMessage?: string;
 }
 
+let avifEncodingSupportProbe: Promise<boolean> | null = null;
+
+const isAvifEncodingSupported = (): Promise<boolean> => {
+  avifEncodingSupportProbe ??= new Promise<boolean>((resolve) => {
+    const probeCanvas = document.createElement('canvas');
+    probeCanvas.width = 1;
+    probeCanvas.height = 1;
+    probeCanvas.toBlob((blob) => resolve(blob?.type === 'image/avif'), 'image/avif');
+  });
+  return avifEncodingSupportProbe;
+};
+
+const AVIF_WEBP_FALLBACK_MESSAGE = 'AVIF not supported by your browser; automatically compressed via WebP.';
+
 export default function ImageConverter() {
   const [images, setImages] = useState<ImageFile[]>([]);
   const [globalFormat, setGlobalFormat] = useState<'png' | 'jpeg' | 'webp' | 'svg' | 'avif'>('webp');
@@ -237,33 +251,35 @@ export default function ImageConverter() {
     let quality = 0.82;
     let bestBlob: Blob | null = null;
     let bestQuality = quality;
+    let canvas: HTMLCanvasElement | null = null;
+    let renderedScale = 0;
 
     for (let attempt = 1; attempt <= 7; attempt++) {
-      const canvas = document.createElement('canvas');
-      const finalWidth = Math.max(1, Math.round(imgHtml.naturalWidth * scale));
-      const finalHeight = Math.max(1, Math.round(imgHtml.naturalHeight * scale));
-      canvas.width = finalWidth;
-      canvas.height = finalHeight;
+      if (!canvas || renderedScale !== scale) {
+        const finalWidth = Math.max(1, Math.round(imgHtml.naturalWidth * scale));
+        const finalHeight = Math.max(1, Math.round(imgHtml.naturalHeight * scale));
+        canvas = document.createElement('canvas');
+        canvas.width = finalWidth;
+        canvas.height = finalHeight;
 
-      const ctx = canvas.getContext('2d');
-      if (!ctx) break;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) break;
 
-      if (targetFormat === 'jpeg') {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, finalWidth, finalHeight);
+        if (targetFormat === 'jpeg') {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, finalWidth, finalHeight);
+        }
+
+        ctx.drawImage(imgHtml, 0, 0, finalWidth, finalHeight);
+        renderedScale = scale;
       }
 
-      ctx.drawImage(imgHtml, 0, 0, finalWidth, finalHeight);
-
+      const encodingCanvas = canvas;
       const blob = await new Promise<Blob | null>((resolveBlob) => {
-        canvas.toBlob((b) => resolveBlob(b), mimeType, quality);
+        encodingCanvas.toBlob((b) => resolveBlob(b), mimeType, quality);
       });
 
       if (!blob) break;
-
-      if (targetFormat === 'avif' && blob.type === 'image/png' && mimeType === 'image/avif') {
-        return convertToBlobWithBelow100kb(imgHtml, 'image/webp', 'webp', maxSizeBytes);
-      }
 
       if (!bestBlob || blob.size < maxSizeBytes || (blob.size < bestBlob.size && bestBlob.size > maxSizeBytes)) {
         bestBlob = blob;
@@ -298,6 +314,9 @@ export default function ImageConverter() {
   };
 
   const convertSingleImage = async (imgFile: ImageFile): Promise<ImageFile> => {
+    const avifFallsBackToWebp = imgFile.targetFormat === 'avif' && !(await isAvifEncodingSupported());
+    const fallbackNotice = avifFallsBackToWebp ? AVIF_WEBP_FALLBACK_MESSAGE : undefined;
+
     return new Promise((resolve) => {
       if (imgFile.width === 0 || imgFile.height === 0) {
         resolve({
@@ -311,6 +330,43 @@ export default function ImageConverter() {
       const imgHtml = new Image();
       imgHtml.onload = () => {
         try {
+          const isBelow100kbTarget =
+            imgFile.compressionMode === 'below100kb' &&
+            (imgFile.targetFormat === 'webp' || imgFile.targetFormat === 'avif' || imgFile.targetFormat === 'jpeg');
+
+          if (isBelow100kbTarget) {
+            const effectiveFormat = avifFallsBackToWebp ? 'webp' : imgFile.targetFormat;
+            const effectiveMimeType = effectiveFormat === 'jpeg' ? 'image/jpeg' : effectiveFormat === 'avif' ? 'image/avif' : 'image/webp';
+
+            convertToBlobWithBelow100kb(imgHtml, effectiveMimeType, effectiveFormat)
+              .then(({ blob, finalQuality }) => {
+                if (blob) {
+                  resolve({
+                    ...imgFile,
+                    status: 'completed',
+                    convertedDataUrl: URL.createObjectURL(blob),
+                    convertedSize: blob.size,
+                    quality: finalQuality,
+                    errorMessage: fallbackNotice
+                  });
+                } else {
+                  resolve({
+                    ...imgFile,
+                    status: 'error',
+                    errorMessage: 'Blob generation failed in Under 100 KB mode.'
+                  });
+                }
+              })
+              .catch((e: any) => {
+                resolve({
+                  ...imgFile,
+                  status: 'error',
+                  errorMessage: e.message || 'Error occurred during rendering.'
+                });
+              });
+            return;
+          }
+
           const canvas = document.createElement('canvas');
           const finalWidth = imgFile.width;
           const finalHeight = imgFile.height;
@@ -365,78 +421,30 @@ export default function ImageConverter() {
           } else {
             let mimeType = 'image/png';
             if (imgFile.targetFormat === 'jpeg') mimeType = 'image/jpeg';
-            if (imgFile.targetFormat === 'webp') mimeType = 'image/webp';
-            if (imgFile.targetFormat === 'avif') mimeType = 'image/avif';
+            if (imgFile.targetFormat === 'webp' || avifFallsBackToWebp) mimeType = 'image/webp';
+            if (imgFile.targetFormat === 'avif' && !avifFallsBackToWebp) mimeType = 'image/avif';
 
-            if (imgFile.compressionMode === 'below100kb' && (imgFile.targetFormat === 'webp' || imgFile.targetFormat === 'avif' || imgFile.targetFormat === 'jpeg')) {
-              convertToBlobWithBelow100kb(imgHtml, mimeType, imgFile.targetFormat).then(({ blob, finalQuality }) => {
+            canvas.toBlob(
+              (blob) => {
                 if (blob) {
-                  const url = URL.createObjectURL(blob);
                   resolve({
                     ...imgFile,
                     status: 'completed',
-                    convertedDataUrl: url,
+                    convertedDataUrl: URL.createObjectURL(blob),
                     convertedSize: blob.size,
-                    quality: finalQuality
+                    errorMessage: fallbackNotice
                   });
                 } else {
                   resolve({
                     ...imgFile,
                     status: 'error',
-                    errorMessage: 'Blob generation failed in Under 100 KB mode.'
+                    errorMessage: 'Blob generation returned null.'
                   });
                 }
-              });
-            } else {
-              const targetQuality = imgFile.quality;
-
-              canvas.toBlob(
-                (blob) => {
-                  if (blob) {
-                    if (imgFile.targetFormat === 'avif' && blob.type === 'image/png') {
-                      canvas.toBlob(
-                        (fallbackBlob) => {
-                          if (fallbackBlob) {
-                            const url = URL.createObjectURL(fallbackBlob);
-                            resolve({
-                              ...imgFile,
-                              status: 'completed',
-                              convertedDataUrl: url,
-                              convertedSize: fallbackBlob.size,
-                              errorMessage: 'AVIF not supported by your browser; automatically compressed via WebP.'
-                            });
-                          } else {
-                            resolve({
-                              ...imgFile,
-                              status: 'error',
-                              errorMessage: 'AVIF fallback to WebP failed.'
-                            });
-                          }
-                        },
-                        'image/webp',
-                        targetQuality
-                      );
-                    } else {
-                      const url = URL.createObjectURL(blob);
-                      resolve({
-                        ...imgFile,
-                        status: 'completed',
-                        convertedDataUrl: url,
-                        convertedSize: blob.size
-                      });
-                    }
-                  } else {
-                    resolve({
-                      ...imgFile,
-                      status: 'error',
-                      errorMessage: 'Blob generation returned null.'
-                    });
-                  }
-                },
-                mimeType,
-                targetQuality
-              );
-            }
+              },
+              mimeType,
+              imgFile.quality
+            );
           }
         } catch (e: any) {
           resolve({
@@ -657,15 +665,6 @@ export default function ImageConverter() {
             Batch-convert files securely in browser. Conversions run purely locally on your device.
           </p>
         </div>
-        {images.length > 0 && (
-          <button
-            onClick={clearAll}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white text-rose-600 px-2.5 py-1 text-xs font-medium hover:bg-rose-50 transition-colors cursor-pointer shadow-xs"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Clear Files
-          </button>
-        )}
       </div>
 
       {/* Global Config Settings Bar */}
@@ -917,6 +916,14 @@ export default function ImageConverter() {
               >
                 <Download className="h-3.5 w-3.5" />
                 Download Batch
+              </button>
+
+              <button
+                onClick={clearAll}
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-white text-rose-600 border border-rose-200 rounded-md text-xs font-medium hover:bg-rose-100 shadow-xs cursor-pointer transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Clear Files
               </button>
             </div>
           </div>
