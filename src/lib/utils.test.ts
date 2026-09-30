@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { escapeHtml, randomInt, semanticTagsForInlineStyle, shuffled } from './utils';
+import { buildFaqSchemaMarkup, escapeHtml, randomInt, semanticTagsForInlineStyle, shuffled } from './utils';
 // npx tsx src/lib/utils.test.ts
 // Guards the two things that are easy to get silently wrong: randomInt must be
 // unbiased and in range, shuffled must be a permutation that actually moves.
@@ -105,3 +105,14 @@ assert.deepEqual(sanitizeAndParseJsonLd('{&quot;@type&quot;: &quot;Product&quot;
 
 console.log('sanitizeAndParseJsonLd: all checks passed');
 
+assert.equal(buildFaqSchemaMarkup([{ question: ' ', answer: 'x' }, { question: 'q', answer: '' }]), '');
+const faqMarkup = buildFaqSchemaMarkup([
+  { question: ' What is it? ', answer: 'A tool </script><b>x</b>' },
+  { question: 'Skipped', answer: '' },
+]);
+const faqJson = JSON.parse(faqMarkup.replace(/^<script[^>]*>|<\/script>$/g, ''));
+assert.equal(faqJson['@type'], 'FAQPage');
+assert.equal(faqJson.mainEntity.length, 1);
+assert.equal(faqJson.mainEntity[0].name, 'What is it?');
+assert.equal(faqJson.mainEntity[0].acceptedAnswer.text, 'A tool </script><b>x</b>');
+assert.equal(faqMarkup.match(/<\/script>/g)?.length, 1, 'answer text closed the script tag early');
