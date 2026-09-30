@@ -665,15 +665,6 @@ export default function ImageConverter() {
             Batch-convert files securely in browser. Conversions run purely locally on your device.
           </p>
         </div>
-        {images.length > 0 && (
-          <button
-            onClick={clearAll}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white text-rose-600 px-2.5 py-1 text-xs font-medium hover:bg-rose-50 transition-colors cursor-pointer shadow-xs"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Clear Files
-          </button>
-        )}
       </div>
 
       {/* Global Config Settings Bar */}
@@ -925,6 +916,14 @@ export default function ImageConverter() {
               >
                 <Download className="h-3.5 w-3.5" />
                 Download Batch
+              </button>
+
+              <button
+                onClick={clearAll}
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-white text-rose-600 border border-rose-200 rounded-md text-xs font-medium hover:bg-rose-100 shadow-xs cursor-pointer transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Clear Files
               </button>
             </div>
           </div>
