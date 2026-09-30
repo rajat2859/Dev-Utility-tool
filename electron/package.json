@@ -1,7 +1,7 @@
 {
   "name": "utility-tool-manager-desktop",
   "productName": "Utility Tool Manager",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Windows desktop shell for the Utility Tool Manager web app",
   "main": "main.cjs",
@@ -38,13 +38,27 @@
       "package.json"
     ],
     "extraResources": [
-      { "from": "../dist", "to": "app-content/dist" },
-      { "from": "../eng.traineddata", "to": "app-content/eng.traineddata" },
-      { "from": "../.env.example", "to": "app-content/.env.example" }
+      {
+        "from": "../dist",
+        "to": "app-content/dist"
+      },
+      {
+        "from": "../eng.traineddata",
+        "to": "app-content/eng.traineddata"
+      },
+      {
+        "from": "../.env.example",
+        "to": "app-content/.env.example"
+      }
     ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "publish": {
