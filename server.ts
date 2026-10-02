@@ -5,6 +5,12 @@ import dotenv from "dotenv";
 import Tesseract from "tesseract.js";
 import compression from "compression";
 import { contentAuditRouter } from "./server/content-auditor/routes/contentAuditRoutes";
+import {
+  isPrivateIp,
+  fetchWithSafeRedirects,
+  readBodyCapped,
+  UnsafeUrlError,
+} from "./server/content-auditor/webpage/PageSecurity";
 
 dotenv.config();
 
@@ -22,9 +28,13 @@ const PORT = Number(process.env.PORT) || 2000;
 // Compress all responses (static JS/CSS bundles & JSON API payloads)
 app.use(compression());
 
-// Increase body-parser limits for the base64 screenshot upload
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+// Body parsing. Only the content checker (base64 reference screenshot + raw HTML) and the SEO checker
+// (pasted raw HTML) need large bodies, so their parsers are mounted FIRST and mark the request as parsed
+// (body-parser skips requests with req._body set). Everything else falls through to the small global limits.
+app.use("/api/content-checker", express.json({ limit: "50mb" }));
+app.use("/api/seo-checker", express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ limit: "2mb", extended: true }));
 
 // Shared HTML micro-parsing helpers (used by both parseFullSeoAndSchemas and parseHtml)
 const DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
@@ -480,7 +490,8 @@ function parseFullSeoAndSchemas(html: string, pageUrl?: string) {
   };
 }
 
-// Helper to fetch webpage HTML with multi-tier proxies & browser headers
+// Helper to fetch webpage HTML directly with browser headers and SSRF-safe redirect handling
+const MAX_SEO_HTML_BYTES = 10 * 1024 * 1024; // 10MB
 async function fetchWebpageHtml(targetUrl: string): Promise<{ html: string; notice?: string }> {
   const sanitizedUrl = normalizeUrl(targetUrl);
 
@@ -500,88 +511,22 @@ async function fetchWebpageHtml(targetUrl: string): Promise<{ html: string; noti
     "Upgrade-Insecure-Requests": "1"
   };
 
-  // 1. Direct fetch with real browser headers
+  // Direct fetch with real browser headers. Every redirect hop is SSRF-validated, and the target
+  // URL is never forwarded to third-party proxy services.
   try {
-    const res = await fetch(sanitizedUrl, {
+    const { response: res } = await fetchWithSafeRedirects(sanitizedUrl, {
       headers: browserHeaders,
-      redirect: "follow",
       signal: AbortSignal.timeout(10000),
     });
 
-    const text = await res.text();
+    const text = (await readBodyCapped(res, MAX_SEO_HTML_BYTES)).toString("utf8");
     if (text && text.trim().length > 30) {
       return { html: text };
     }
   } catch (err: any) {
+    // A blocked URL must surface to the caller with its reason instead of becoming a generic failure.
+    if (err instanceof UnsafeUrlError) throw err;
     console.warn(`Direct fetch failed for ${sanitizedUrl}:`, err.message || err);
-  }
-
-  // 2. Gateway Proxy 1: AllOrigins
-  try {
-    const proxy1 = `https://api.allorigins.win/raw?url=${encodeURIComponent(sanitizedUrl)}`;
-    const res1 = await fetch(proxy1, {
-      headers: { "User-Agent": browserHeaders["User-Agent"] },
-      signal: AbortSignal.timeout(10000)
-    });
-    if (res1.ok) {
-      const text1 = await res1.text();
-      if (text1 && text1.trim().length > 30) {
-        return { html: text1, notice: "Fetched webpage via web proxy gateway." };
-      }
-    }
-  } catch (err1: any) {
-    console.warn(`Proxy 1 failed for ${sanitizedUrl}:`, err1.message || err1);
-  }
-
-  // 3. Gateway Proxy 2: CorsProxy.io
-  try {
-    const proxy2 = `https://corsproxy.io/?${encodeURIComponent(sanitizedUrl)}`;
-    const res2 = await fetch(proxy2, {
-      headers: { "User-Agent": browserHeaders["User-Agent"] },
-      signal: AbortSignal.timeout(10000)
-    });
-    if (res2.ok) {
-      const text2 = await res2.text();
-      if (text2 && text2.trim().length > 30) {
-        return { html: text2, notice: "Fetched webpage via CORS fallback gateway." };
-      }
-    }
-  } catch (err2: any) {
-    console.warn(`Proxy 2 failed for ${sanitizedUrl}:`, err2.message || err2);
-  }
-
-  // 4. Gateway Proxy 3: CodeTabs
-  try {
-    const proxy3 = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(sanitizedUrl)}`;
-    const res3 = await fetch(proxy3, {
-      headers: { "User-Agent": browserHeaders["User-Agent"] },
-      signal: AbortSignal.timeout(10000)
-    });
-    if (res3.ok) {
-      const text3 = await res3.text();
-      if (text3 && text3.trim().length > 30) {
-        return { html: text3, notice: "Fetched webpage via alternate proxy gateway." };
-      }
-    }
-  } catch (err3: any) {
-    console.warn(`Proxy 3 failed for ${sanitizedUrl}:`, err3.message || err3);
-  }
-
-  // 5. Gateway Proxy 4: ThingProxy
-  try {
-    const proxy4 = `https://thingproxy.freeboard.io/fetch/${sanitizedUrl}`;
-    const res4 = await fetch(proxy4, {
-      headers: { "User-Agent": browserHeaders["User-Agent"] },
-      signal: AbortSignal.timeout(10000)
-    });
-    if (res4.ok) {
-      const text4 = await res4.text();
-      if (text4 && text4.trim().length > 30) {
-        return { html: text4, notice: "Fetched webpage via secure proxy gateway." };
-      }
-    }
-  } catch (err4: any) {
-    console.warn(`Proxy 4 failed for ${sanitizedUrl}:`, err4.message || err4);
   }
 
   throw new Error(`Could not retrieve HTML from target URL (${sanitizedUrl}). The target site may be blocking automated crawlers. Try using "Paste Raw HTML" mode.`);
@@ -683,15 +628,6 @@ const RESPONSIVE_UA: Record<string, string> = {
 // Loopback/LAN targets are the point when previewing a local dev server, but
 // they would turn this route into an SSRF hole on a public deployment.
 const ALLOW_PRIVATE_PREVIEW_HOSTS = process.env.NODE_ENV !== "production";
-
-function isPrivatePreviewHost(hostname: string): boolean {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (host === "localhost" || host.endsWith(".localhost") || host === "::1" || host === "0.0.0.0") return true;
-  if (/^127\./.test(host) || /^10\./.test(host) || /^192\.168\./.test(host) || /^169\.254\./.test(host)) return true;
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return true;
-  if (/^(fc|fd|fe80)/i.test(host)) return true;
-  return false;
-}
 
 function escapeHtmlAttribute(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -1128,7 +1064,7 @@ app.get("/api/responsive/proxy", async (req, res) => {
     return;
   }
 
-  if (!ALLOW_PRIVATE_PREVIEW_HOSTS && isPrivatePreviewHost(target.hostname)) {
+  if (!ALLOW_PRIVATE_PREVIEW_HOSTS && isPrivateIp(target.hostname)) {
     res.status(403).send(buildPreviewErrorPage(frameId, target.href, "Previewing private network addresses is disabled on this server."));
     return;
   }
@@ -1137,8 +1073,7 @@ app.get("/api/responsive/proxy", async (req, res) => {
   const timeout = setTimeout(() => controller.abort(), 20000);
 
   try {
-    const upstream = await fetch(target.href, {
-      redirect: "follow",
+    const upstreamInit: RequestInit = {
       signal: controller.signal,
       headers: {
         "user-agent": RESPONSIVE_UA[uaKey],
@@ -1146,7 +1081,19 @@ app.get("/api/responsive/proxy", async (req, res) => {
         "accept-language": "en-US,en;q=0.9",
         "upgrade-insecure-requests": "1",
       },
-    });
+    };
+    // When private hosts are not allowed, validate DNS and every redirect hop so a public URL
+    // cannot bounce the proxy to an internal address. In dev mode, local previews follow redirects normally.
+    let upstream: Response;
+    let upstreamUrl: string;
+    if (ALLOW_PRIVATE_PREVIEW_HOSTS) {
+      upstream = await fetch(target.href, { ...upstreamInit, redirect: "follow" });
+      upstreamUrl = upstream.url || target.href;
+    } else {
+      const safe = await fetchWithSafeRedirects(target.href, upstreamInit);
+      upstream = safe.response;
+      upstreamUrl = safe.finalUrl;
+    }
 
     const contentType = upstream.headers.get("content-type") || "";
     if (!/text\/html|application\/xhtml/i.test(contentType)) {
@@ -1154,7 +1101,7 @@ app.get("/api/responsive/proxy", async (req, res) => {
       return;
     }
 
-    const finalUrl = upstream.url || target.href;
+    const finalUrl = upstreamUrl;
     let html = await upstream.text();
 
     if (!upstream.ok && html.trim().length < 40) {
@@ -1192,6 +1139,10 @@ app.get("/api/responsive/proxy", async (req, res) => {
 
     res.status(200).send(html);
   } catch (error: any) {
+    if (error instanceof UnsafeUrlError) {
+      res.status(403).send(buildPreviewErrorPage(frameId, target.href, "Previewing private network addresses is disabled on this server."));
+      return;
+    }
     const message = error?.name === "AbortError" ? "The site took too long to respond." : (error?.message || "Network request failed.");
     res.status(502).send(buildPreviewErrorPage(frameId, target.href, message));
   } finally {
@@ -1244,7 +1195,7 @@ async function setupFrontend() {
     });
   }
 
-  app.listen(PORT, process.env.HOST || "0.0.0.0", () => {
+  app.listen(PORT, process.env.HOST || "127.0.0.1", () => {
     console.log(`Server running on port ${PORT}`);
   });
 }

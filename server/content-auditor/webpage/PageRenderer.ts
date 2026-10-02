@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { chromium, type Browser } from 'playwright-core';
+import { validateSafeUrl } from './PageSecurity';
 
 // Candidate browser executable paths on Windows and Unix systems
 const CANDIDATE_BROWSER_PATHS = [
@@ -70,6 +71,27 @@ export async function renderPageWithBrowser(targetUrl: string, timeoutMs = 20000
     const context = await browser.newContext({
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
       viewport: { width: 1280, height: 800 },
+    });
+
+    // Validate every request the page makes (navigation, redirects, subresources, XHR) so the
+    // browser cannot be used to reach private/internal addresses. data:/blob:/about: carry no network
+    // access and are allowed; anything else that is not safe http(s) is aborted.
+    // Every route is always settled (continue or abort) so no request hangs; settling after the
+    // browser has closed throws, which is ignored.
+    await context.route('**/*', async (route) => {
+      const requestUrl = route.request().url();
+      let allowed = false;
+      try {
+        allowed = /^(data|blob|about):/i.test(requestUrl) || (await validateSafeUrl(requestUrl)).valid;
+      } catch {
+        // fail closed
+      }
+      try {
+        if (allowed) await route.continue();
+        else await route.abort('blockedbyclient');
+      } catch {
+        // page or browser already closed
+      }
     });
 
     const page = await context.newPage();
