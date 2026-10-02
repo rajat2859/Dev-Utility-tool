@@ -1,6 +1,5 @@
 {
   "name": "Utility Tool Manager",
-  "description": "An all-in-one developer & designer workspace featuring HTML Cleaner & Sanitizer, Auditor (SEO, Meta Tags & Schema.org Inspector), Bulk Image Converter, Gradient Tool, and Cryptographic Password Generator.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "description": "An all-in-one developer & designer workspace featuring an SEO & Schema.org Inspector, Content Auditor, Responsive Preview, Schema Generator, HTML Cleaner & Sanitizer, Bulk Image Converter, Gradient Studio, and Cryptographic Password Generator.",
+  "requestFramePermissions": []
 }
