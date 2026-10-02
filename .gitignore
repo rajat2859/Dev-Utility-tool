@@ -9,3 +9,4 @@ coverage/
 .google-token*.json
 release/
 .desktop-profile/
+graphify-out/cache/
