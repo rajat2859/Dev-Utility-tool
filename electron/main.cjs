@@ -9,6 +9,7 @@ const SERVER_HEALTH_POLL_INTERVAL_MS = 40;
 const LOCAL_HOST = '127.0.0.1';
 const RESPONSIVE_PREVIEW_PARTITION = 'persist:responsive-preview';
 const DEFAULT_WINDOW_SIZE = { width: 1400, height: 900 };
+const EXTERNAL_URL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
 
 const appContentDirectory = app.isPackaged
   ? path.join(process.resourcesPath, 'app-content')
@@ -42,6 +43,25 @@ function saveWindowState(window) {
     fs.writeFileSync(windowStatePath, JSON.stringify(windowState));
   } catch (writeError) {
     console.error('Could not save window state:', writeError);
+  }
+}
+
+// Only hands well-formed http(s)/mailto URLs to the OS; file:, javascript:, custom protocols etc. are ignored.
+function openExternalSafely(url) {
+  try {
+    if (EXTERNAL_URL_PROTOCOLS.has(new URL(url).protocol)) shell.openExternal(url);
+  } catch {
+    // Malformed URL: never pass it to the operating system.
+  }
+}
+
+// Compares origins instead of string prefixes. False while the server is not up yet (appServerUrl is null).
+function isAppServerUrl(targetUrl) {
+  if (!appServerUrl) return false;
+  try {
+    return new URL(targetUrl).origin === new URL(appServerUrl).origin;
+  } catch {
+    return false;
   }
 }
 
@@ -137,14 +157,14 @@ function createMainWindow() {
   mainWindow.webContents.setVisualZoomLevelLimits(1, 1);
 
   const keepInsideApp = (event, targetUrl) => {
-    if (!targetUrl.startsWith(appServerUrl)) {
+    if (!isAppServerUrl(targetUrl)) {
       event.preventDefault();
-      shell.openExternal(targetUrl);
+      openExternalSafely(targetUrl);
     }
   };
   mainWindow.webContents.on('will-navigate', keepInsideApp);
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    openExternalSafely(url);
     return { action: 'deny' };
   });
 
@@ -161,7 +181,7 @@ function createMainWindow() {
   });
   mainWindow.webContents.on('did-attach-webview', (_event, previewContents) => {
     previewContents.setWindowOpenHandler(({ url }) => {
-      shell.openExternal(url);
+      openExternalSafely(url);
       return { action: 'deny' };
     });
   });
