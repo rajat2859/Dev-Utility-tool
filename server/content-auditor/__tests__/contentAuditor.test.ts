@@ -12,6 +12,8 @@ import { auditTables } from '../comparison/TableMatcher';
 import { auditLists } from '../comparison/ListMatcher';
 import { isPrivateIp, validateSafeUrl } from '../webpage/PageSecurity';
 import { normalizeText } from '../reference/ReferenceNormalizer';
+import { parseAltTextLine } from '../comparison/AltTextMatcher';
+import { extractSchemaBlocks } from '../comparison/SchemaMatcher';
 
 // ============================================================================
 // FIXTURE TEST SUITE: 50 REQUIRED AUDITOR SCENARIOS (Fix 45 & Fix 46)
@@ -634,4 +636,94 @@ test('52. manual content selector: scoped strictly and throws on invalid selecto
   assert.throws(() => {
     extractPageAuditModel(html, 'https://example.com', {}, '.non-existent-selector');
   }, /matched no elements/);
+});
+
+test('alt text: lists missing and duplicated reference alt texts, found ones pass', () => {
+  const html = `<html><head><title>T</title></head><body><main>
+    <h1>Hello</h1><p>Some body copy goes here for the page.</p>
+    <img src="/a.png" alt="Team at work"><img src="/b.png" alt="Team at work">
+    <img src="/c.png" alt="Office &amp; desk">
+  </main></body></html>`;
+  const refText = `H1 Hello
+Some body copy goes here for the page.
+Alt text: Team at work
+Image Alt: "Office & desk"
+Alt text - Server room`;
+
+  const ref = parseGoogleDocReference(refText);
+  assert.deepEqual(ref.altTexts, ['Team at work', 'Office & desk', 'Server room']);
+  assert.equal(ref.blocks.some((b) => /alt/i.test(b.text)), false); // not audited as body copy
+
+  const report = buildContentAuditReport(extractPageAuditModel(html, 'https://example.com/'), ref);
+  const byText = Object.fromEntries((report.altTexts || []).map((a) => [a.expected, a]));
+  assert.equal(byText['Team at work'].duplicate, true);
+  assert.equal(byText['Team at work'].pageCount, 2);
+  assert.equal(byText['Office & desk'].status, 'FOUND');
+  assert.equal(byText['Server room'].status, 'MISSING');
+  assert.ok(report.issues.some((i) => i.id.startsWith('alt-text-missing')));
+  assert.ok(report.issues.some((i) => i.id.startsWith('alt-text-duplicate')));
+  assert.equal(report.status, 'FAIL');
+});
+
+test('alt text: keyword variants in a doc are recognised, plain prose is not', () => {
+  const alts = (l: string) => parseAltTextLine(l);
+  assert.equal(alts('Alt text: Team at work'), 'Team at work');
+  assert.equal(alts('Image Alt Text - "Team at work"'), 'Team at work');
+  assert.equal(alts('Alt tag for image 2: Office desk'), 'Office desk');
+  assert.equal(alts('Image 1 alt text: Server room'), 'Server room');
+  assert.equal(alts('[Alt text: Server room]'), 'Server room');
+  assert.equal(alts('Hero image alt – Skyline'), 'Skyline');
+  assert.equal(alts('Alternative text: Skyline'), 'Skyline');
+  assert.equal(alts('Alternative - a different approach'), undefined);
+  assert.equal(alts('We write alt text for every image.'), undefined);
+});
+
+test('schema in doc: multi-line curly-quote JSON-LD is consumed and checked against page JSON-LD', () => {
+  const refText = `H1 Hello
+Some body copy goes here for the page.
+Schema:
+<script type=“application/ld+json”>
+{
+  “@context”: “https://schema.org”,
+  “@type”: “FAQPage”,
+  “mainEntity”: [{ “@type”: “Question”, “name”: “What is it?”, “acceptedAnswer”: { “@type”: “Answer”, “text”: “A thing.” } }]
+}
+</script>
+{ “@context”: “https://schema.org”, “@type”: “Organization”, “name”: “Acme” }
+{ “@type”: “Product”, “name”: broken }
+Closing paragraph for the page here.`;
+  const ref = parseGoogleDocReference(refText);
+  assert.equal(ref.schemaBlocks?.length, 3);
+  assert.deepEqual(ref.blocks.map((b) => b.text), ['Hello', 'Some body copy goes here for the page.', 'Closing paragraph for the page here.']);
+  assert.equal(ref.faq.length, 0);
+
+  const pageHtml = (ld: string) => `<html><head><title>T</title><script type="application/ld+json">${ld}</script></head><body><main>
+    <h1>Hello</h1><p>Some body copy goes here for the page.</p><p>Closing paragraph for the page here.</p></main></body></html>`;
+
+  const bad = buildContentAuditReport(extractPageAuditModel(pageHtml('{"@context":"https://schema.org","@graph":[{"@type":"Organization"}]}'), 'https://example.com/'), ref);
+  assert.deepEqual(bad.schemas?.map((s) => s.status), ['MISSING', 'FOUND', 'INVALID']);
+  assert.deepEqual(bad.schemas?.[0].missingTypes, ['FAQPage']);
+  assert.equal(bad.status, 'FAIL');
+
+  const good = buildContentAuditReport(
+    extractPageAuditModel(pageHtml('[{"@type":"FAQPage"},{"@type":"Organization"}]'), 'https://example.com/'),
+    parseGoogleDocReference(refText.replace(/^\{ “@type”: “Product”.*$/m, ''))
+  );
+  assert.deepEqual(good.schemas?.map((s) => s.status), ['FOUND', 'FOUND']);
+  assert.equal(good.issues.some((i) => i.category === 'schema'), false);
+});
+
+test('schema in doc: typed labels like "FAQ Schema" above the code are ignored, other lines are kept', () => {
+  const doc = [
+    'Intro paragraph that stays in the content.',
+    'FAQ Schema',
+    '{"@context":"https://schema.org","@type":"FAQPage"}',
+    'Article Schema Markup:',
+    '<script type="application/ld+json">{"@type":"Article"}</script>',
+    'JSON-LD schema - {"@type":"Organization"}',
+    'Schema markup helps search engines.',
+  ];
+  const { blocks, consumed } = extractSchemaBlocks(doc);
+  assert.equal(blocks.length, 3);
+  assert.deepEqual([...consumed].sort(), [1, 2, 3, 4, 5]);
 });

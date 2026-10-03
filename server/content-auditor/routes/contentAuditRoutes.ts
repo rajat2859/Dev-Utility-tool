@@ -1,7 +1,9 @@
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { fetchWebpage } from '../webpage/PageFetcher';
+import { fetchWithSafeRedirects, readBodyCapped, UnsafeUrlError } from '../webpage/PageSecurity';
 import { extractPageAuditModel } from '../webpage/ContentExtractor';
+import { extractPageMetadata } from '../webpage/MetadataExtractor';
 import { parseReference } from '../reference/ReferenceParser';
 import { buildContentAuditReport, type SelectedCheckOptions } from '../report/AuditReportBuilder';
 import { normalizeUrl } from '../../../src/lib/utils';
@@ -10,6 +12,9 @@ import { fetchPublicGoogleDoc } from '../google/GoogleDocsService';
 import { parseGoogleDoc } from '../google/GoogleDocParser';
 import { extractWebsiteSemanticTree } from '../webpage/domContentExtractor';
 import { compareNormalizedTrees } from '../comparison/deterministicComparator';
+import { auditAltTexts, collectAltTexts, parseAltTextLine } from '../comparison/AltTextMatcher';
+import { auditSchemas, collectPageSchemaTypes, extractSchemaBlocks } from '../comparison/SchemaMatcher';
+import * as cheerio from 'cheerio';
 
 export const contentAuditRouter = Router();
 
@@ -39,6 +44,22 @@ const ResolveDocSchema = z.object({
 const ResolveScreenshotSchema = z.object({
   url: z.string().trim().min(5, 'Missing share link URL'),
 });
+
+const MAX_SCREENSHOT_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_SCREENSHOT_PAGE_BYTES = 5 * 1024 * 1024; // 5MB
+
+// Downloads an image through the SSRF-safe fetch (every redirect hop validated), requires an
+// image/* content type and caps the size, then returns it as a data URI.
+async function downloadImageAsDataUri(imageUrl: string): Promise<string> {
+  const { response } = await fetchWithSafeRedirects(imageUrl, { signal: AbortSignal.timeout(15000) });
+  if (!response.ok) throw new Error(`HTTP ${response.status} fetching image.`);
+  const contentType = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  if (!contentType.startsWith('image/')) {
+    throw new Error(`URL did not return an image (content-type: ${contentType || 'missing'}).`);
+  }
+  const buf = await readBodyCapped(response, MAX_SCREENSHOT_IMAGE_BYTES);
+  return `data:${contentType};base64,${buf.toString('base64')}`;
+}
 
 function sanitizeForLog(str: string, maxLen = 80): string {
   if (!str) return '';
@@ -114,17 +135,10 @@ contentAuditRouter.post('/resolve-awesome-screenshot', async (req: Request, res:
 
     if (/\.(png|jpe?g|webp|gif)(?:\?.*)?$/i.test(url)) {
       // Direct image URL
-      const imgRes = await fetch(url, { signal: AbortSignal.timeout(15000) });
-      if (!imgRes.ok) throw new Error(`HTTP ${imgRes.status} fetching image.`);
-      const buf = Buffer.from(await imgRes.arrayBuffer());
-      const contentType = imgRes.headers.get('content-type') || 'image/png';
-      return res.json({
-        success: true,
-        base64: `data:${contentType};base64,${buf.toString('base64')}`,
-      });
+      return res.json({ success: true, base64: await downloadImageAsDataUri(url) });
     }
 
-    const pageRes = await fetch(url, {
+    const { response: pageRes, finalUrl: pageFinalUrl } = await fetchWithSafeRedirects(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
       },
@@ -138,7 +152,7 @@ contentAuditRouter.post('/resolve-awesome-screenshot', async (req: Request, res:
       });
     }
 
-    const rawHtml = await pageRes.text();
+    const rawHtml = (await readBodyCapped(pageRes, MAX_SCREENSHOT_PAGE_BYTES)).toString('utf8');
     const unescapedHtml = rawHtml.replace(/\\\/|\\u002F/g, '/');
     let candidateImageUrl = '';
 
@@ -157,18 +171,12 @@ contentAuditRouter.post('/resolve-awesome-screenshot', async (req: Request, res:
       });
     }
 
-    const imgDownloadRes = await fetch(candidateImageUrl, { signal: AbortSignal.timeout(15000) });
-    if (!imgDownloadRes.ok) throw new Error(`HTTP ${imgDownloadRes.status} downloading candidate screenshot asset.`);
-    const imgBuf = Buffer.from(await imgDownloadRes.arrayBuffer());
-    const contentType = imgDownloadRes.headers.get('content-type') || 'image/png';
-
-    return res.json({
-      success: true,
-      base64: `data:${contentType};base64,${imgBuf.toString('base64')}`,
-    });
+    // The URL was scraped from an untrusted page: resolve it against the page and validate it like any other.
+    const resolvedImageUrl = new URL(candidateImageUrl, pageFinalUrl).toString();
+    return res.json({ success: true, base64: await downloadImageAsDataUri(resolvedImageUrl) });
   } catch (err: any) {
     return res.status(400).json({
-      errorType: 'FETCH_FAILED',
+      errorType: err instanceof UnsafeUrlError ? 'BLOCKED_URL' : 'FETCH_FAILED',
       error: err.message || 'Failed to resolve screenshot share link.',
     });
   }
@@ -282,6 +290,8 @@ contentAuditRouter.post('/analyze', async (req: Request, res: Response) => {
         listsComparison: report.lists,
         tablesComparison: report.tables,
         featureImageComparison: report.featureImage,
+        altTextComparison: report.altTexts,
+        schemaComparison: report.schemas,
         faqComparison: report.faq,
 
         // Legacy compatibility mappings for existing ContentChecker UI (Fix 47)
@@ -450,6 +460,23 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
       });
     }
 
+    // Schema code and "Alt text: ..." lines are instructions, not copy: pull them out of the compared content.
+    // A one-cell table is how Docs code blocks usually come through.
+    const { blocks: refSchemaBlocks, consumed: schemaIdx } = extractSchemaBlocks(
+      referenceTree.elements.map((el) =>
+        el.type === 'paragraph' || el.type === 'heading' || (el.type === 'table' && el.rows.length === 1 && el.rows[0].length === 1)
+          ? el.text
+          : ''
+      )
+    );
+    const refAltTexts: string[] = [];
+    referenceTree.elements = referenceTree.elements.filter((el, i) => {
+      if (schemaIdx.has(i)) return false;
+      const alt = el.type === 'paragraph' ? parseAltTextLine(el.text) : undefined;
+      if (alt) refAltTexts.push(alt);
+      return !alt;
+    });
+
     // Step 4: Fetch target website
     const sanitizedUrl = normalizeUrl(rawTargetUrl);
     let pageHtml = '';
@@ -468,6 +495,22 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
 
     // Step 6: Deterministic comparison
     const auditReport = compareNormalizedTrees(referenceTree, websiteTree);
+
+    // Step 7: Alt text and schema from the doc must exist in the page source
+    const $page = cheerio.load(pageHtml);
+    auditReport.altTexts = auditAltTexts(refAltTexts, collectAltTexts($page));
+    auditReport.schemas = auditSchemas(refSchemaBlocks, collectPageSchemaTypes($page));
+    const { meta } = extractPageMetadata($page);
+    auditReport.page = { url: sanitizedUrl, title: meta.titleTag, description: meta.metaDescription, canonical: meta.canonical };
+    const { altTexts, schemas, summary } = auditReport;
+    if (altTexts.some((a) => a.status === 'MISSING') || schemas.some((s) => s.status === 'MISSING')) {
+      summary.status = 'FAIL';
+    } else if (
+      summary.status === 'PASS' &&
+      (altTexts.some((a) => a.duplicate) || schemas.some((s) => s.status === 'INVALID'))
+    ) {
+      summary.status = 'PASS_WITH_WARNINGS';
+    }
 
     const duration = Date.now() - startTime;
     console.log(

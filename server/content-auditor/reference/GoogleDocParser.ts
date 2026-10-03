@@ -1,5 +1,7 @@
 import type { ContentReference, ReferenceBlock, ReferenceHeading, ReferenceTable, ReferenceFaq } from '../types/reference';
 import { normalizeText } from './ReferenceNormalizer';
+import { parseAltTextLine } from '../comparison/AltTextMatcher';
+import { extractSchemaBlocks } from '../comparison/SchemaMatcher';
 
 function extractLabeledField(lines: string[], labelPattern: RegExp): { value: string; lineIndex: number } | null {
   for (let i = 0; i < lines.length; i++) {
@@ -44,6 +46,20 @@ export function parseGoogleDocReference(rawText: string, docUrl?: string): Conte
   if (labeledSecondaryKeywords) consumedLineIndices.add(labeledSecondaryKeywords.lineIndex);
   if (labeledRequiredSchema) consumedLineIndices.add(labeledRequiredSchema.lineIndex);
 
+  // Schema code pasted into the doc is audited against the page's JSON-LD, never as body copy
+  const { blocks: schemaBlocks, consumed: schemaLineIndices } = extractSchemaBlocks(originalLines);
+  schemaLineIndices.forEach((i) => consumedLineIndices.add(i));
+
+  // A doc can list several alt texts; consume them all so they aren't audited as body paragraphs
+  const altTexts: string[] = [];
+  originalLines.forEach((line, i) => {
+    if (consumedLineIndices.has(i)) return;
+    const alt = parseAltTextLine(line);
+    if (!alt) return;
+    altTexts.push(alt);
+    consumedLineIndices.add(i);
+  });
+
   const hasAnyMetadataLabels = !!(
     labeledUrl ||
     labeledTitle ||
@@ -76,6 +92,10 @@ export function parseGoogleDocReference(rawText: string, docUrl?: string): Conte
     let i = faqStartIndex + 1;
     let faqOrder = 1;
     while (i < originalLines.length) {
+      if (consumedLineIndices.has(i)) {
+        i++;
+        continue;
+      }
       const line = originalLines[i];
       // Check for Question/Answer pairs
       const qMatch = line.match(/^(?:Q\d*[:\-]|Question\s*\d*[:\-])\s*(.+)$/i);
@@ -221,6 +241,8 @@ export function parseGoogleDocReference(rawText: string, docUrl?: string): Conte
       secondaryKeywords: labeledSecondaryKeywords?.value ? labeledSecondaryKeywords.value.split(',').map((k) => k.trim()) : undefined,
     },
     featureImage: labeledFeatureImage?.value,
+    altTexts,
+    schemaBlocks,
     headings,
     blocks,
     tables,

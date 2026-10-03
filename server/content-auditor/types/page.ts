@@ -84,6 +84,8 @@ export interface PageAuditModel {
   blocks: PageContentBlock[];
   tables: PageTable[];
   images: PageImage[];
+  schemaTypes?: string[]; // every @type in the page's JSON-LD scripts
+  altTexts?: string[]; // alt attribute of every <img> in the page source, duplicates kept
   faq: PageFaqData;
   extraction: PageExtractionDiagnostics;
 }

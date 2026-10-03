@@ -9,9 +9,9 @@
     "desktop": "node scripts/launch-desktop-window.mjs",
     "start": "node dist/server.cjs",
     "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
+    "clean": "node -e \"for (const p of ['dist','server.js']) require('fs').rmSync(p,{recursive:true,force:true})\"",
     "lint": "tsc --noEmit",
-    "test": "tsx --test src/lib/utils.test.ts server/content-auditor/__tests__/contentAuditor.test.ts server/content-auditor/__tests__/googleDocsAudit.test.ts"
+    "test": "tsx --test src/lib/utils.test.ts server/content-auditor/__tests__/contentAuditor.test.ts server/content-auditor/__tests__/googleDocsAudit.test.ts server/content-auditor/__tests__/pageSecurity.test.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",

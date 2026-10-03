@@ -39,6 +39,11 @@ export interface ReferenceFaq {
   order: number;
 }
 
+/** JSON-LD schema pasted into the doc; json is undefined when it could not be parsed. */
+export interface ReferenceSchemaBlock {
+  json?: unknown;
+}
+
 export interface ContentReference {
   url?: string;
   meta: {
@@ -49,6 +54,8 @@ export interface ContentReference {
     secondaryKeywords?: string[];
   };
   featureImage?: string;
+  altTexts?: string[];
+  schemaBlocks?: ReferenceSchemaBlock[];
   headings: ReferenceHeading[];
   blocks: ReferenceBlock[];
   tables: ReferenceTable[];

@@ -396,6 +396,8 @@ export default function SeoChecker() {
     const sanitizedUrl = normalizeUrl(url);
     if (sanitizedUrl !== url.trim()) setUrl(sanitizedUrl);
 
+    let serverError = '';
+
     // 1. Try server API endpoint first
     try {
       const response = await fetch('/api/seo-checker/analyze', {
@@ -417,6 +419,7 @@ export default function SeoChecker() {
         setSeoAuditData(data.data);
         return;
       }
+      if (typeof data?.error === 'string') serverError = data.error;
     } catch (serverErr) {
       console.warn("Server SEO audit failed, attempting client-side fallback parsing...", serverErr);
     }
@@ -433,75 +436,12 @@ export default function SeoChecker() {
       }
     }
 
-    // 3. Client-side fetch fallback if URL was provided
+    // 3. The server could not fetch the URL. Third-party CORS proxies are deliberately not used as a
+    //    fallback: they would send the audited URL (and page) to external services.
     if (sanitizedUrl) {
-      // Proxy Attempt 1: AllOrigins
-      try {
-        const proxyUrl1 = `https://api.allorigins.win/raw?url=${encodeURIComponent(sanitizedUrl)}`;
-        const res1 = await fetch(proxyUrl1);
-        if (res1.ok) {
-          const htmlText1 = await res1.text();
-          if (htmlText1 && htmlText1.trim().length > 10) {
-            const clientParsed = clientParseSeoAndSchemas(htmlText1, sanitizedUrl);
-            setSeoAuditData(clientParsed);
-            return;
-          }
-        }
-      } catch (proxyErr1) {
-        console.warn("Client proxy 1 fetch error:", proxyErr1);
-      }
-
-      // Proxy Attempt 2: CorsProxy
-      try {
-        const proxyUrl2 = `https://corsproxy.io/?${encodeURIComponent(sanitizedUrl)}`;
-        const res2 = await fetch(proxyUrl2);
-        if (res2.ok) {
-          const htmlText2 = await res2.text();
-          if (htmlText2 && htmlText2.trim().length > 10) {
-            const clientParsed = clientParseSeoAndSchemas(htmlText2, sanitizedUrl);
-            setSeoAuditData(clientParsed);
-            return;
-          }
-        }
-      } catch (proxyErr2) {
-        console.warn("Client proxy 2 fetch error:", proxyErr2);
-      }
-
-      // Proxy Attempt 3: CodeTabs
-      try {
-        const proxyUrl3 = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(sanitizedUrl)}`;
-        const res3 = await fetch(proxyUrl3);
-        if (res3.ok) {
-          const htmlText3 = await res3.text();
-          if (htmlText3 && htmlText3.trim().length > 10) {
-            const clientParsed = clientParseSeoAndSchemas(htmlText3, sanitizedUrl);
-            setSeoAuditData(clientParsed);
-            return;
-          }
-        }
-      } catch (proxyErr3) {
-        console.warn("Client proxy 3 fetch error:", proxyErr3);
-      }
-
-      // Proxy Attempt 4: ThingProxy
-      try {
-        const proxyUrl4 = `https://thingproxy.freeboard.io/fetch/${sanitizedUrl}`;
-        const res4 = await fetch(proxyUrl4);
-        if (res4.ok) {
-          const htmlText4 = await res4.text();
-          if (htmlText4 && htmlText4.trim().length > 10) {
-            const clientParsed = clientParseSeoAndSchemas(htmlText4, sanitizedUrl);
-            setSeoAuditData(clientParsed);
-            return;
-          }
-        }
-      } catch (proxyErr4) {
-        console.warn("Client proxy 4 fetch error:", proxyErr4);
-      }
-
       setShowHtmlPaste(true);
       setSeoError(
-        `Could not retrieve HTML from target site (${sanitizedUrl}) via direct or proxy gateways. High-security sites (e.g. Cloudflare / Bot protection) block automated requests. We have opened "Paste Raw HTML" below: view page source in your browser (Ctrl+U or right-click -> View Page Source), copy, and paste here to audit SEO & Schemas instantly!`
+        `${serverError || `Could not retrieve HTML from target site (${sanitizedUrl}).`} High-security sites (e.g. Cloudflare / Bot protection) block automated requests. We have opened "Paste Raw HTML" below: view page source in your browser (Ctrl+U or right-click -> View Page Source), copy, and paste here to audit SEO & Schemas instantly!`
       );
     }
   };
