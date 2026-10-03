@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { fetchWebpage } from '../webpage/PageFetcher';
 import { fetchWithSafeRedirects, readBodyCapped, UnsafeUrlError } from '../webpage/PageSecurity';
 import { extractPageAuditModel } from '../webpage/ContentExtractor';
+import { extractPageMetadata } from '../webpage/MetadataExtractor';
 import { parseReference } from '../reference/ReferenceParser';
 import { buildContentAuditReport, type SelectedCheckOptions } from '../report/AuditReportBuilder';
 import { normalizeUrl } from '../../../src/lib/utils';
@@ -11,6 +12,9 @@ import { fetchPublicGoogleDoc } from '../google/GoogleDocsService';
 import { parseGoogleDoc } from '../google/GoogleDocParser';
 import { extractWebsiteSemanticTree } from '../webpage/domContentExtractor';
 import { compareNormalizedTrees } from '../comparison/deterministicComparator';
+import { auditAltTexts, collectAltTexts, parseAltTextLine } from '../comparison/AltTextMatcher';
+import { auditSchemas, collectPageSchemaTypes, extractSchemaBlocks } from '../comparison/SchemaMatcher';
+import * as cheerio from 'cheerio';
 
 export const contentAuditRouter = Router();
 
@@ -286,6 +290,8 @@ contentAuditRouter.post('/analyze', async (req: Request, res: Response) => {
         listsComparison: report.lists,
         tablesComparison: report.tables,
         featureImageComparison: report.featureImage,
+        altTextComparison: report.altTexts,
+        schemaComparison: report.schemas,
         faqComparison: report.faq,
 
         // Legacy compatibility mappings for existing ContentChecker UI (Fix 47)
@@ -454,6 +460,23 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
       });
     }
 
+    // Schema code and "Alt text: ..." lines are instructions, not copy: pull them out of the compared content.
+    // A one-cell table is how Docs code blocks usually come through.
+    const { blocks: refSchemaBlocks, consumed: schemaIdx } = extractSchemaBlocks(
+      referenceTree.elements.map((el) =>
+        el.type === 'paragraph' || el.type === 'heading' || (el.type === 'table' && el.rows.length === 1 && el.rows[0].length === 1)
+          ? el.text
+          : ''
+      )
+    );
+    const refAltTexts: string[] = [];
+    referenceTree.elements = referenceTree.elements.filter((el, i) => {
+      if (schemaIdx.has(i)) return false;
+      const alt = el.type === 'paragraph' ? parseAltTextLine(el.text) : undefined;
+      if (alt) refAltTexts.push(alt);
+      return !alt;
+    });
+
     // Step 4: Fetch target website
     const sanitizedUrl = normalizeUrl(rawTargetUrl);
     let pageHtml = '';
@@ -472,6 +495,22 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
 
     // Step 6: Deterministic comparison
     const auditReport = compareNormalizedTrees(referenceTree, websiteTree);
+
+    // Step 7: Alt text and schema from the doc must exist in the page source
+    const $page = cheerio.load(pageHtml);
+    auditReport.altTexts = auditAltTexts(refAltTexts, collectAltTexts($page));
+    auditReport.schemas = auditSchemas(refSchemaBlocks, collectPageSchemaTypes($page));
+    const { meta } = extractPageMetadata($page);
+    auditReport.page = { url: sanitizedUrl, title: meta.titleTag, description: meta.metaDescription, canonical: meta.canonical };
+    const { altTexts, schemas, summary } = auditReport;
+    if (altTexts.some((a) => a.status === 'MISSING') || schemas.some((s) => s.status === 'MISSING')) {
+      summary.status = 'FAIL';
+    } else if (
+      summary.status === 'PASS' &&
+      (altTexts.some((a) => a.duplicate) || schemas.some((s) => s.status === 'INVALID'))
+    ) {
+      summary.status = 'PASS_WITH_WARNINGS';
+    }
 
     const duration = Date.now() - startTime;
     console.log(

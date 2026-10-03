@@ -3,6 +3,8 @@ import type { PageAuditModel, PageHeading, PageContentBlock, PageTable, PageFaqD
 import { extractPageMetadata } from './MetadataExtractor';
 import { resolveMainContent } from './MainContentResolver';
 import { normalizeText } from '../reference/ReferenceNormalizer';
+import { collectAltTexts } from '../comparison/AltTextMatcher';
+import { collectPageSchemaTypes } from '../comparison/SchemaMatcher';
 
 function sanitizeAndParseJsonLd(text: string): any {
   if (!text) return null;
@@ -28,6 +30,9 @@ export function extractPageAuditModel(
 
   // 1. Metadata and feature images
   const { meta, images } = extractPageMetadata($);
+
+  // Alt text is checked against the whole page source, not just the main content scope
+  const altTexts = collectAltTexts($);
 
   // 2. Main content scope
   const { $scope } = resolveMainContent($, manualContentSelector);
@@ -227,6 +232,8 @@ export function extractPageAuditModel(
     blocks,
     tables,
     images,
+    altTexts,
+    schemaTypes: collectPageSchemaTypes($),
     faq,
     extraction: extractionDiagnostics,
   };

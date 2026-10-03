@@ -8,6 +8,8 @@ import type {
   ListComparison,
   TableComparison,
   FeatureImageComparison,
+  AltTextComparison,
+  SchemaComparison,
   FaqComparison,
 } from '../types/report';
 import type { PageAuditModel } from '../types/page';
@@ -20,6 +22,8 @@ import { auditLists } from '../comparison/ListMatcher';
 import { auditTables } from '../comparison/TableMatcher';
 import { auditFeatureImage } from '../comparison/ImageMatcher';
 import { auditFaq } from '../comparison/FaqMatcher';
+import { auditAltTexts } from '../comparison/AltTextMatcher';
+import { auditSchemas } from '../comparison/SchemaMatcher';
 
 export interface SelectedCheckOptions {
   title?: boolean;
@@ -413,6 +417,42 @@ export function buildContentAuditReport(
     }
   }
 
+  // 6b. Alt text from the reference must exist on an <img> in the page source (and not be duplicated)
+  let altTextComparisons: AltTextComparison[] = [];
+  if (checkImage && ref.altTexts?.length) {
+    const pageAlts = page.altTexts || [];
+    altTextComparisons = auditAltTexts(ref.altTexts, pageAlts);
+    altTextComparisons.forEach((a, idx) => {
+      if (a.status === 'MISSING') {
+        issues.push({
+          id: `alt-text-missing-${idx}`,
+          category: 'alt-text',
+          severity: 'MEDIUM',
+          message: `Alt text from the reference was not found on any image: "${a.expected}".`,
+          expected: a.expected,
+          actual: '(not found)',
+          evidence: `Checked ${pageAlts.length} <img alt> attribute(s) in the page source.`,
+        });
+      } else if (a.duplicate) {
+        issues.push({
+          id: `alt-text-duplicate-${idx}`,
+          category: 'alt-text',
+          severity: 'LOW',
+          message: `Alt text "${a.expected}" is used on ${a.pageCount} images; the reference lists it ${a.expectedCount}.`,
+          expected: a.expected,
+          actual: `${a.pageCount} images`,
+          evidence: `${a.pageCount} <img> tags in the page source carry this alt attribute.`,
+        });
+      }
+    });
+    if (altTextComparisons.some((a) => a.status === 'MISSING')) {
+      recommendations.push('Add the missing alt text from the reference to the matching <img> tags.');
+    }
+    if (altTextComparisons.some((a) => a.duplicate)) {
+      recommendations.push('Give duplicated alt text a unique description per image.');
+    }
+  }
+
   // 7. FAQ and Schema Audit - Fix 26 & Fix 27
   let faqComparison: FaqComparison | undefined = undefined;
   if (checkFaq) {
@@ -455,10 +495,38 @@ export function buildContentAuditReport(
     }
   }
 
+  // 7b. Schema pasted into the reference doc must be present on the page as JSON-LD
+  let schemaComparisons: SchemaComparison[] = [];
+  if (checkFaq && ref.schemaBlocks?.length) {
+    schemaComparisons = auditSchemas(ref.schemaBlocks, page.schemaTypes || []);
+    schemaComparisons.forEach((s, idx) => {
+      if (s.status === 'MISSING') {
+        issues.push({
+          id: `schema-doc-missing-${idx}`,
+          category: 'schema',
+          severity: 'HIGH',
+          message: `Schema from the reference is missing on the page: ${s.missingTypes.join(', ')}.`,
+          expected: s.types.join(', '),
+          actual: (page.schemaTypes || []).join(', ') || '(no JSON-LD found)',
+          evidence: 'Compared @type values of the reference schema with the page JSON-LD scripts.',
+        });
+        recommendations.push(`Add the ${s.missingTypes.join(', ')} JSON-LD schema from the reference to the page.`);
+      } else if (s.status === 'INVALID') {
+        issues.push({
+          id: `schema-doc-invalid-${idx}`,
+          category: 'schema',
+          severity: 'LOW',
+          message: 'A schema block in the reference could not be read as JSON-LD, so it was not checked.',
+          evidence: 'Check the schema in the doc for broken JSON or a missing @type.',
+        });
+      }
+    });
+  }
+
   // 8. Tally Issue Counts and Compute Weighted Category Score - Fix 33 & Fix 34
   const criticalCount = issues.filter((i) => i.severity === 'CRITICAL').length;
   const structuralCount = issues.filter((i) => i.category === 'heading' && i.severity !== 'LOW' || i.category === 'order').length;
-  const contentDiffCount = issues.filter((i) => (i.category === 'body-copy' || i.category === 'metadata') && (i.severity === 'HIGH' || i.severity === 'MEDIUM')).length;
+  const contentDiffCount = issues.filter((i) => (i.category === 'body-copy' || i.category === 'metadata' || i.category === 'alt-text' || i.id.startsWith('schema-doc-')) && (i.severity === 'HIGH' || i.severity === 'MEDIUM')).length;
   const minorDiffCount = issues.filter((i) => i.severity === 'LOW').length;
 
   let totalChecks = 0;
@@ -512,6 +580,19 @@ export function buildContentAuditReport(
     totalChecks++;
     if (featureImageComparison.matches) passedChecks++;
   }
+
+  // Alt text
+  altTextComparisons.forEach((a) => {
+    totalChecks++;
+    if (a.status === 'FOUND' && !a.duplicate) passedChecks++;
+  });
+
+  // Doc schema
+  schemaComparisons.forEach((s) => {
+    if (s.status === 'INVALID') return unverifiedChecks++;
+    totalChecks++;
+    if (s.status === 'FOUND') passedChecks++;
+  });
 
   // FAQ
   if (checkFaq && ref.faq.length > 0) {
@@ -621,6 +702,8 @@ export function buildContentAuditReport(
     lists: listComparisons,
     tables: tableComparisons,
     featureImage: featureImageComparison,
+    altTexts: altTextComparisons,
+    schemas: schemaComparisons,
     faq: faqComparison,
     issues,
     summary: {

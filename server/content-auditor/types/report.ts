@@ -23,6 +23,7 @@ export type DifferenceCategory =
   | 'table'
   | 'order'
   | 'image'
+  | 'alt-text'
   | 'schema'
   | 'extraction'
   | 'fetch';
@@ -123,6 +124,20 @@ export interface FeatureImageComparison {
   evidence?: string;
 }
 
+export interface AltTextComparison {
+  expected: string;
+  status: 'FOUND' | 'MISSING';
+  pageCount: number; // <img> tags on the page carrying this alt text
+  expectedCount: number; // times the reference lists it
+  duplicate: boolean; // on more images than the reference lists
+}
+
+export interface SchemaComparison {
+  types: string[]; // @type values the doc's schema declares
+  status: 'FOUND' | 'MISSING' | 'INVALID'; // INVALID = the doc's schema couldn't be read as JSON-LD
+  missingTypes: string[];
+}
+
 export interface FaqComparison {
   present: boolean;
   status: 'EXACT' | 'PARTIAL' | 'MISMATCH' | 'MISSING' | 'NOT_REQUIRED';
@@ -180,6 +195,8 @@ export interface ContentAuditReport {
   lists: ListComparison[];
   tables: TableComparison[];
   featureImage?: FeatureImageComparison;
+  altTexts?: AltTextComparison[];
+  schemas?: SchemaComparison[];
   faq?: FaqComparison;
   issues: AuditIssue[];
   summary: AuditSummary;

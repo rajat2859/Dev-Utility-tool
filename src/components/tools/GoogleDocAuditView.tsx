@@ -445,6 +445,98 @@ export default function GoogleDocAuditView() {
             </div>
           </div>
 
+          {/* Live page details: URL, <title> and meta description as found in the page source */}
+          {report.page && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2 text-xs">
+              <h4 className="text-sm font-bold text-slate-900">Live Page</h4>
+              <div className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1.5">
+                <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">URL</span>
+                <a
+                  href={report.page.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline break-all"
+                >
+                  {report.page.url}
+                </a>
+                <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Meta Title</span>
+                <span className="text-slate-800 font-medium break-words">
+                  {report.page.title || <em className="text-slate-400">No &lt;title&gt; tag found</em>}
+                </span>
+                <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Meta Description</span>
+                <span className="text-slate-800 font-medium break-words">
+                  {report.page.description || <em className="text-slate-400">No meta description found</em>}
+                </span>
+                {report.page.canonical && (
+                  <>
+                    <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Canonical</span>
+                    <span className="text-slate-800 font-medium break-all">{report.page.canonical}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Image alt text listed in the doc, checked against <img alt> in the page source */}
+          {!!report.altTexts?.length && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
+              <h4 className="text-sm font-bold text-slate-900">Image Alt Text ({report.altTexts.length})</h4>
+              {report.altTexts.map((alt, i) => (
+                <div key={i} className="flex flex-wrap items-center gap-2 text-xs">
+                  <span
+                    className={`px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border ${
+                      alt.status === 'MISSING'
+                        ? 'bg-red-100 text-red-800 border-red-200'
+                        : alt.duplicate
+                        ? 'bg-amber-100 text-amber-800 border-amber-200'
+                        : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    }`}
+                  >
+                    {alt.status === 'MISSING' ? 'Missing' : alt.duplicate ? 'Duplicate' : 'Found'}
+                  </span>
+                  <span className="text-slate-800 font-medium">{alt.expected}</span>
+                  <span className="text-slate-500">
+                    {alt.status === 'MISSING'
+                      ? 'not on any <img> in the page source'
+                      : alt.duplicate
+                      ? `used on ${alt.pageCount} images (doc lists it ${alt.expectedCount})`
+                      : `on ${alt.pageCount} image${alt.pageCount > 1 ? 's' : ''}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Schema (JSON-LD) pasted into the doc, checked against the page's JSON-LD scripts */}
+          {!!report.schemas?.length && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
+              <h4 className="text-sm font-bold text-slate-900">Schema in Doc ({report.schemas.length})</h4>
+              {report.schemas.map((schema, i) => (
+                <div key={i} className="flex flex-wrap items-center gap-2 text-xs">
+                  <span
+                    className={`px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border ${
+                      schema.status === 'MISSING'
+                        ? 'bg-red-100 text-red-800 border-red-200'
+                        : schema.status === 'INVALID'
+                        ? 'bg-amber-100 text-amber-800 border-amber-200'
+                        : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    }`}
+                  >
+                    {schema.status === 'INVALID' ? 'Unreadable' : schema.status === 'MISSING' ? 'Missing' : 'Found'}
+                  </span>
+                  <span className="text-slate-800 font-medium">{schema.types.join(', ') || 'Unknown type'}</span>
+                  <span className="text-slate-500">
+                    {schema.status === 'MISSING'
+                      ? `not in the page JSON-LD: ${schema.missingTypes.join(', ')}`
+                      : schema.status === 'INVALID'
+                      ? 'could not be read as JSON-LD (broken JSON or no @type), so it was not checked'
+                      : 'present in the page JSON-LD'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Tabs & Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">

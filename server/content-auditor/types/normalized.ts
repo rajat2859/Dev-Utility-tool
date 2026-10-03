@@ -1,3 +1,5 @@
+import type { AltTextComparison, SchemaComparison } from './report';
+
 export type HeadingTag = 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 
 export type SemanticTag =
@@ -98,4 +100,7 @@ export interface ContentAuditReport {
   referenceTree: NormalizedDocument;
   websiteTree: NormalizedDocument;
   extraWebsiteElements: NormalizedElement[];
+  altTexts?: AltTextComparison[];
+  schemas?: SchemaComparison[];
+  page?: { url: string; title?: string; description?: string; canonical?: string };
 }
