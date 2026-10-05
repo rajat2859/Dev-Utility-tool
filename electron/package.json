@@ -1,7 +1,7 @@
 {
   "name": "utility-tool-manager-desktop",
   "productName": "Utility Tool Manager",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "Windows desktop shell for the Utility Tool Manager web app",
   "main": "main.cjs",
