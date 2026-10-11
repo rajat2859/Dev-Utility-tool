@@ -20,7 +20,8 @@ The tool list lives in `src/components/DashboardGrid.tsx`; routing between tools
 ## Requirements
 
 - Node.js 22 (the release workflow uses 22).
-- Microsoft Edge or Google Chrome installed, for the features that drive a headless browser (see [Content Auditor](#content-auditor)) and for `npm run desktop`.
+- Microsoft Edge or Google Chrome installed, for the features that drive a headless browser (see [Content Auditor](#content-auditor)) and for `npm run desktop:web`.
+- For the Responsive Preview's Safari (WebKit) render: `npx playwright-core install webkit` once (about 60 MB, shared by the dev server and the desktop app). Without it the button reports that WebKit is missing.
 
 ## Run it
 
@@ -32,7 +33,8 @@ npm run dev        # dev server (Express + Vite middleware) on http://127.0.0.1:
 | Script | Purpose |
 | --- | --- |
 | `npm run dev` | Start `server.ts` with `tsx watch`. Listens on `PORT`, default 2000. |
-| `npm run desktop` | Start the dev server if none is running and open the app in a standalone Edge/Chrome window (`scripts/launch-desktop-window.mjs`). Fails if neither browser is found. |
+| `npm run desktop` | Build and launch the Electron desktop app (`npm start` in `electron/`). Run `npm install` in `electron/` once first. |
+| `npm run desktop:web` | Start the dev server if none is running and open the app in a standalone Edge/Chrome window (`scripts/launch-desktop-window.mjs`). This is the web version: Responsive Preview goes through the proxy, not a real browser view. Fails if neither browser is found. |
 | `npm run build` | Build the front end into `dist/` and bundle the server into `dist/server.cjs`. |
 | `npm start` | Run the built server (`node dist/server.cjs`). Run `npm run build` first. |
 | `npm run lint` | Type-check with `tsc --noEmit`. |
