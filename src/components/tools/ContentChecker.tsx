@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { normalizeUrl } from '../../lib/utils';
 import GoogleDocAuditView from './GoogleDocAuditView';
+import BulkDocAuditView from './BulkDocAuditView';
 
 const CHECK_CATEGORIES = [
   { id: 'title', label: 'URL, Title & Description' },
@@ -245,7 +246,7 @@ export default function ContentChecker() {
   const [url, setUrl] = useState<string>('');
   const [rawHtml, setRawHtml] = useState<string>('');
   const [showHtmlPaste, setShowHtmlPaste] = useState<boolean>(false);
-  const [auditMode, setAuditMode] = useState<'google-doc' | 'screenshot'>('google-doc');
+  const [auditMode, setAuditMode] = useState<'google-doc' | 'bulk' | 'screenshot'>('google-doc');
 
   // Screenshot QA states
   const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
@@ -608,6 +609,18 @@ export default function ContentChecker() {
         </button>
         <button
           type="button"
+          onClick={() => setAuditMode('bulk')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            auditMode === 'bulk'
+              ? 'bg-white text-slate-900 shadow-2xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Layers className="h-3.5 w-3.5 text-blue-600" />
+          <span>Bulk Doc Audit</span>
+        </button>
+        <button
+          type="button"
           onClick={() => setAuditMode('screenshot')}
           className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
             auditMode === 'screenshot'
@@ -622,6 +635,8 @@ export default function ContentChecker() {
 
       {auditMode === 'google-doc' ? (
         <GoogleDocAuditView />
+      ) : auditMode === 'bulk' ? (
+        <BulkDocAuditView />
       ) : (
         <>
       {/* Main Input Card */}
