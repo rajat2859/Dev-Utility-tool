@@ -6,12 +6,13 @@
   "scripts": {
     "dev": "tsx watch server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "desktop": "node scripts/launch-desktop-window.mjs",
+    "desktop": "npm --prefix electron start",
+    "desktop:web": "node scripts/launch-desktop-window.mjs",
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "node -e \"for (const p of ['dist','server.js']) require('fs').rmSync(p,{recursive:true,force:true})\"",
     "lint": "tsc --noEmit",
-    "test": "tsx --test src/lib/utils.test.ts server/content-auditor/__tests__/contentAuditor.test.ts server/content-auditor/__tests__/googleDocsAudit.test.ts server/content-auditor/__tests__/pageSecurity.test.ts"
+    "test": "tsx --test src/lib/utils.test.ts server/content-auditor/__tests__/contentAuditor.test.ts server/content-auditor/__tests__/googleDocsAudit.test.ts server/content-auditor/__tests__/pageSecurity.test.ts server/seo-audit/__tests__/seoAudit.test.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",

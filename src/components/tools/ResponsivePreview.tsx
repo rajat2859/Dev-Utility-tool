@@ -124,6 +124,7 @@ const MAX_RECENT_URLS = 6;
 const PROBE_TIMEOUT_MS = 18000;
 const PROXY_ENDPOINT = '/api/responsive/proxy';
 const PROBE_ENDPOINT = '/api/responsive/probe.js';
+const WEBKIT_ENDPOINT = '/api/responsive/webkit';
 const IS_DESKTOP_APP = Boolean(window.desktopUpdater);
 const FRAME_ID = 'stage';
 const ZOOM_STEPS = [1, 0.75, 0.5, 0.33, 0.25];
@@ -192,6 +193,41 @@ function emptyReport(): Report {
 }
 
 type ProbeMessage = Record<string, unknown>;
+type WebkitShot = { status: 'loading' | 'ready' | 'error'; url: string; src?: string; message?: string };
+
+// The same page rendered by Safari's engine, as a still. Shown beside the live
+// (Chromium) device at the same scale so the two can be compared line by line.
+function WebkitPanel({ shot, width, height, scale, onClose }: {
+  shot: WebkitShot; width: number; height: number; scale: number; onClose: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center">
+      <div className="mb-2 flex items-center gap-2 text-[11px] font-bold text-slate-600">
+        <span className="rounded bg-sky-100 px-1.5 py-0.5 text-sky-800">WebKit</span>
+        <span className="max-w-[160px] truncate font-medium text-slate-500" title={shot.url}>{shot.url.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+        <button onClick={onClose} title="Close the WebKit render" className="rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700"><X className="h-3.5 w-3.5" /></button>
+      </div>
+      <div
+        className="overflow-y-auto overflow-x-hidden rounded-lg border border-slate-300 bg-white shadow-xl"
+        style={{ width: Math.round(width * scale), height: Math.round(height * scale) }}
+      >
+        {shot.status === 'loading' && (
+          <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center text-xs text-slate-500">
+            <LoaderCircle className="h-5 w-5 animate-spin text-sky-600" />
+            Rendering in WebKit…
+          </div>
+        )}
+        {shot.status === 'error' && (
+          <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center text-xs text-amber-800">
+            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            {shot.message}
+          </div>
+        )}
+        {shot.status === 'ready' && <img src={shot.src} alt="WebKit render of the page" className="block w-full" />}
+      </div>
+    </div>
+  );
+}
 
 // The desktop app previews the real site in a browser view (not the proxy), so links, logins and
 // cookies behave like a real browser. The layout probe is injected into each page it loads.
@@ -422,6 +458,8 @@ export default function ResponsivePreview() {
   const [showOffenders, setShowOffenders] = useState(false);
   const [popped, setPopped] = useState(false);
   const poppedRef = useRef(false);
+  const [webkitShot, setWebkitShot] = useState<WebkitShot | null>(null);
+  const webkitRequestRef = useRef(0);
 
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const frameRef = useRef<HTMLElement | null>(null);
@@ -469,10 +507,12 @@ export default function ResponsivePreview() {
   const fitScale = useMemo(() => {
     if (stageWidth === 0) return 1;
     const metrics = chromeMetrics(device.group, device.width);
-    const availableWidth = stageWidth - 40 - metrics.extraWidth;
+    // With the WebKit panel open, two screens of `width` share the row (plus its 24px gap).
+    const screens = webkitShot ? 2 : 1;
+    const availableWidth = stageWidth - 40 - metrics.extraWidth - (webkitShot ? 24 : 0);
     const availableHeight = stageHeight - 32 - metrics.extraHeight;
-    return Math.max(0.1, Math.min(1, availableWidth / width, availableHeight / height));
-  }, [stageWidth, stageHeight, device.group, device.width, width, height]);
+    return Math.max(0.1, Math.min(1, availableWidth / (width * screens), availableHeight / height));
+  }, [stageWidth, stageHeight, device.group, device.width, width, height, webkitShot]);
 
   const scale = zoom === 'fit' ? fitScale : zoom;
 
@@ -601,6 +641,38 @@ export default function ResponsivePreview() {
     setReport(emptyReport());
     setShowOffenders(false);
   }, [previewUrl, deviceId, rotated, frameKey]);
+
+  // A render at another size, or of a page loaded fresh from the URL bar, would
+  // be compared against the wrong thing. Not keyed on previewUrl: the desktop
+  // app's live view rewrites it on every redirect and in-page route change,
+  // which would throw the render away while it is still loading.
+  useEffect(() => {
+    webkitRequestRef.current += 1;
+    setWebkitShot(null);
+  }, [deviceId, rotated, frameKey]);
+
+  useEffect(() => () => { if (webkitShot?.src) URL.revokeObjectURL(webkitShot.src); }, [webkitShot]);
+
+  const renderInWebkit = () => {
+    const requestId = ++webkitRequestRef.current;
+    const url = previewUrl;
+    setWebkitShot({ status: 'loading', url });
+    const params = new URLSearchParams({ url, w: String(width), h: String(height), ua: uaKeyFor(device.group, device.width) });
+    fetch(`${WEBKIT_ENDPOINT}?${params.toString()}`, { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) {
+          const data = await response.json().catch(() => null);
+          throw new Error(data?.error || `WebKit render failed (HTTP ${response.status}).`);
+        }
+        return response.blob();
+      })
+      .then((blob) => {
+        if (requestId === webkitRequestRef.current) setWebkitShot({ status: 'ready', url, src: URL.createObjectURL(blob) });
+      })
+      .catch((error: Error) => {
+        if (requestId === webkitRequestRef.current) setWebkitShot({ status: 'error', url, message: error.message || 'WebKit render failed.' });
+      });
+  };
 
   // A frame that never reports back is unmeasured, which is not the same thing
   // as "no overflow" — say so rather than showing a false all-clear.
@@ -968,6 +1040,16 @@ export default function ResponsivePreview() {
               <RotateCw className="h-3.5 w-3.5" />{rotated ? 'Landscape' : 'Portrait'}
             </button>
 
+            <button
+              onClick={renderInWebkit}
+              disabled={webkitShot?.status === 'loading'}
+              title="Render this page in WebKit, Safari's engine, and show it beside the live preview"
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition disabled:opacity-60 ${webkitShot ? 'border-sky-300 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+            >
+              {webkitShot?.status === 'loading' ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Smartphone className="h-3.5 w-3.5" />}
+              {webkitShot ? 'Re-render Safari' : 'Safari (WebKit)'}
+            </button>
+
             <div className="relative inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700">
               <ZoomIn className="h-3.5 w-3.5 text-slate-400" />
               <select
@@ -1081,6 +1163,11 @@ export default function ResponsivePreview() {
             onNavigated={handleLiveNavigation}
           />
         </motion.div>
+        {webkitShot && (
+          <div className="ml-6 shrink-0">
+            <WebkitPanel shot={webkitShot} width={width} height={height} scale={scale} onClose={() => { webkitRequestRef.current += 1; setWebkitShot(null); }} />
+          </div>
+        )}
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

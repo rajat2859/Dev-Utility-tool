@@ -5,12 +5,15 @@ import dotenv from "dotenv";
 import Tesseract from "tesseract.js";
 import compression from "compression";
 import { contentAuditRouter } from "./server/content-auditor/routes/contentAuditRoutes";
+import { runSeoAudit } from "./server/seo-audit/crawl";
 import {
   isPrivateIp,
   fetchWithSafeRedirects,
   readBodyCapped,
   UnsafeUrlError,
+  validateSafeUrl,
 } from "./server/content-auditor/webpage/PageSecurity";
+import { webkit, type Browser } from "playwright-core";
 
 dotenv.config();
 
@@ -36,458 +39,12 @@ app.use("/api/seo-checker", express.json({ limit: "10mb" }));
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ limit: "2mb", extended: true }));
 
-// Shared HTML micro-parsing helpers (used by both parseFullSeoAndSchemas and parseHtml)
+// Browser-like User-Agent for fetching target pages
 const DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
-
-const HTML_NAMED_ENTITIES: Record<string, string> = {
-  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
-  rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“',
-  ndash: '–', mdash: '—', hellip: '…', copy: '©', reg: '®', trade: '™'
-};
-
-// Extracted text is compared/displayed as-is elsewhere, so undecoded entities (a real page's
-// apostrophes/ampersands almost always export as &#x27;/&amp;) would otherwise show up literally
-// in the report instead of the character they represent.
-function decodeHtmlEntities(text: string): string {
-  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (match, entity) => {
-    if (entity[0] === '#') {
-      const code = entity[1].toLowerCase() === 'x' ? parseInt(entity.slice(2), 16) : parseInt(entity.slice(1), 10);
-      return Number.isNaN(code) ? match : String.fromCodePoint(code);
-    }
-    return HTML_NAMED_ENTITIES[entity.toLowerCase()] ?? match;
-  });
-}
-
-function sanitizeAndParseJsonLd(rawJsonLd: string): any {
-  if (!rawJsonLd) return null;
-  // 1. Remove CDATA wrappers
-  let s = rawJsonLd
-    .replace(/^\s*\/\*\s*<!\[CDATA\[\s*\*\/|\/\*\s*\]\]>\s*\*\/$/gi, '')
-    .replace(/^\s*<!\[CDATA\[|\]\]>\s*$/gi, '')
-    .trim();
-
-  // 2. Strip JavaScript comments (block and line comments, preserving URLs)
-  s = s.replace(/\/\*[\s\S]*?\*\//g, '');
-  s = s.replace(/(^|[^\\:])\/\/.*$/gm, '$1').trim();
-
-  try {
-    return JSON.parse(s);
-  } catch {
-    // 3. Strip trailing commas before closing braces/brackets
-    let fixed = s.replace(/,\s*([\]}])/g, '$1');
-    try {
-      return JSON.parse(fixed);
-    } catch {
-      // 4. Decode HTML entities (e.g. &quot;, &#34;) and retry
-      fixed = decodeHtmlEntities(fixed).replace(/,\s*([\]}])/g, '$1');
-      return JSON.parse(fixed);
-    }
-  }
-}
-
-function stripTags(fragment: string): string {
-  return decodeHtmlEntities(fragment.replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
-}
 
 function normalizeUrl(rawUrl: string): string {
   const trimmed = rawUrl.trim();
   return /^https?:\/\//i.test(trimmed) ? trimmed : 'https://' + trimmed;
-}
-
-function extractPageTitle(html: string): string {
-  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  if (titleMatch) return stripTags(titleMatch[1]);
-  const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([\s\S]*?)["']/i) ||
-                       html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+property=["']og:title["']/i);
-  return ogTitleMatch ? stripTags(ogTitleMatch[1]) : '';
-}
-
-function extractMetaDescriptionTag(html: string): string {
-  const descMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([\s\S]*?)["']/i) ||
-                    html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']description["']/i);
-  return descMatch ? stripTags(descMatch[1]) : '';
-}
-
-// Best-effort "featured image" for the page: og:image, then twitter:image, then the first <img>.
-function extractOgImage(html: string): string {
-  const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([\s\S]*?)["']/i) ||
-             html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+property=["']og:image["']/i);
-  if (og) return og[1].trim();
-  const twitter = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([\s\S]*?)["']/i) ||
-                  html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']twitter:image["']/i);
-  if (twitter) return twitter[1].trim();
-  const img = html.match(/<img[^>]+src=["']([^"']+)["']/i);
-  return img ? img[1].trim() : '';
-}
-
-// The page's own declared URL — <link rel="canonical">, falling back to og:url — read straight
-// from the HTML source, rather than trusting whatever URL was typed into the input box (which
-// may not match after redirects, trailing slashes, or a copy-pasted staging link).
-function extractCanonicalUrl(html: string): string {
-  const canonical = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([\s\S]*?)["']/i) ||
-                     html.match(/<link[^>]+href=["']([\s\S]*?)["'][^>]+rel=["']canonical["']/i);
-  if (canonical) return canonical[1].trim();
-  const ogUrl = html.match(/<meta[^>]+property=["']og:url["'][^>]+content=["']([\s\S]*?)["']/i) ||
-                html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+property=["']og:url["']/i);
-  return ogUrl ? ogUrl[1].trim() : '';
-}
-
-interface FaqQA { question: string; answer: string }
-
-// Finds a FAQPage JSON-LD block (directly, inside @graph, or inside an array) and pulls out
-// its question/answer pairs, so the Auditor can check both "is it there" and "does it match the doc".
-function extractFaqSchema(html: string): { present: boolean; raw: any | null; qa: FaqQA[] } {
-  const jsonLdRegex = /<script[^>]+type=["']application\/ld\+json[^"']*["'][^>]*>([\s\S]*?)<\/script>/gi;
-  let scriptMatch;
-  while ((scriptMatch = jsonLdRegex.exec(html)) !== null) {
-    const rawScriptContent = scriptMatch[1].trim();
-    if (!rawScriptContent) continue;
-    try {
-      const parsed = sanitizeAndParseJsonLd(rawScriptContent);
-      if (!parsed) continue;
-
-      const findFaq = (obj: any): any | null => {
-        if (!obj || typeof obj !== 'object') return null;
-        if (Array.isArray(obj)) {
-          for (const item of obj) {
-            const found = findFaq(item);
-            if (found) return found;
-          }
-          return null;
-        }
-        if (Array.isArray(obj['@graph'])) {
-          for (const item of obj['@graph']) {
-            const found = findFaq(item);
-            if (found) return found;
-          }
-          return null;
-        }
-        const type = obj['@type'] || obj['type'];
-        const typeStr = Array.isArray(type) ? type.join(',') : String(type || '');
-        if (typeStr.includes('FAQPage')) return obj;
-
-        for (const [k, v] of Object.entries(obj)) {
-          if (k !== '@context' && typeof v === 'object' && v !== null) {
-            const found = findFaq(v);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-
-      const faqObj = findFaq(parsed);
-      if (faqObj) {
-        const mainEntity = Array.isArray(faqObj.mainEntity) ? faqObj.mainEntity : [];
-        const qa: FaqQA[] = mainEntity
-          .map((q: any) => ({
-            question: stripTags(String(q?.name || '')),
-            answer: stripTags(String(q?.acceptedAnswer?.text || ''))
-          }))
-          .filter((q: FaqQA) => q.question || q.answer);
-        return { present: true, raw: faqObj, qa };
-      }
-    } catch {
-      // Malformed JSON-LD block — skip it and keep scanning the rest of the page.
-    }
-  }
-  return { present: false, raw: null, qa: [] };
-}
-
-function extractAllHeadings(html: string): { level: string; text: string }[] {
-  const results: { level: string; text: string }[] = [];
-  const headingRegex = /<(h1|h2|h3|h4|h5|h6)[^>]*>([\s\S]*?)<\/\1>/gi;
-  let m;
-  while ((m = headingRegex.exec(html)) !== null) {
-    results.push({ level: m[1].toLowerCase(), text: stripTags(m[2]) });
-  }
-  return results;
-}
-
-// Robust server-side SEO & Schema parser for Meta Title, Description, Social Cards & Schema.org JSON-LD / Microdata
-function parseFullSeoAndSchemas(html: string, pageUrl?: string) {
-  const title = extractPageTitle(html);
-  const description = extractMetaDescriptionTag(html);
-
-  // Meta Keywords
-  let keywords = '';
-  const kwMatch = html.match(/<meta[^>]+name=["']keywords["'][^>]+content=["']([\s\S]*?)["']/i) ||
-                  html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']keywords["']/i);
-  if (kwMatch) keywords = kwMatch[1].trim();
-
-  // Canonical URL
-  let canonical = '';
-  const canMatch = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([\s\S]*?)["']/i) ||
-                   html.match(/<link[^>]+href=["']([\s\S]*?)["'][^>]+rel=["']canonical["']/i);
-  if (canMatch) canonical = canMatch[1].trim();
-
-  // Robots
-  let robots = '';
-  const robMatch = html.match(/<meta[^>]+name=["']robots["'][^>]+content=["']([\s\S]*?)["']/i) ||
-                   html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']robots["']/i);
-  if (robMatch) robots = robMatch[1].trim();
-
-  // Viewport
-  let viewport = '';
-  const vpMatch = html.match(/<meta[^>]+name=["']viewport["'][^>]+content=["']([\s\S]*?)["']/i) ||
-                  html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']viewport["']/i);
-  if (vpMatch) viewport = vpMatch[1].trim();
-
-  // Open Graph & Twitter Social Tags
-  const extractMeta = (propName: string, attrName = 'property') => {
-    const reg = new RegExp(`<meta[^>]+${attrName}=["']${propName.replace(':', '\\:')}["'][^>]+content=["']([\\s\\S]*?)["']`, 'i');
-    const reg2 = new RegExp(`<meta[^>]+content=["']([\\s\\S]*?)["'][^>]+${attrName}=["']${propName.replace(':', '\\:')}["']`, 'i');
-    const m = html.match(reg) || html.match(reg2);
-    return m ? m[1].trim() : undefined;
-  };
-
-  const ogTitle = extractMeta('og:title');
-  const ogDescription = extractMeta('og:description');
-  const ogImage = extractMeta('og:image');
-  const ogUrl = extractMeta('og:url');
-  const ogType = extractMeta('og:type');
-  const ogSiteName = extractMeta('og:site_name');
-
-  const twitterCard = extractMeta('twitter:card', 'name');
-  const twitterTitle = extractMeta('twitter:title', 'name');
-  const twitterDescription = extractMeta('twitter:description', 'name');
-  const twitterImage = extractMeta('twitter:image', 'name');
-
-  // Headings
-  const allHeadings = extractAllHeadings(html);
-  const h1s = allHeadings.filter(h => h.level === 'h1' && h.text).map(h => h.text);
-  const h2Count = allHeadings.filter(h => h.level === 'h2').length;
-  const h3Count = allHeadings.filter(h => h.level === 'h3').length;
-  const h4Count = allHeadings.filter(h => h.level === 'h4').length;
-
-  // Image alt check
-  let totalImages = 0;
-  let missingAltCount = 0;
-  const imgRegex = /<img[^>]*>/gi;
-  let imgMatch;
-  while ((imgMatch = imgRegex.exec(html)) !== null) {
-    totalImages++;
-    const imgTag = imgMatch[0];
-    if (!/alt=["']/i.test(imgTag) || /alt=["']\s*["']/i.test(imgTag)) {
-      missingAltCount++;
-    }
-  }
-
-  // Title Audit
-  const titleLen = title.length;
-  let titleStatus: 'optimal' | 'too_short' | 'too_long' | 'missing' = 'optimal';
-  let titleMsg = 'Title length is optimal for Google SERP display (50 - 60 characters).';
-  if (titleLen === 0) {
-    titleStatus = 'missing';
-    titleMsg = 'Meta title tag is completely missing! This severely harms SEO ranking.';
-  } else if (titleLen < 30) {
-    titleStatus = 'too_short';
-    titleMsg = `Title is too short (${titleLen} chars). Expand to 50-60 characters to include target keywords and branding.`;
-  } else if (titleLen > 60) {
-    titleStatus = 'too_long';
-    titleMsg = `Title is too long (${titleLen} chars). Google will truncate titles beyond ~60 characters on desktop/mobile.`;
-  }
-
-  // Description Audit
-  const descLen = description.length;
-  let descStatus: 'optimal' | 'too_short' | 'too_long' | 'missing' = 'optimal';
-  let descMsg = 'Meta description length is optimal for search snippets (120 - 160 characters).';
-  if (descLen === 0) {
-    descStatus = 'missing';
-    descMsg = 'Meta description is missing! Search engines will auto-generate snippets from body text.';
-  } else if (descLen < 70) {
-    descStatus = 'too_short';
-    descMsg = `Description is too short (${descLen} chars). Expand to 120-160 characters to improve click-through rates.`;
-  } else if (descLen > 160) {
-    descStatus = 'too_long';
-    descMsg = `Description is too long (${descLen} chars). Snippets over 160 characters will be truncated with ellipsis.`;
-  }
-
-  // Schema extraction (JSON-LD)
-  const schemas: any[] = [];
-  const jsonLdRegex = /<script[^>]+type=["']application\/ld\+json[^"']*["'][^>]*>([\s\S]*?)<\/script>/gi;
-  let scriptMatch;
-  while ((scriptMatch = jsonLdRegex.exec(html)) !== null) {
-    const rawScriptContent = scriptMatch[1].trim();
-    if (!rawScriptContent) continue;
-    try {
-      const parsed = sanitizeAndParseJsonLd(rawScriptContent);
-      if (!parsed) continue;
-
-      const processSchemaObj = (obj: any) => {
-        if (!obj || typeof obj !== 'object') return;
-
-        if (Array.isArray(obj['@graph'])) {
-          obj['@graph'].forEach(item => processSchemaObj(item));
-          return;
-        }
-
-        if (Array.isArray(obj)) {
-          obj.forEach(item => processSchemaObj(item));
-          return;
-        }
-
-        const schemaType = obj['@type'] || obj['type'];
-        if (schemaType) {
-          const typeStr = Array.isArray(schemaType) ? schemaType.join(', ') : String(schemaType);
-          const issues: { type: 'error' | 'warning' | 'info'; message: string; field?: string }[] = [];
-
-          if (typeStr.includes('Article') || typeStr.includes('BlogPosting') || typeStr.includes('NewsArticle')) {
-            if (!obj.headline && !obj.name) issues.push({ type: 'warning', message: 'Missing "headline" property.', field: 'headline' });
-            if (!obj.image) issues.push({ type: 'warning', message: 'Missing "image" property (recommended for Rich Snippets).', field: 'image' });
-            if (!obj.datePublished) issues.push({ type: 'info', message: 'Missing "datePublished" property.', field: 'datePublished' });
-            if (!obj.author) issues.push({ type: 'info', message: 'Missing "author" property.', field: 'author' });
-            if (!obj.publisher) issues.push({ type: 'info', message: 'Missing "publisher" property.', field: 'publisher' });
-          } else if (typeStr.includes('Product')) {
-            if (!obj.name) issues.push({ type: 'error', message: 'Missing required "name" property.', field: 'name' });
-            if (!obj.image) issues.push({ type: 'warning', message: 'Missing "image" property.', field: 'image' });
-            if (!obj.offers && !obj.aggregateRating && !obj.review) {
-              issues.push({ type: 'warning', message: 'Missing "offers" or "aggregateRating" for Product rich results.', field: 'offers' });
-            }
-          } else if (typeStr.includes('Organization') || typeStr.includes('LocalBusiness')) {
-            if (!obj.name) issues.push({ type: 'error', message: 'Missing required "name" property.', field: 'name' });
-            if (!obj.url) issues.push({ type: 'warning', message: 'Missing "url" property.', field: 'url' });
-            if (!obj.logo && !obj.image) issues.push({ type: 'info', message: 'Missing "logo" or "image" property.', field: 'logo' });
-          } else if (typeStr.includes('BreadcrumbList')) {
-            if (!obj.itemListElement || !Array.isArray(obj.itemListElement) || obj.itemListElement.length === 0) {
-              issues.push({ type: 'error', message: 'BreadcrumbList requires "itemListElement" array.', field: 'itemListElement' });
-            }
-          } else if (typeStr.includes('FAQPage')) {
-            if (!obj.mainEntity || !Array.isArray(obj.mainEntity)) {
-              issues.push({ type: 'error', message: 'FAQPage requires "mainEntity" array of Question/Answer items.', field: 'mainEntity' });
-            }
-          } else if (typeStr.includes('WebSite')) {
-            if (!obj.name && !obj.url) issues.push({ type: 'warning', message: 'WebSite schema should specify "name" and "url".', field: 'name' });
-          } else if (typeStr.includes('SoftwareApplication') || typeStr.includes('WebApplication')) {
-            if (!obj.name) issues.push({ type: 'error', message: 'Missing required "name" property.', field: 'name' });
-            if (!obj.applicationCategory) issues.push({ type: 'info', message: 'Missing "applicationCategory" property.', field: 'applicationCategory' });
-          }
-
-          if (!obj['@type']) {
-            issues.push({ type: 'error', message: 'Missing @type property in JSON-LD object.' });
-          }
-
-          schemas.push({
-            schemaType: typeStr,
-            source: 'json-ld',
-            rawJson: obj,
-            issues,
-            valid: issues.filter(i => i.type === 'error').length === 0
-          });
-        }
-
-        // Recursively inspect nested objects for child entities (author, publisher, provider, etc.)
-        for (const [key, val] of Object.entries(obj)) {
-          if (key !== '@graph' && key !== '@context' && typeof val === 'object' && val !== null) {
-            if (Array.isArray(val)) {
-              val.forEach(item => {
-                if (typeof item === 'object' && item !== null && ((item as any)['@type'] || (item as any)['type'])) {
-                  processSchemaObj(item);
-                }
-              });
-            } else if ((val as any)['@type'] || (val as any)['type']) {
-              processSchemaObj(val);
-            }
-          }
-        }
-      };
-
-      processSchemaObj(parsed);
-    } catch (jsonErr: any) {
-      schemas.push({
-        schemaType: 'Invalid JSON-LD',
-        source: 'json-ld',
-        rawJson: { raw: rawScriptContent.slice(0, 300) },
-        issues: [{ type: 'error', message: `JSON syntax error: ${jsonErr.message}` }],
-        valid: false
-      });
-    }
-  }
-
-  // Microdata and RDFa Semantic Entity Checks
-  const microdataRegex = /<[^>]+(itemscope|typeof)[^>]*>/gi;
-  let mdMatch;
-  while ((mdMatch = microdataRegex.exec(html)) !== null) {
-    const tag = mdMatch[0];
-    const typeMatch = tag.match(/(?:itemtype|typeof)=["']([^"']+)["']/i);
-    const itemType = typeMatch ? typeMatch[1].split(/[\/#:]/).pop() || typeMatch[1] : 'SemanticItem';
-    schemas.push({
-      schemaType: itemType,
-      source: /itemscope/i.test(tag) ? 'microdata' : 'rdfa',
-      rawJson: { htmlTag: tag },
-      issues: [],
-      valid: true
-    });
-  }
-
-  // Calculate Health Score (0 - 100)
-  let titleScore = titleStatus === 'optimal' ? 20 : titleStatus === 'too_short' || titleStatus === 'too_long' ? 12 : 0;
-  let descriptionScore = descStatus === 'optimal' ? 20 : descStatus === 'too_short' || descStatus === 'too_long' ? 12 : 0;
-  let headingsScore = h1s.length === 1 ? 15 : h1s.length > 1 ? 8 : 0;
-  let socialScore = (ogTitle && ogDescription && ogImage ? 10 : ogTitle || ogDescription ? 5 : 0) + (twitterCard ? 5 : 0);
-  let technicalScore = (canonical ? 8 : 0) + (viewport ? 7 : 0);
-  let schemaScore = schemas.length > 0 && schemas.some(s => s.valid) ? 15 : schemas.length > 0 ? 8 : 0;
-
-  const totalScore = titleScore + descriptionScore + headingsScore + socialScore + technicalScore + schemaScore;
-
-  return {
-    title: {
-      text: title,
-      length: titleLen,
-      status: titleStatus,
-      message: titleMsg,
-      pixelWidthEst: Math.round(titleLen * 8.2)
-    },
-    description: {
-      text: description,
-      length: descLen,
-      status: descStatus,
-      message: descMsg
-    },
-    keywords,
-    canonical,
-    robots,
-    viewport,
-    openGraph: {
-      title: ogTitle,
-      description: ogDescription,
-      image: ogImage,
-      url: ogUrl,
-      type: ogType,
-      siteName: ogSiteName,
-      hasOgTags: !!(ogTitle || ogDescription || ogImage)
-    },
-    twitterCard: {
-      card: twitterCard,
-      title: twitterTitle,
-      description: twitterDescription,
-      image: twitterImage,
-      hasTwitterTags: !!(twitterCard || twitterTitle || twitterImage)
-    },
-    headings: {
-      h1Count: h1s.length,
-      h1Texts: h1s,
-      h2Count,
-      h3Count,
-      h4Count,
-      status: h1s.length === 1 ? 'good' : h1s.length === 0 ? 'missing_h1' : 'multiple_h1',
-      message: h1s.length === 1 ? 'Perfect! Exactly 1 H1 heading tag found.' : h1s.length === 0 ? 'Missing H1 tag. Every SEO-friendly page should have exactly one main H1 tag.' : `Found ${h1s.length} H1 tags. It is recommended to have exactly one H1 tag per page.`
-    },
-    images: {
-      total: totalImages,
-      missingAltCount,
-      imagesWithoutAlt: []
-    },
-    schemas,
-    overallHealthScore: totalScore,
-    scoreBreakdown: {
-      titleScore,
-      descriptionScore,
-      headingsScore,
-      socialScore,
-      technicalScore,
-      schemaScore
-    }
-  };
 }
 
 // Helper to fetch webpage HTML directly with browser headers and SSRF-safe redirect handling
@@ -557,38 +114,21 @@ async function fetchGoogleDocText(docUrl: string): Promise<string> {
   return text;
 }
 
-// Endpoint to audit SEO meta tags, Title, Description, and Schema.org structured data
-app.post("/api/seo-checker/analyze", async (req, res) => {
+// Screaming Frog-style SEO & structured data audit of a URL list, a sitemap, and/or pasted HTML
+app.post("/api/seo-checker/crawl", async (req, res) => {
   try {
-    const { url, rawHtml } = req.body;
-    let htmlContent = "";
-    let pageUrlStr = url || "";
-    let fetchNotice: string | undefined = undefined;
+    const { urls, rawHtml } = req.body ?? {};
+    const urlList: string[] = Array.isArray(urls)
+      ? urls.filter((u): u is string => typeof u === "string").map((u) => u.trim()).filter(Boolean)
+      : [];
+    const pastedHtml = typeof rawHtml === "string" ? rawHtml : "";
 
-    if (rawHtml && rawHtml.trim()) {
-      htmlContent = rawHtml.trim();
-    } else if (url && url.trim()) {
-      const sanitizedUrl = normalizeUrl(url);
-      pageUrlStr = sanitizedUrl;
-
-      try {
-        const fetched = await fetchWebpageHtml(sanitizedUrl);
-        htmlContent = fetched.html;
-        fetchNotice = fetched.notice;
-      } catch (fetchErr: any) {
-        return res.status(400).json({ error: fetchErr.message || `Could not connect to target URL (${sanitizedUrl}).` });
-      }
-    } else {
-      return res.status(400).json({ error: "Please provide a Webpage URL or paste raw HTML code." });
+    if (!urlList.length && !pastedHtml.trim()) {
+      return res.status(400).json({ error: "Enter at least one URL or sitemap URL, or paste raw HTML code." });
     }
 
-    const auditResult = parseFullSeoAndSchemas(htmlContent, pageUrlStr);
-    return res.json({
-      success: true,
-      data: auditResult,
-      pageUrl: pageUrlStr,
-      fetchNotice
-    });
+    const result = await runSeoAudit({ urls: urlList, rawHtml: pastedHtml }, async (url) => (await fetchWebpageHtml(url)).html);
+    return res.json({ success: true, ...result });
   } catch (err: any) {
     return res.status(500).json({ error: err.message || "Failed to audit SEO and Schemas." });
   }
@@ -661,6 +201,31 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
       if (!("ontouchstart" in window)) { window.ontouchstart = null; }
     }
   } catch (e) { /* the site just keeps its own UA */ }
+
+  // Behind the proxy the document path is /api/responsive/proxy, so SPA routers
+  // (Next.js et al.) think they are on the wrong route: they 404, crash
+  // hydration, or hard-navigate out to the real site. Give the frame the real
+  // path on our origin, and map the router's history calls — which resolve
+  // against the injected <base>, i.e. the real origin — back onto ours.
+  try {
+    var real = new URL(REAL_URL);
+    if (real.origin !== location.origin) {
+      var toLocal = function (url) {
+        if (url == null) return url;
+        var resolved = new URL(url, document.baseURI || REAL_URL);
+        return resolved.origin === real.origin ? location.origin + resolved.pathname + resolved.search + resolved.hash : url;
+      };
+      ["pushState", "replaceState"].forEach(function (name) {
+        var original = history[name];
+        history[name] = function (state, title, url) {
+          var local = url;
+          try { local = toLocal(url); } catch (e) { /* leave it */ }
+          return original.call(this, state, title, local);
+        };
+      });
+      history.replaceState(history.state, "", real.pathname + real.search + real.hash);
+    }
+  } catch (e) { /* history stays native */ }
 
   // Lets the preview (and anyone debugging it) confirm the probe is alive.
   try { document.documentElement.setAttribute("data-rp-probe", "ready"); } catch (e) { /* noop */ }
@@ -972,6 +537,23 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
     post({ type: "navigate", url: absolute });
   }, true);
 
+  // Script-driven navigations (location.href = ..., a router's hard-nav
+  // fallback when its cross-origin data fetch is CORS-blocked) would load the
+  // real site into the frame, where X-Frame-Options refuses it. Route them
+  // through the host like clicks; a hard reload of this same page is dropped,
+  // or it would just fail the same way again, forever.
+  try {
+    if (INTERCEPT_LINKS && window.navigation) {
+      navigation.addEventListener("navigate", function (event) {
+        if (!event.cancelable || event.downloadRequest || event.navigationType === "traverse") return;
+        var dest = new URL(event.destination.url);
+        if (dest.origin === location.origin || !/^https?:/.test(dest.protocol)) return;
+        event.preventDefault();
+        if (dest.href.split("#")[0] !== REAL_URL.split("#")[0]) post({ type: "navigate", url: dest.href });
+      });
+    }
+  } catch (e) { /* no Navigation API: same as before */ }
+
   window.addEventListener("resize", function () { scheduleScan(120); });
   document.addEventListener("DOMContentLoaded", function () { scan(); });
   window.addEventListener("load", function () { scan(); });
@@ -1147,6 +729,125 @@ app.get("/api/responsive/proxy", async (req, res) => {
     res.status(502).send(buildPreviewErrorPage(frameId, target.href, message));
   } finally {
     clearTimeout(timeout);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// WebKit render
+//
+// The live preview is always Chromium, whatever device is picked. This renders
+// the same page in WebKit — Safari's engine, the one every iPhone browser uses —
+// and returns a screenshot, the closest Windows gets to seeing an Apple device.
+// ---------------------------------------------------------------------------
+
+const WEBKIT_DESKTOP_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15";
+const WEBKIT_MAX_PAGE_HEIGHT = 8000;
+
+// Launching WebKit costs a couple of seconds, so one browser stays warm and each
+// render gets its own throwaway context.
+// ponytail: one shared browser, renders run concurrently in it; a pool if they queue up.
+let webkitBrowser: Promise<Browser> | null = null;
+function getWebkitBrowser(): Promise<Browser> {
+  if (!webkitBrowser) {
+    const launching = webkit.launch();
+    webkitBrowser = launching;
+    launching
+      .then((browser) => browser.on("disconnected", () => { webkitBrowser = null; }))
+      .catch(() => { webkitBrowser = null; });
+  }
+  return webkitBrowser;
+}
+
+app.get("/api/responsive/webkit", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const width = Math.round(Number(req.query.w));
+  const height = Math.round(Number(req.query.h));
+  const uaKey = ["mobile", "tablet", "desktop"].includes(String(req.query.ua)) ? String(req.query.ua) : "desktop";
+
+  if (!(width >= 120 && width <= 4000 && height >= 120 && height <= 4000)) {
+    res.status(400).json({ error: "Width and height must be between 120 and 4000." });
+    return;
+  }
+
+  let target: URL;
+  try {
+    target = new URL(String(req.query.url || ""));
+    if (!["http:", "https:"].includes(target.protocol)) throw new Error("unsupported protocol");
+  } catch {
+    res.status(400).json({ error: "That is not a valid http(s) URL." });
+    return;
+  }
+
+  if (!ALLOW_PRIVATE_PREVIEW_HOSTS && isPrivateIp(target.hostname)) {
+    res.status(403).json({ error: "Previewing private network addresses is disabled on this server." });
+    return;
+  }
+
+  const touch = uaKey !== "desktop";
+  let context: Awaited<ReturnType<Browser["newContext"]>> | null = null;
+  try {
+    const browser = await getWebkitBrowser();
+    context = await browser.newContext({
+      viewport: { width, height },
+      deviceScaleFactor: touch ? 2 : 1,
+      isMobile: touch,
+      hasTouch: touch,
+      userAgent: touch ? RESPONSIVE_UA[uaKey] : WEBKIT_DESKTOP_UA,
+    });
+
+    // Same rule as the proxy: on a public deployment every request the page
+    // makes (redirects, subresources, XHR) is checked so it cannot reach an
+    // internal address. Every route is settled so nothing hangs.
+    if (!ALLOW_PRIVATE_PREVIEW_HOSTS) {
+      await context.route("**/*", async (route) => {
+        const requestUrl = route.request().url();
+        let allowed = false;
+        try {
+          allowed = /^(data|blob|about):/i.test(requestUrl) || (await validateSafeUrl(requestUrl)).valid;
+        } catch { /* fail closed */ }
+        try {
+          if (allowed) await route.continue();
+          else await route.abort("blockedbyclient");
+        } catch { /* page already closed */ }
+      });
+    }
+
+    const page = await context.newPage();
+    await page.goto(target.href, { waitUntil: "domcontentloaded", timeout: 20000 });
+    try { await page.waitForLoadState("networkidle", { timeout: 4000 }); } catch { /* busy sites never go idle */ }
+
+    // A full-page shot never scrolls, so lazy images and scroll-reveal sections
+    // would stay blank. Walk down the page once to trigger them, then go back up.
+    await page.evaluate(async (maxHeight) => {
+      const step = window.innerHeight;
+      for (let y = 0; y < Math.min(document.documentElement.scrollHeight, maxHeight); y += step) {
+        window.scrollTo(0, y);
+        await new Promise((resolve) => setTimeout(resolve, 120));
+      }
+      window.scrollTo(0, 0);
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }, WEBKIT_MAX_PAGE_HEIGHT);
+
+    const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+    const screenshot = await page.screenshot({
+      type: "jpeg",
+      quality: 80,
+      fullPage: true,
+      clip: { x: 0, y: 0, width, height: Math.max(height, Math.min(pageHeight, WEBKIT_MAX_PAGE_HEIGHT)) },
+    });
+
+    res.setHeader("Content-Type", "image/jpeg");
+    res.send(screenshot);
+  } catch (error: any) {
+    const message = String(error?.message || error);
+    if (/Executable doesn't exist/i.test(message)) {
+      res.status(503).json({ error: "WebKit is not installed. Run: npx playwright-core install webkit" });
+    } else {
+      res.status(502).json({ error: /Timeout/i.test(message) ? "The site took too long to load in WebKit." : message.split("\n")[0] });
+    }
+  } finally {
+    await context?.close().catch(() => {});
   }
 });
 
