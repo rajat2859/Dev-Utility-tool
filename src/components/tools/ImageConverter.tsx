@@ -247,69 +247,49 @@ export default function ImageConverter() {
     targetFormat: string,
     maxSizeBytes: number = 100 * 1024
   ): Promise<{ blob: Blob; finalQuality: number }> => {
-    let scale = 1.0;
-    let quality = 0.82;
+    // File size tracks pixel count, so steer by scale rather than walking
+    // quality down at full resolution: the old ladder spent four full-size
+    // encodes (seconds each for big photos / AVIF) before it ever downscaled.
+    // ponytail: ~2 MP starting budget assumes photo-like content; flat graphics
+    // just converge in one more pass.
+    const quality = 0.8;
+    const startPixels = 2_000_000;
+    const naturalPixels = imgHtml.naturalWidth * imgHtml.naturalHeight;
+    let scale = Math.min(1, Math.sqrt(startPixels / naturalPixels));
     let bestBlob: Blob | null = null;
-    let bestQuality = quality;
-    let canvas: HTMLCanvasElement | null = null;
-    let renderedScale = 0;
 
-    for (let attempt = 1; attempt <= 7; attempt++) {
-      if (!canvas || renderedScale !== scale) {
-        const finalWidth = Math.max(1, Math.round(imgHtml.naturalWidth * scale));
-        const finalHeight = Math.max(1, Math.round(imgHtml.naturalHeight * scale));
-        canvas = document.createElement('canvas');
-        canvas.width = finalWidth;
-        canvas.height = finalHeight;
+    for (let attempt = 1; attempt <= 6; attempt++) {
+      const finalWidth = Math.max(1, Math.round(imgHtml.naturalWidth * scale));
+      const finalHeight = Math.max(1, Math.round(imgHtml.naturalHeight * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = finalWidth;
+      canvas.height = finalHeight;
 
-        const ctx = canvas.getContext('2d');
-        if (!ctx) break;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) break;
 
-        if (targetFormat === 'jpeg') {
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(0, 0, finalWidth, finalHeight);
-        }
-
-        ctx.drawImage(imgHtml, 0, 0, finalWidth, finalHeight);
-        renderedScale = scale;
+      if (targetFormat === 'jpeg') {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, finalWidth, finalHeight);
       }
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(imgHtml, 0, 0, finalWidth, finalHeight);
 
-      const encodingCanvas = canvas;
       const blob = await new Promise<Blob | null>((resolveBlob) => {
-        encodingCanvas.toBlob((b) => resolveBlob(b), mimeType, quality);
+        canvas.toBlob((b) => resolveBlob(b), mimeType, quality);
       });
-
       if (!blob) break;
 
-      if (!bestBlob || blob.size < maxSizeBytes || (blob.size < bestBlob.size && bestBlob.size > maxSizeBytes)) {
-        bestBlob = blob;
-        bestQuality = quality;
-      }
+      if (!bestBlob || blob.size < bestBlob.size) bestBlob = blob;
+      if (blob.size < maxSizeBytes) break;
 
-      if (blob.size < maxSizeBytes) {
-        break;
-      }
-
-      if (quality > 0.6) {
-        quality = 0.50;
-      } else if (quality > 0.3) {
-        quality = 0.25;
-      } else if (quality > 0.12) {
-        quality = 0.10;
-      } else {
-        scale = scale * 0.70;
-        quality = 0.65;
-      }
-
-      if (scale < 0.05) {
-        scale = 0.05;
-        break;
-      }
+      // Aim 10% under the limit so the next pass lands, not hovers above it.
+      scale *= Math.sqrt((maxSizeBytes * 0.9) / blob.size);
     }
 
     return {
       blob: bestBlob!,
-      finalQuality: bestQuality,
+      finalQuality: quality,
     };
   };
 
