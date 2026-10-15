@@ -9,25 +9,14 @@ import { normalizeText, areTextsMatching } from '../utils/textNormalizer';
 
 const HEADING_MARKER_PATTERN = /^(?:<[hH][1-6]>|\[[hH][1-6]\]|[hH][1-6][:—–-])\s*/;
 
-/**
- * Text used to decide whether two elements say the same thing. Tolerates whitespace and
- * punctuation normalization plus editorial heading tags (e.g. "<H1> Title" vs "Title").
- */
 function textMatchKey(text: string): string {
   return normalizeText(text).replace(HEADING_MARKER_PATTERN, '').trim();
 }
 
-/**
- * Checks if two text strings match after normalization.
- */
 export function isTextMatch(a: string, b: string): boolean {
   return textMatchKey(a) === textMatchKey(b);
 }
 
-/**
- * Detailed comparison for list items.
- * Returns failure details if an item is missing, out of order, or text differs.
- */
 export function compareListDetails(
   refItems: string[],
   webItems: string[]
@@ -62,10 +51,6 @@ export function compareListDetails(
   return { matches: true, detail: 'All list items match.' };
 }
 
-/**
- * Detailed comparison for table rows and cells.
- * Returns failure details with specific row and column numbers.
- */
 export function compareTableDetails(
   refRows: string[][],
   webRows: string[][]
@@ -136,10 +121,6 @@ function pageTagOf(element: NormalizedElement): string {
   return element.type === 'paragraph' && element.sourceTag ? element.sourceTag : element.tag;
 }
 
-/**
- * Longest in-order run of elements whose text is identical. Among equally long runs,
- * prefers pairs that also share the same tag.
- */
 function alignElementsWithIdenticalText(
   referenceElements: NormalizedElement[],
   referenceKeys: string[],
@@ -181,19 +162,6 @@ function alignElementsWithIdenticalText(
   return alignedPairs.reverse();
 }
 
-/**
- * Deterministically compares reference content against website content.
- *
- * Elements whose text is identical are aligned in document order, so extra blocks on the page
- * (banners, CTAs, share buttons) never break the matching. Outcomes for each reference element:
- * - PASS: tag matches, text matches (normalized, case-sensitive)
- * - WRONG_TAG: text matches, but semantic tag differs (e.g. h2 vs h3, or h3 vs a <button>)
- * - WRONG_ORDER: text exists on the page, but not in the position the reference expects
- * - CONTENT_MISMATCH: an element of the same kind sits where the reference expects it, but text differs
- * - MISSING: reference item was not found on the webpage
- *
- * Extra elements on the website are tracked separately in `extraWebsiteElements`.
- */
 export function compareNormalizedTrees(
   refDoc: NormalizedDocument,
   webDoc: NormalizedDocument

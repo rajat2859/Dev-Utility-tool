@@ -7,9 +7,6 @@ export interface MatchScoreResult {
   exactNormalized: boolean;
 }
 
-/**
- * Standard Levenshtein distance with early-exit length optimizations
- */
 export function levenshteinDistance(s1: string, s2: string): number {
   if (s1 === s2) return 0;
   if (s1.length === 0) return s2.length;
@@ -46,9 +43,6 @@ export function levenshteinDistance(s1: string, s2: string): number {
   return prevRow[len2];
 }
 
-/**
- * Computes token Dice coefficient: 2 * |A ∩ B| / (|A| + |B|)
- */
 export function diceTokenSimilarity(words1: string[], words2: string[]): number {
   if (words1.length === 0 && words2.length === 0) return 1.0;
   if (words1.length === 0 || words2.length === 0) return 0.0;
@@ -68,12 +62,6 @@ export function diceTokenSimilarity(words1: string[], words2: string[]): number 
   return (2 * matches) / (words1.length + words2.length);
 }
 
-/**
- * Computes deterministic multi-signal similarity between two text snippets:
- * 1. Normalized exact match -> 1.0 (EXACT)
- * 2. Short texts (<15 chars): strict normalized edit distance
- * 3. Medium/Long texts: combination of token Dice similarity and Levenshtein similarity
- */
 export function compareTextSimilarity(expected: string, actual: string): MatchScoreResult {
   const normExpected = normalizeText(expected);
   const normActual = normalizeText(actual);
@@ -93,7 +81,6 @@ export function compareTextSimilarity(expected: string, actual: string): MatchSc
   const canonAct = canonicalize(normActual);
 
   if (canonExp === canonAct) {
-    // Differs only by punctuation, smart quotes or case
     return { similarity: 0.99, status: 'NEAR_EXACT', exactNormalized: false };
   }
 
@@ -109,7 +96,6 @@ export function compareTextSimilarity(expected: string, actual: string): MatchSc
   const expWords = tokenizeWords(canonExp);
   const actWords = tokenizeWords(canonAct);
 
-  // For very short text (e.g. single word, navigation item), rely on character edit distance
   if (canonExp.length < 15 || expWords.length <= 2) {
     const dist = levenshteinDistance(canonExp, canonAct);
     const charSim = 1 - dist / maxLen;
@@ -122,12 +108,10 @@ export function compareTextSimilarity(expected: string, actual: string): MatchSc
     return { similarity: Math.max(0, charSim), status: 'MISMATCH', exactNormalized: false };
   }
 
-  // For medium to long text, blend token Dice and character similarity
   const tokenSim = diceTokenSimilarity(expWords, actWords);
   const dist = levenshteinDistance(canonExp, canonAct);
   const charSim = 1 - dist / maxLen;
 
-  // 60% token similarity + 40% character similarity
   const combined = tokenSim * 0.6 + Math.max(0, charSim) * 0.4;
   const rounded = Math.round(combined * 100) / 100;
 

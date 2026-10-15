@@ -105,7 +105,6 @@ body {
   .view-enter { animation: none; }
 }
 
-/* Desktop-app behaviour: interface chrome is not selectable text, and scrolling never rubber-bands the window. */
 html {
   overscroll-behavior: none;
 }

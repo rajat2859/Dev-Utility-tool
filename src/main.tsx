@@ -3,7 +3,6 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-// Gracefully intercept and suppress benign HMR WebSocket/Vite connection errors
 if (typeof window !== 'undefined') {
   const isBenignWSError = (err: any): boolean => {
     if (!err) return false;

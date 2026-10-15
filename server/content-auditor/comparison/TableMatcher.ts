@@ -36,13 +36,11 @@ export function auditTables(
       for (const actRow of act.rows) {
         if (expRow.length !== actRow.length && expRow.length > 0) continue;
 
-        // Compare cell by cell: strict matching for cells
         let allCellsMatch = true;
         for (let c = 0; c < expRow.length; c++) {
           const expCell = expRow[c] || '';
           const actCell = actRow[c] || '';
           const res = compareTextSimilarity(expCell, actCell);
-          // Only EXACT or NEAR_EXACT count as cell match
           if (res.status !== 'EXACT' && res.status !== 'NEAR_EXACT') {
             allCellsMatch = false;
             break;

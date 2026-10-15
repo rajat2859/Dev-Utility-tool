@@ -1,15 +1,3 @@
-/**
- * Shared text normalization utility used across Google Doc parser,
- * website DOM extractor, and deterministic comparator.
- *
- * Normalizes harmless differences:
- * - leading/trailing whitespace
- * - multiple consecutive spaces, tabs, line breaks -> single space
- * - non-breaking spaces (\u00A0, \u2007, \u202F) -> space
- * - zero-width characters (\u200B, \u200C, \u200D, \uFEFF) -> stripped
- * - HTML entities (&amp;, &quot;, &lt;, &gt;, &#39;, &nbsp;, etc.) -> decoded
- * - smart quotes/dashes normalized
- */
 export function normalizeText(str: string): string {
   if (!str || typeof str !== 'string') return '';
 
@@ -35,9 +23,6 @@ export function normalizeText(str: string): string {
     .trim();
 }
 
-/**
- * Checks whether two strings are identical after shared normalization.
- */
 export function areTextsMatching(a: string, b: string): boolean {
   return normalizeText(a) === normalizeText(b);
 }

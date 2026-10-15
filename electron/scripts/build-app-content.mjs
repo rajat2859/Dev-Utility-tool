@@ -12,8 +12,6 @@ await buildWebApp({
   logLevel: 'warn',
 });
 
-// Only these two stay external: tesseract.js starts worker threads from its own files, and
-// playwright-core locates its own files. They are installed by this folder's package.json.
 await bundleServer({
   entryPoints: [path.join(repositoryRoot, 'server.ts')],
   outfile: path.join(electronDirectory, 'build', 'server.cjs'),

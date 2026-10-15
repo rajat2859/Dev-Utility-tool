@@ -43,7 +43,6 @@ export function buildContentAuditReport(
   const issues: AuditIssue[] = [];
   const recommendations: string[] = [];
 
-  // Default all checks to true if none specified
   const checkTitle = selectedChecks.title !== false;
   const checkHeadings = selectedChecks.headings !== false;
   const checkParagraphs = selectedChecks.paragraphs !== false;
@@ -52,7 +51,6 @@ export function buildContentAuditReport(
   const checkImage = selectedChecks.image !== false;
   const checkFaq = selectedChecks.faq !== false;
 
-  // Check if reference or page extraction confidence is too low (Fix 10 & Fix 12 & Principle)
   const isReferenceLowConfidence =
     ref.extractionConfidence < 70 ||
     ref.diagnostics.unverifiedFields.includes('all');
@@ -62,7 +60,7 @@ export function buildContentAuditReport(
 
   // 1. Metadata Audit (Title, Meta Description, URL) - Fix 1 & Fix 2
   const expTitle = ref.meta.title || '';
-  const actTitle = page.meta.titleTag || ''; // STRICT: Only titleTag
+  const actTitle = page.meta.titleTag || '';
   const isTitleUnverified = ref.diagnostics.unverifiedFields.includes('meta.title') || !expTitle;
 
   let titleStatus: MetadataComparison['title']['status'] = 'UNVERIFIED';
@@ -103,7 +101,7 @@ export function buildContentAuditReport(
 
   // Meta Description - Fix 2
   const expDesc = ref.meta.description || '';
-  const actDesc = page.meta.metaDescription || ''; // STRICT: Only <meta name="description">
+  const actDesc = page.meta.metaDescription || '';
   const isDescUnverified = ref.diagnostics.unverifiedFields.includes('meta.description') || !expDesc;
 
   let descStatus: MetadataComparison['description']['status'] = 'UNVERIFIED';
@@ -621,12 +619,11 @@ export function buildContentAuditReport(
   }
 
   // Approximate category weights (Fix 34):
-  // URL: 5, Title: 10, Meta Description: 10, Heading Structure: 15, Body Copy: 30, Lists/Tables: 10, Content Order: 10, Feature Image: 5, Schema: 5
   let scoreNumerator = 0;
   let scoreDenominator = 0;
 
   if (checkTitle) {
-    scoreDenominator += 25; // 5 URL + 10 Title + 10 Desc
+    scoreDenominator += 25;
     if (metadata.url.status === 'EXACT') scoreNumerator += 5;
     if (metadata.title.status === 'EXACT' || metadata.title.status === 'NEAR_EXACT') scoreNumerator += 10;
     else if (metadata.title.status === 'PARTIAL') scoreNumerator += 5;

@@ -1,6 +1,5 @@
 export type Priority = 'High' | 'Medium' | 'Low' | 'Info';
 
-// One per Screaming Frog tab that has issue filters
 export type IssueTab =
   | 'Page Titles'
   | 'Meta Description'
@@ -13,7 +12,7 @@ export type IssueTab =
 
 export interface SeoIssue {
   tab: IssueTab;
-  name: string; // Screaming Frog's filter name, e.g. "Over 60 Characters"
+  name: string;
   priority: Priority;
   detail?: string;
 }
@@ -23,25 +22,25 @@ export interface SchemaItem {
   format: 'JSON-LD' | 'Microdata' | 'RDFa';
   errors: string[];
   warnings: string[];
-  richResult?: string; // Google rich result feature this type can trigger
-  json?: unknown; // top-level JSON-LD nodes only
+  richResult?: string;
+  json?: unknown;
 }
 
 export interface SeoPage {
   address: string;
-  error?: string; // the page could not be fetched
-  title: string[]; // every <title> found
+  error?: string;
+  title: string[];
   titlePixels: number;
-  description: string[]; // every meta description found
+  description: string[];
   descriptionPixels: number;
   h1: string[];
   h2: string[];
   canonical: string[];
-  robots: string[]; // meta robots/googlebot directives, lowercased
+  robots: string[];
   images: {
     total: number;
-    missingAltAttribute: string[]; // src of images with no alt attribute
-    missingAltText: string[]; // src of images with an empty alt
+    missingAltAttribute: string[];
+    missingAltText: string[];
     altOver100: string[];
   };
   structuredData: { items: SchemaItem[]; errors: number; warnings: number };

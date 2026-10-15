@@ -39,7 +39,6 @@ export default function PasswordGenerator() {
   const LOWERCASE = 'abcdefghijklmnopqrstuvwxyz';
   const NUMBERS = '0123456789';
   const SYMBOLS = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-  // Ambiguous glyphs, both cases - the old list dropped uppercase I and L.
   const SIMILAR = /[iIlL1oO0]/g;
 
   const pick = (pool: string) => pool[randomInt(pool.length)];
@@ -65,8 +64,6 @@ export default function PasswordGenerator() {
     if (pools.length === 0) return '';
 
     const allowed = pools.join('');
-    // One guaranteed character per selected class, then fill. Truncated rather
-    // than padded when length < class count, so `length` is always honoured.
     const mandatory = pools.map(pick).slice(0, length);
     const rest = Array.from({ length: Math.max(0, length - mandatory.length) }, () => pick(allowed));
     return shuffled([...mandatory, ...rest]).join('');

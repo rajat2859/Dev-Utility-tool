@@ -36,7 +36,6 @@ export function parseGoogleDocReference(rawText: string, docUrl?: string): Conte
   let metaTitle = labeledTitle?.value;
   let metaDescription = labeledDesc?.value;
 
-  // Track lines that were consumed as metadata so they aren't parsed as body content
   const consumedLineIndices = new Set<number>();
   if (labeledUrl) consumedLineIndices.add(labeledUrl.lineIndex);
   if (labeledTitle) consumedLineIndices.add(labeledTitle.lineIndex);
@@ -46,11 +45,9 @@ export function parseGoogleDocReference(rawText: string, docUrl?: string): Conte
   if (labeledSecondaryKeywords) consumedLineIndices.add(labeledSecondaryKeywords.lineIndex);
   if (labeledRequiredSchema) consumedLineIndices.add(labeledRequiredSchema.lineIndex);
 
-  // Schema code pasted into the doc is audited against the page's JSON-LD, never as body copy
   const { blocks: schemaBlocks, consumed: schemaLineIndices } = extractSchemaBlocks(originalLines);
   schemaLineIndices.forEach((i) => consumedLineIndices.add(i));
 
-  // A doc can list several alt texts; consume them all so they aren't audited as body paragraphs
   const altTexts: string[] = [];
   originalLines.forEach((line, i) => {
     if (consumedLineIndices.has(i)) return;
@@ -70,8 +67,6 @@ export function parseGoogleDocReference(rawText: string, docUrl?: string): Conte
     labeledRequiredSchema
   );
 
-  // Fix 8: Do NOT blindly assume first line = title, second line = description
-  // If no explicit title/description was found, mark as UNVERIFIED unless there is clear preamble structure
   if (!metaTitle) {
     unverifiedFields.push('meta.title');
     notes.push('No explicit Meta Title found; marked as unverified.');
@@ -155,7 +150,6 @@ export function parseGoogleDocReference(rawText: string, docUrl?: string): Conte
     // Skip divider lines
     if (/^[_\-=*]{3,}$/.test(line)) continue;
 
-    // Check for explicit heading notation (e.g. "H2 Our Services" or "## Our Services")
     const hPrefixMatch = line.match(/^(?:(h[1-6])\s*[:\-]?\s*|(#{1,6})\s+)(.+)$/i);
     blockCounter++;
 
@@ -184,7 +178,6 @@ export function parseGoogleDocReference(rawText: string, docUrl?: string): Conte
       continue;
     }
 
-    // Check for list item notation (* item, - item, 1. item)
     const listMatch = line.match(/^([*\-•]|\d+\.)\s+(.+)$/);
     if (listMatch) {
       const listType = /^\d+\./.test(listMatch[1]) ? 'ol' : 'ul';
@@ -200,7 +193,6 @@ export function parseGoogleDocReference(rawText: string, docUrl?: string): Conte
       continue;
     }
 
-    // Check for tab-separated table row (Google Docs table export)
     if (line.includes('\t') || line.includes(' | ')) {
       const cells = (line.includes('\t') ? line.split('\t') : line.split(' | '))
         .map((c) => normalizeText(c))

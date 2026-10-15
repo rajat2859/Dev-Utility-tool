@@ -18,7 +18,7 @@ export interface ReferenceHeading {
 export interface ReferenceBlock {
   id: string;
   type: ReferenceBlockType;
-  level?: number; // for headings
+  level?: number;
   listType?: 'ul' | 'ol';
   text: string;
   normalizedText: string;
@@ -39,7 +39,6 @@ export interface ReferenceFaq {
   order: number;
 }
 
-/** JSON-LD schema pasted into the doc; json is undefined when it could not be parsed. */
 export interface ReferenceSchemaBlock {
   json?: unknown;
 }

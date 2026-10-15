@@ -74,8 +74,6 @@ export default function ImageConverter() {
     if (img.convertedDataUrl?.startsWith('blob:')) URL.revokeObjectURL(img.convertedDataUrl);
   };
 
-  // A ref, because the unmount cleanup would otherwise read the empty array
-  // captured at mount and leak every object URL the session created.
   const imagesRef = useRef<ImageFile[]>([]);
   useEffect(() => { imagesRef.current = images; }, [images]);
   useEffect(() => () => { imagesRef.current.forEach(revokeUrls); }, []);
@@ -247,11 +245,6 @@ export default function ImageConverter() {
     targetFormat: string,
     maxSizeBytes: number = 100 * 1024
   ): Promise<{ blob: Blob; finalQuality: number }> => {
-    // File size tracks pixel count, so steer by scale rather than walking
-    // quality down at full resolution: the old ladder spent four full-size
-    // encodes (seconds each for big photos / AVIF) before it ever downscaled.
-    // ponytail: ~2 MP starting budget assumes photo-like content; flat graphics
-    // just converge in one more pass.
     const quality = 0.8;
     const startPixels = 2_000_000;
     const naturalPixels = imgHtml.naturalWidth * imgHtml.naturalHeight;
@@ -283,7 +276,6 @@ export default function ImageConverter() {
       if (!bestBlob || blob.size < bestBlob.size) bestBlob = blob;
       if (blob.size < maxSizeBytes) break;
 
-      // Aim 10% under the limit so the next pass lands, not hovers above it.
       scale *= Math.sqrt((maxSizeBytes * 0.9) / blob.size);
     }
 

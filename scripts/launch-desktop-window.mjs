@@ -68,7 +68,6 @@ if (!(await waitForServerToBeHealthy())) {
   process.exit(1);
 }
 
-// A dedicated profile makes the browser start its own process, so this script can tell when the window closes.
 const desktopProfileDirectory = path.join(projectRoot, '.desktop-profile');
 const desktopWindowProcess = spawn(
   browserExecutablePath,

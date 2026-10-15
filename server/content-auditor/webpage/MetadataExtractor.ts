@@ -23,11 +23,9 @@ export function extractPageMetadata($: CheerioAPI): {
   meta: PageMetadata;
   images: PageImage[];
 } {
-  // STRICT Fix 1: Only real <title> tag in <head> or anywhere
   const rawTitle = $('head title').first().text() || $('title').first().text();
   const titleTag = rawTitle ? normalizeText(rawTitle) : undefined;
 
-  // STRICT Fix 2: Only <meta name="description">
   const rawDesc = $('meta[name="description" i]').attr('content');
   const metaDescription = rawDesc ? normalizeText(rawDesc) : undefined;
 
@@ -62,7 +60,6 @@ export function extractPageMetadata($: CheerioAPI): {
     } : undefined,
   };
 
-  // Feature Image candidates with ranked source attribution (Fix 24)
   const images: PageImage[] = [];
 
   if (ogImage) {

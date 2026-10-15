@@ -65,8 +65,8 @@ export interface PageAuditModel {
   url: string;
   finalUrl?: string;
   meta: {
-    titleTag?: string; // STRICT: only <title>
-    metaDescription?: string; // STRICT: only <meta name="description">
+    titleTag?: string;
+    metaDescription?: string;
     canonical?: string;
     openGraph?: {
       title?: string;
@@ -84,8 +84,8 @@ export interface PageAuditModel {
   blocks: PageContentBlock[];
   tables: PageTable[];
   images: PageImage[];
-  schemaTypes?: string[]; // every @type in the page's JSON-LD scripts
-  altTexts?: string[]; // alt attribute of every <img> in the page source, duplicates kept
+  schemaTypes?: string[];
+  altTexts?: string[];
   faq: PageFaqData;
   extraction: PageExtractionDiagnostics;
 }

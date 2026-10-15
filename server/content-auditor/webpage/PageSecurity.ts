@@ -1,15 +1,6 @@
 import dns from 'node:dns/promises';
 import { isIP } from 'node:net';
 
-/**
- * Shared SSRF protection used by every route that fetches a user-supplied URL.
- *
- * Known limitation: validation resolves DNS itself, and the subsequent fetch resolves it again, so a
- * hostile DNS server could still answer differently the second time (DNS rebinding). Closing that
- * fully requires pinning the resolved address in the HTTP connection, which the global fetch cannot do.
- */
-
-// Obvious non-public names. Real public domains such as fdic.gov or fcbarcelona.com must NOT match.
 const BLOCKED_HOST_SUFFIXES = ['.localhost', '.internal', '.local', '.localdomain'];
 
 function parseIPv4(ip: string): number[] | null {
@@ -33,13 +24,11 @@ function isPrivateIPv4Octets([a, b, c]: number[]): boolean {
   return false;
 }
 
-/** Expands an IPv6 literal (with optional embedded dotted IPv4) into eight 16-bit groups. */
 function parseIPv6(ip: string): number[] | null {
   let addr = ip;
   const zone = addr.indexOf('%');
   if (zone !== -1) addr = addr.slice(0, zone);
 
-  // Convert an embedded dotted IPv4 tail into two hex groups.
   const lastColon = addr.lastIndexOf(':');
   const tail = addr.slice(lastColon + 1);
   if (tail.includes('.')) {
@@ -67,7 +56,7 @@ function ipv4FromGroups(hi: number, lo: number): number[] {
 
 function isPrivateIPv6(ip: string): boolean {
   const g = parseIPv6(ip);
-  if (!g) return true; // unparseable literal: fail closed
+  if (!g) return true;
   const allZeroUpTo = (n: number) => g.slice(0, n).every((x) => x === 0);
 
   if (allZeroUpTo(7) && (g[7] === 0 || g[7] === 1)) return true; // :: and ::1
@@ -86,11 +75,6 @@ function isPrivateIPv6(ip: string): boolean {
   return false;
 }
 
-/**
- * True when the host (a hostname or an IPv4/IPv6 literal, brackets allowed) points at a loopback,
- * private, link-local or otherwise non-public destination. IPv6 prefix rules apply to IPv6
- * literals only, so domains that merely start with "fc"/"fd"/"fe80" are not affected.
- */
 export function isPrivateIp(host: string): boolean {
   const clean = host.trim().toLowerCase().replace(/^\[|\]$/g, '').replace(/\.+$/, '');
   if (!clean) return true;
@@ -119,11 +103,6 @@ export interface SafeUrlResult {
   parsedUrl?: URL;
 }
 
-/**
- * Validates protocol, host and DNS resolution. Every resolved address must be public. A failed
- * lookup is not treated as unsafe (the fetch will surface ENOTFOUND itself).
- * `resolver` exists so tests can run without network access.
- */
 export async function validateSafeUrl(urlStr: string, resolver: HostResolver = defaultResolver): Promise<SafeUrlResult> {
   try {
     const parsed = new URL(urlStr);
@@ -137,13 +116,11 @@ export async function validateSafeUrl(urlStr: string, resolver: HostResolver = d
       return { valid: false, reason: `Access to private or local network host "${hostname}" is blocked for security.` };
     }
 
-    // A literal IP needs no DNS; otherwise resolve ALL records (SSRF via DNS rebinding / multi-A records).
     if (!isIP(hostname.replace(/^\[|\]$/g, ''))) {
       let addresses: string[] = [];
       try {
         addresses = await resolver(hostname);
       } catch {
-        // Let the fetch attempt handle the standard ENOTFOUND error.
       }
       const bad = addresses.find((address) => isPrivateIp(address));
       if (bad) {
@@ -157,7 +134,6 @@ export async function validateSafeUrl(urlStr: string, resolver: HostResolver = d
   }
 }
 
-/** Thrown when a URL (or a redirect hop) fails SSRF validation. */
 export class UnsafeUrlError extends Error {
   constructor(reason: string | undefined) {
     super(`Security validation failed: ${reason}`);
@@ -170,15 +146,9 @@ export const MAX_SAFE_REDIRECTS = 5;
 
 export interface SafeFetchOptions {
   maxRedirects?: number;
-  /** Override for tests. Defaults to validateSafeUrl. */
   validate?: (url: string) => Promise<SafeUrlResult>;
 }
 
-/**
- * fetch() that validates the initial URL and every redirect hop against validateSafeUrl instead of
- * letting the runtime follow redirects blindly. Intended for GET requests (redirect bodies are not replayed).
- * Throws UnsafeUrlError when a hop is blocked. Returns the final response and its URL.
- */
 export async function fetchWithSafeRedirects(
   url: string,
   init: RequestInit = {},
@@ -200,7 +170,6 @@ export async function fetchWithSafeRedirects(
     try {
       await response.body?.cancel();
     } catch {
-      // body already consumed or locked; nothing to release
     }
     if (hops >= maxRedirects) {
       throw new Error(`Exceeded maximum redirect limit of ${maxRedirects} redirects.`);
@@ -213,7 +182,6 @@ export async function fetchWithSafeRedirects(
   }
 }
 
-/** Reads a response body as bytes, aborting as soon as it exceeds maxBytes. */
 export async function readBodyCapped(response: Response, maxBytes: number): Promise<Buffer> {
   const declared = Number(response.headers.get('content-length') || 0);
   if (declared > maxBytes) {

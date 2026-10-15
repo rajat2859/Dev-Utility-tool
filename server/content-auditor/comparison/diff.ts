@@ -1,8 +1,5 @@
 import type { DiffWord } from '../types/report';
 
-/**
- * Computes deterministic word-level differences between expected and actual text using LCS.
- */
 export function computeWordDiff(expected: string, actual: string, caseSensitive = false): DiffWord[] {
   const comparisonKey = (word: string) => (caseSensitive ? word : word.toLowerCase());
   const expWords = expected.trim().split(/\s+/).filter(Boolean);
@@ -18,7 +15,6 @@ export function computeWordDiff(expected: string, actual: string, caseSensitive 
     return expWords.map((w) => ({ value: w, removed: true }));
   }
 
-  // Build standard LCS matrix on normalized lowercase word tokens
   const n = expWords.length;
   const m = actWords.length;
   const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));

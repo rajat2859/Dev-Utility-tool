@@ -9,11 +9,6 @@ export interface ReferenceInput {
   sourceType?: 'google-doc' | 'screenshot' | 'manual';
 }
 
-/**
- * Parses user reference input into a structured ContentReference model.
- * If OCR confidence is too low or fails, captures this in diagnostics so the auditor
- * can refuse or downgrade to UNVERIFIED rather than generating false results.
- */
 export async function parseReference(input: ReferenceInput): Promise<ContentReference> {
   if (input.referenceText && input.referenceText.trim()) {
     const raw = input.referenceText.trim();
@@ -27,7 +22,6 @@ export async function parseReference(input: ReferenceInput): Promise<ContentRefe
     try {
       ocr = await performTiledOcr(input.imageBase64);
     } catch (err: any) {
-      // Fix 10 & Fix 11: explicit OCR failure
       throw new Error(`OCR extraction failed: ${err.message || err}`);
     }
 

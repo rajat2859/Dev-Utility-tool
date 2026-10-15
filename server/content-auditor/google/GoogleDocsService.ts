@@ -4,15 +4,6 @@ export type GoogleDocData =
   | (docs_v1.Schema$Document & { isHtml?: false })
   | { isHtml: true; html: string; title?: string };
 
-/**
- * Fetches a publicly accessible Google Doc.
- *
- * Behavior:
- * - If GOOGLE_API_KEY is configured in backend environment, uses Google Docs API.
- * - If GOOGLE_API_KEY is missing or restricted, falls back to Google's public export
- *   for documents shared as "Anyone with the link can view".
- * - If the document is restricted/private, returns a friendly actionable message.
- */
 export async function fetchPublicGoogleDoc(
   documentId: string
 ): Promise<GoogleDocData> {
@@ -58,7 +49,6 @@ export async function fetchPublicGoogleDoc(
     }
 
     const html = await res.text();
-    // Check if Google redirected to a sign-in wall (meaning link sharing is disabled)
     if (html.includes('ServiceLogin') || html.includes('accounts.google.com')) {
       throw new Error(
         'This Google Doc could not be read publicly.\n\nMake sure sharing is set to:\nAnyone with the link → Viewer'

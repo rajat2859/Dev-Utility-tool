@@ -15,15 +15,11 @@ type Offender = { index: number; selector: string; tag: string; width: number; o
 type Report = {
   status: 'pending' | 'ready' | 'error';
   overflow: boolean;
-  // Content reaches past the viewport but the root's overflow-x:hidden stops
-  // the page from panning. Not a scrollbar, still usually a latent bug.
   clipped: boolean;
   overflowAmount: number;
   viewportWidth: number;
   documentWidth: number;
   scrollHeight: number;
-  // Boxes that reach past the edge while painting nothing. They never set the
-  // verdict — a transparent 103% wrapper is not something a visitor can see.
   ghosts: number;
   offenders: Offender[];
   message?: string;
@@ -47,8 +43,6 @@ const BRAND_LABEL: Record<Brand, string> = {
   windows: 'Windows',
 };
 
-// Which vendor tabs each category offers, in display order. 'custom' has none —
-// it is driven by the width/height inputs instead.
 const BRANDS_BY_GROUP: Record<Group, Brand[]> = {
   mobile: ['apple', 'samsung', 'google'],
   tablet: ['apple', 'samsung', 'microsoft'],
@@ -56,9 +50,6 @@ const BRANDS_BY_GROUP: Record<Group, Brand[]> = {
   custom: [],
 };
 
-// CSS-pixel viewports, not physical panel resolutions — a media query only ever
-// sees these. Sorted narrowest-first within each vendor so the dropdown reads
-// like a size ladder.
 const DEVICE_LIBRARY: Device[] = [
   { id: 'iphone-se', label: 'iPhone SE', width: 375, height: 667, group: 'mobile', brand: 'apple' },
   { id: 'iphone-x', label: 'iPhone X / XS / 11 Pro', width: 375, height: 812, group: 'mobile', brand: 'apple' },
@@ -168,8 +159,6 @@ function frameSource(url: string, device: Device, frameKey: number) {
   return `${PROXY_ENDPOINT}?${params.toString()}`;
 }
 
-// How much room the device shell adds around the screen itself. Shared by the
-// renderer and the fit-to-stage zoom so the frame can never overshoot the stage.
 function chromeMetrics(group: Group, width: number) {
   const phone = group === 'mobile' || (group === 'custom' && width < 600);
   const tablet = group === 'tablet' || (group === 'custom' && width >= 600 && width < 1024);
@@ -195,8 +184,6 @@ function emptyReport(): Report {
 type ProbeMessage = Record<string, unknown>;
 type WebkitShot = { status: 'loading' | 'ready' | 'error'; url: string; src?: string; message?: string };
 
-// The same page rendered by Safari's engine, as a still. Shown beside the live
-// (Chromium) device at the same scale so the two can be compared line by line.
 function WebkitPanel({ shot, width, height, scale, onClose }: {
   shot: WebkitShot; width: number; height: number; scale: number; onClose: () => void;
 }) {
@@ -229,8 +216,6 @@ function WebkitPanel({ shot, width, height, scale, onClose }: {
   );
 }
 
-// The desktop app previews the real site in a browser view (not the proxy), so links, logins and
-// cookies behave like a real browser. The layout probe is injected into each page it loads.
 function LiveWebview({
   startUrl, userAgent, uaKey, width, height, title, registerFrame, onProbeMessage, onNavigated,
 }: {
@@ -250,7 +235,7 @@ function LiveWebview({
       fetch(probeUrl, { cache: 'no-store' })
         .then((response) => response.text())
         .then((probeSource) => webview.executeJavaScript(probeSource))
-        .catch(() => { /* the page still renders; it just is not measured */ });
+        .catch(() => {});
     };
     const forwardProbeMessage = (event: Event) => {
       const { channel, args } = event as Event & { channel: string; args: unknown[] };
@@ -263,7 +248,6 @@ function LiveWebview({
     };
     const reportLoadFailure = (event: Event) => {
       const { errorCode, errorDescription, isMainFrame } = event as Event & { errorCode: number; errorDescription: string; isMainFrame: boolean };
-      // -3 is a navigation superseded by another one, not a failure.
       if (!isMainFrame || errorCode === -3) return;
       onProbeMessage({ type: 'error', message: errorDescription || 'The page could not be loaded.' });
     };
@@ -318,7 +302,6 @@ function DeviceShell({
 
   return (
     <div className="group/device relative flex flex-col items-center">
-      {/* Hidden until hover so it never blocks a click on the page being tested. */}
       <button
         onClick={onTogglePopped}
         title={popped ? 'Close the popped-out view (Esc)' : 'Pop this device out over the page'}
@@ -339,10 +322,8 @@ function DeviceShell({
       >
         {metrics.phone && (
           <>
-            {/* Dynamic island sits on the bezel strip, never over the page. */}
             <div className={`absolute rounded-full bg-slate-950 ${landscape ? 'left-[7px] top-1/2 h-[62px] w-[11px] -translate-y-1/2' : 'left-1/2 top-[7px] h-[11px] w-[68px] -translate-x-1/2'}`} />
             <div className={`absolute rounded-full bg-slate-700 ${landscape ? 'right-[6px] top-1/2 h-[84px] w-[4px] -translate-y-1/2' : 'bottom-[7px] left-1/2 h-[4px] w-[92px] -translate-x-1/2'}`} />
-            {/* Proportional so the buttons stay on the shell at any zoom or orientation. */}
             <span className="absolute -left-[2px] top-[16%] h-[5%] w-[2px] rounded-l bg-slate-700" />
             <span className="absolute -left-[2px] top-[24%] h-[8%] w-[2px] rounded-l bg-slate-700" />
             <span className="absolute -right-[2px] top-[20%] h-[10%] w-[2px] rounded-r bg-slate-700" />
@@ -372,8 +353,6 @@ function DeviceShell({
             borderRadius: metrics.phone ? (landscape ? 22 : 26) : metrics.tablet ? 10 : undefined,
           }}
         >
-          {/* The frame is always the true device size; only the wrapper is scaled,
-              so the page still lays out at exactly `width` CSS pixels. */}
           {serviceReady ? (
             <div style={{ width, height, transform: `scale(${scale})`, transformOrigin: 'top left', willChange: 'transform' }}>
               {IS_DESKTOP_APP && userAgents ? (
@@ -440,7 +419,6 @@ export default function ResponsivePreview() {
       const saved = localStorage.getItem(DEVICE_STORAGE_KEY);
       if (saved && DEVICE_LIBRARY.some((device) => device.id === saved)) return saved;
     } catch {
-      // Ignore
     }
     return DEFAULT_DEVICE_ID;
   });
@@ -483,23 +461,16 @@ export default function ResponsivePreview() {
 
   const brandsInCategory = BRANDS_BY_GROUP[category];
 
-  // Custom sizes carry no vendor, so the brand filter only bites in the
-  // categories that actually offer vendor tabs.
   const devicesInScope = useMemo(
     () => allDevices.filter((item) => item.group === category
       && (BRANDS_BY_GROUP[category].length === 0 || item.brand === brand)),
     [allDevices, category, brand],
   );
 
-  // A stale selection would leave the <select> showing a blank row, so fall
-  // back to the first model in scope rather than rendering nothing.
   const selectedModelId = devicesInScope.some((item) => item.id === device.id)
     ? device.id
     : (devicesInScope[0]?.id ?? '');
 
-  // The stage has to size itself against where it actually starts on screen,
-  // not against a guessed offset — otherwise "Fit" fits the device to a box
-  // that runs off the bottom of the window.
   const stageHeight = popped
     ? Math.max(300, windowHeight - POP_HEADER_HEIGHT)
     : Math.max(360, windowHeight - stageTop - 16);
@@ -507,7 +478,6 @@ export default function ResponsivePreview() {
   const fitScale = useMemo(() => {
     if (stageWidth === 0) return 1;
     const metrics = chromeMetrics(device.group, device.width);
-    // With the WebKit panel open, two screens of `width` share the row (plus its 24px gap).
     const screens = webkitShot ? 2 : 1;
     const availableWidth = stageWidth - 40 - metrics.extraWidth - (webkitShot ? 24 : 0);
     const availableHeight = stageHeight - 32 - metrics.extraHeight;
@@ -525,7 +495,7 @@ export default function ResponsivePreview() {
     try {
       if (frame instanceof HTMLIFrameElement) frame.contentWindow?.postMessage({ source: 'rp-host', ...message }, '*');
       else (frame as PreviewWebviewElement | null)?.send('rp-host', message);
-    } catch { /* frame gone */ }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -537,13 +507,8 @@ export default function ResponsivePreview() {
     return () => observer.disconnect();
   }, []);
 
-  // Track where the stage actually starts. The controls above it change height
-  // when chips wrap or the culprit list expands, and the expand is animated —
-  // so watch the controls box rather than re-measuring on state changes, which
-  // would read a height that is still mid-animation.
   const measureStage = useCallback(() => {
     const stage = stageRef.current;
-    // Popped out, the stage is fixed to the viewport and its offset means nothing.
     if (!stage || poppedRef.current) return;
     const top = stage.getBoundingClientRect().top + window.scrollY;
     setStageTop((current) => (Math.abs(current - top) > 1 ? top : current));
@@ -583,15 +548,12 @@ export default function ResponsivePreview() {
     };
   }, [popped]);
 
-  // While popped the stage is fixed at the top of the viewport, so its measured
-  // offset is meaningless. Re-measure once it is back in the page flow.
   useEffect(() => {
     if (popped) return;
     const frame = requestAnimationFrame(measureStage);
     return () => cancelAnimationFrame(frame);
   }, [popped, measureStage]);
 
-  // The probe injected into the previewed page reports the real layout back.
   const handleProbeMessage = useCallback((data: ProbeMessage) => {
     if (!data || typeof data !== 'object') return;
 
@@ -628,24 +590,17 @@ export default function ResponsivePreview() {
     return () => window.removeEventListener('message', onMessage);
   }, [handleProbeMessage]);
 
-  // The live browser view navigates on its own, so the address bar follows it. A hash or
-  // history change keeps the same document, so the probe has to be asked to measure again.
   const handleLiveNavigation = useCallback((url: string, isInPage: boolean) => {
     setUrlInput(url);
     setPreviewUrl(url);
     if (isInPage) setTimeout(() => sendToFrame({ type: 'rescan' }), 300);
   }, [sendToFrame]);
 
-  // Anything that remounts the frame invalidates the measurement with it.
   useEffect(() => {
     setReport(emptyReport());
     setShowOffenders(false);
   }, [previewUrl, deviceId, rotated, frameKey]);
 
-  // A render at another size, or of a page loaded fresh from the URL bar, would
-  // be compared against the wrong thing. Not keyed on previewUrl: the desktop
-  // app's live view rewrites it on every redirect and in-page route change,
-  // which would throw the render away while it is still loading.
   useEffect(() => {
     webkitRequestRef.current += 1;
     setWebkitShot(null);
@@ -674,8 +629,6 @@ export default function ResponsivePreview() {
       });
   };
 
-  // A frame that never reports back is unmeasured, which is not the same thing
-  // as "no overflow" — say so rather than showing a false all-clear.
   useEffect(() => {
     if (report.status !== 'pending') return;
     const timer = setTimeout(() => {
@@ -686,8 +639,6 @@ export default function ResponsivePreview() {
     return () => clearTimeout(timer);
   }, [report.status, report.since]);
 
-  // A server started before this route existed answers with the /api/* catch-all
-  // JSON, which would otherwise just render as gibberish inside the device.
   useEffect(() => {
     let cancelled = false;
     fetch('/api/responsive/status', { cache: 'no-store' })
@@ -713,12 +664,11 @@ export default function ResponsivePreview() {
       const parsed = savedUrls ? JSON.parse(savedUrls) : null;
       if (Array.isArray(parsed)) setRecentUrls(parsed.filter((item): item is string => typeof item === 'string'));
     } catch {
-      // Ignore malformed or unavailable local storage.
     }
   }, []);
 
   useEffect(() => {
-    try { localStorage.setItem(DEVICE_STORAGE_KEY, deviceId); } catch { /* no-op */ }
+    try { localStorage.setItem(DEVICE_STORAGE_KEY, deviceId); } catch {}
   }, [deviceId]);
 
   useEffect(() => () => {
@@ -728,7 +678,7 @@ export default function ResponsivePreview() {
   const saveRecent = (url: string) => {
     setRecentUrls((current) => {
       const next = [url, ...current.filter((item) => item !== url)].slice(0, MAX_RECENT_URLS);
-      try { localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(next)); } catch { /* no-op */ }
+      try { localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(next)); } catch {}
       return next;
     });
   };
@@ -759,8 +709,6 @@ export default function ResponsivePreview() {
       return;
     }
 
-    // Carry the vendor across when the new category also has it — hopping
-    // Mobile -> Tablet should stay on Apple, not snap back to the first tab.
     const brands = BRANDS_BY_GROUP[group];
     const nextBrand = brands.includes(brand) ? brand : brands[0];
     setBrand(nextBrand);
@@ -799,7 +747,6 @@ export default function ResponsivePreview() {
     if (nextCustom) {
       setDeviceId(nextCustom.id);
     } else {
-      // No custom sizes left, so follow the fallback device out of the tab too.
       const fallback = DEVICE_LIBRARY.find((item) => item.id === DEFAULT_DEVICE_ID)!;
       setDeviceId(fallback.id);
       setCategory(fallback.group);
@@ -811,14 +758,14 @@ export default function ResponsivePreview() {
   const removeRecent = (url: string) => {
     setRecentUrls((current) => {
       const next = current.filter((item) => item !== url);
-      try { localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(next)); } catch { /* no-op */ }
+      try { localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(next)); } catch {}
       return next;
     });
   };
 
   const clearRecent = () => {
     setRecentUrls([]);
-    try { localStorage.removeItem(RECENT_STORAGE_KEY); } catch { /* no-op */ }
+    try { localStorage.removeItem(RECENT_STORAGE_KEY); } catch {}
   };
 
   const handleShare = () => {
@@ -936,8 +883,6 @@ export default function ResponsivePreview() {
             </>
           ) : (
             <>
-              {/* Vendor split. Widths differ enough between makers that picking
-                  the maker first is the fastest way to the model you want. */}
               <div className="inline-flex items-center gap-0.5 rounded-lg bg-slate-100 p-0.5">
                 {brandsInCategory.map((item) => {
                   const active = item === brand;
@@ -976,8 +921,6 @@ export default function ResponsivePreview() {
         </div>
       </section>
 
-      {/* Frame toolbar and overflow verdict, kept to one row so the stage gets
-          the vertical space instead. */}
       <section className={`overflow-hidden rounded-xl border shadow-sm transition ${
         report.status === 'ready' && report.overflow ? 'border-rose-200'
           : report.status === 'ready' && report.clipped ? 'border-amber-200'
@@ -1093,9 +1036,6 @@ export default function ResponsivePreview() {
       </section>
       </div>
 
-      {/* Popped-out header. The stage below expands to fill the viewport rather
-          than the device being re-rendered somewhere else — moving the iframe
-          would reload it and throw away your scroll position in the page. */}
       <AnimatePresence>
         {popped && (
           <motion.div

@@ -121,8 +121,6 @@ function averageHexColors(colors: string[]): string {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
-// Approximates a gradient's dominant color by weighting each stop by the width
-// of the band it dominates (its midpoint distance to its neighboring stops).
 function computeAverageColor(colorStops: { color: string; stop: number }[]): string {
   if (colorStops.length === 0) return '#888888';
   const sorted = [...colorStops].sort((a, b) => a.stop - b.stop);
@@ -163,9 +161,6 @@ function contrastRating(ratio: number): { label: string; level: 'AAA' | 'AA' | '
   return { label: 'Fails', level: 'fail' };
 }
 
-// A single hidden 1x1 canvas reused to resolve any valid CSS color (named colors,
-// rgb/hsl/hwb/oklch/lab, etc.) to concrete sRGB bytes via the browser's own color
-// parser + rasterizer, instead of hand-rolled regexes that can't cover every syntax.
 let colorProbeCtx: CanvasRenderingContext2D | null = null;
 function resolveCssColorToRgba(token: string): { r: number; g: number; b: number; a: number } | null {
   if (typeof document === 'undefined') return null;
@@ -181,7 +176,7 @@ function resolveCssColorToRgba(token: string): { r: number; g: number; b: number
   colorProbeCtx.fillStyle = sentinel;
   const baseline = colorProbeCtx.fillStyle;
   colorProbeCtx.fillStyle = token;
-  if (colorProbeCtx.fillStyle === baseline) return null; // browser silently rejected an unparsable token
+  if (colorProbeCtx.fillStyle === baseline) return null;
 
   colorProbeCtx.clearRect(0, 0, 1, 1);
   colorProbeCtx.fillRect(0, 0, 1, 1);
@@ -229,8 +224,6 @@ interface ParsedGradient {
   stops: { id: string; color: string; stop: number; opacity: number }[];
 }
 
-// Parses a pasted CSS gradient string (e.g. "linear-gradient(135deg, #6366f1 0%, #ec4899 100%)")
-// into editor state. Returns null when the string isn't a recognizable gradient function.
 function parseGradientCss(input: string): ParsedGradient | null {
   const cleaned = input.trim().replace(/^background(-image)?\s*:\s*/i, '').replace(/;+\s*$/, '');
   const match = cleaned.match(/^(linear|radial|conic)-gradient\(([\s\S]+)\)\s*$/i);
@@ -334,9 +327,6 @@ export default function GradientGenerator() {
   const [showImportBox, setShowImportBox] = useState(false);
   const [importCssText, setImportCssText] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
-  // A ref (not state) so onPointerMove reads the current drag target synchronously —
-  // setState-driven state would still show the pre-drag value on the first move event
-  // fired immediately after pointerdown, dropping fast drags.
   const draggingStopIdRef = useRef<string | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -452,8 +442,6 @@ ${layers}
 </svg>`;
     }
 
-    // SVG has no native conic-gradient element. A foreignObject with the real CSS
-    // conic-gradient renders correctly in browsers, though not in non-browser SVG viewers.
     return `<svg width="100%" height="100%" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
   <foreignObject width="100%" height="100%">
     <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;background:${getGradientString()}"></div>
@@ -709,9 +697,6 @@ ${layers}
       let fillStyle: CanvasGradient;
 
       if (gradientType === 'linear') {
-        // CSS angles run clockwise from "to top", so the direction vector is
-        // (sin, -cos) in screen coordinates - not (cos, sin), which exported
-        // every gradient rotated 90 degrees and mirrored against the preview.
         const angleRad = (angle * Math.PI) / 180;
         const dx = Math.sin(angleRad), dy = -Math.cos(angleRad);
         const r = Math.sqrt(width * width + height * height) / 2;
@@ -1048,10 +1033,6 @@ ${layers}
                   selectedStopId === s.id ? 'border-slate-900 scale-125 z-10 ring-2 ring-blue-500' : 'border-white'
                 }`}
                 style={{
-                  // `calc()` can't multiply two percentages together — ${s.stop}% * (100% - 2rem)
-                  // is invalid CSS and the browser silently drops the whole declaration, which is
-                  // why every stop used to collapse to the left edge. Multiplying by a plain
-                  // unitless fraction keeps the expression valid.
                   left: `calc(1rem + (100% - 2rem) * ${s.stop / 100})`,
                   backgroundColor: s.color
                 }}

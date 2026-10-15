@@ -1,8 +1,3 @@
-/**
- * Normalization utilities for text comparison.
- * Preserves original text for display while providing canonical forms for comparison.
- */
-
 // Mapping of common HTML entities
 const HTML_ENTITIES: Record<string, string> = {
   '&nbsp;': ' ',
@@ -43,15 +38,6 @@ export function decodeHtmlEntities(str: string): string {
     });
 }
 
-/**
- * Normalizes text for comparison without wiping out all meaning:
- * - Decodes HTML entities
- * - Replaces non-breaking spaces with standard space
- * - Converts smart quotes (‘ ’, “ ”) to standard quotes (' ")
- * - Normalizes Unicode dashes (– — −) to standard hyphen (-)
- * - Collapses repeated whitespace
- * - Trims edges
- */
 export function normalizeText(text: string): string {
   if (!text) return '';
   return decodeHtmlEntities(text)
@@ -69,9 +55,6 @@ export function normalizeText(text: string): string {
     .trim();
 }
 
-/**
- * Strict canonical comparison text (lowercase, alphanumeric + space, collapsed)
- */
 export function canonicalize(text: string): string {
   return normalizeText(text)
     .toLowerCase()
@@ -80,9 +63,6 @@ export function canonicalize(text: string): string {
     .trim();
 }
 
-/**
- * Tokenizes text into words for set-based similarity comparisons
- */
 export function tokenizeWords(text: string): string[] {
   return canonicalize(text)
     .split(' ')

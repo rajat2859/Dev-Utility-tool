@@ -11,8 +11,6 @@ export function normalizeUrl(rawUrl: string): string {
   return 'https://' + trimmed;
 }
 
-// navigator.clipboard rejects (insecure context, denied permission) and every
-// call site was letting that surface as an unhandled rejection.
 export function copyText(text: string): Promise<boolean> {
   if (!text) return Promise.resolve(false);
   try {
@@ -22,8 +20,6 @@ export function copyText(text: string): Promise<boolean> {
   }
 }
 
-// crypto.getRandomValues without the modulo bias of `% n`: reject the tail of
-// the 32-bit range that doesn't divide evenly.
 export function randomInt(max: number): number {
   if (max <= 0) return 0;
   const limit = Math.floor(0x100000000 / max) * max;
@@ -45,12 +41,6 @@ export function shuffled<T>(items: T[]): T[] {
   return out;
 }
 
-/**
- * Word, Google Docs and most styled web pages express bold/italic/strike as
- * inline CSS rather than as tags. Maps that CSS back to the semantic tags it
- * meant, so a cleaner can promote it before stripping the style away.
- * Returned outermost-first.
- */
 export function semanticTagsForInlineStyle(style: {
   fontWeight?: string;
   fontStyle?: string;
@@ -59,8 +49,6 @@ export function semanticTagsForInlineStyle(style: {
 }): string[] {
   const tags: string[] = [];
   const weight = (style.fontWeight || '').trim().toLowerCase();
-  // Numeric weights ship as "700"; keywords as "bold"/"bolder". 600 is the
-  // threshold browsers themselves render as bold for most families.
   if (weight === 'bold' || weight === 'bolder' || Number(weight) >= 600) tags.push('strong');
 
   const fontStyle = (style.fontStyle || '').trim().toLowerCase();
@@ -73,11 +61,6 @@ export function semanticTagsForInlineStyle(style: {
   return tags;
 }
 
-/**
- * Escapes text for either an HTML text node or a double-quoted attribute value.
- * Covers both contexts with one pass, so serializers can't get one right and
- * the other wrong.
- */
 export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -103,10 +86,6 @@ export function decodeHtmlEntities(text: string): string {
   });
 }
 
-/**
- * Bulletproof parser for Schema.org JSON-LD scripts found on live websites.
- * Handles CDATA wrappers, JS line/block comments, trailing commas, and HTML entities.
- */
 export function sanitizeAndParseJsonLd(rawJsonLd: string): any {
   if (!rawJsonLd) return null;
   // 1. Remove CDATA wrappers

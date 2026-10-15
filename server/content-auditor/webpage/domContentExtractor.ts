@@ -22,9 +22,6 @@ type ContentBlock =
   | { kind: 'structured'; node: AnyNode & { name: string } }
   | { kind: 'text'; text: string; sourceTag: string };
 
-/**
- * Strips script, style, navigation, footer, and interactive chrome elements.
- */
 function cleanDom($: cheerio.CheerioAPI, contentRootSelector: string): void {
   $('header, aside, form')
     .filter((_, element) => $(element).closest(contentRootSelector).length === 0)
@@ -68,11 +65,6 @@ function containsNonInlineElement($: cheerio.CheerioAPI, node: AnyNode): boolean
     .some((descendant) => 'name' in descendant && !INLINE_TAGS.has(descendant.name));
 }
 
-/**
- * Walks the content area in document order and returns headings, paragraphs, lists and tables
- * as-is, plus every other block of text (div, button, summary, ...) regardless of the
- * framework or class names used. Text sitting between block siblings becomes its own block.
- */
 function collectContentBlocks(
   $: cheerio.CheerioAPI,
   container: AnyNode,
@@ -118,16 +110,6 @@ function findFirstH1BlockIndex($: cheerio.CheerioAPI, blocks: ContentBlock[]): n
   );
 }
 
-/**
- * Extracts semantic content from a webpage HTML string, starting strictly from the first <h1>.
- *
- * Requirements:
- * - Scans from first <h1> element.
- * - Discards headers, navigation, footers, scripts, and chrome elements.
- * - Extracts headings (h1..h6), paragraphs (p), lists (ul, ol), tables (table), and any other
- *   block of text (div, button, summary, ...) as a paragraph carrying its original `sourceTag`.
- * - Produces the identical NormalizedDocument tree as parseGoogleDoc.
- */
 export function extractWebsiteSemanticTree(
   html: string,
   options?: { selector?: string }
@@ -172,8 +154,6 @@ export function extractWebsiteSemanticTree(
   const elements: NormalizedElement[] = [];
   let elementIndex = 0;
 
-  // If no <h1> was found at all on the website, start from index 0 so comparator
-  // can highlight that H1 is missing. Otherwise, start from firstH1Index.
   const startIndex = firstH1Index >= 0 ? firstH1Index : 0;
 
   blocks.slice(startIndex).forEach((block) => {

@@ -4,7 +4,6 @@ import type { ContentAuditReport } from '../../../server/content-auditor/types/n
 import { AuditReportView, runDocAudit } from './GoogleDocAuditView';
 
 const INITIAL_ROWS = 10;
-// Each audit fetches a doc and may render the page in a headless browser, so cap how many run at once.
 const CONCURRENCY = 3;
 
 interface Row {
@@ -17,7 +16,6 @@ interface Row {
 
 const emptyRow = (): Row => ({ doc: '', url: '', state: 'idle' });
 
-// Each row number gets a colour, repeated on its report so you can tell which row you're reading.
 const ROW_COLORS = [
   { badge: 'bg-blue-600 text-white', border: 'border-l-blue-600' },
   { badge: 'bg-violet-600 text-white', border: 'border-l-violet-600' },
@@ -46,8 +44,6 @@ export default function BulkDocAuditView() {
   const updateRow = (i: number, patch: Partial<Row>) =>
     setRows((prev) => prev.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
-  // Pasting cells copied from a spreadsheet (tab-separated "doc<TAB>url" lines) fills rows from here down,
-  // adding rows when the paste runs past the end of the table.
   const handlePaste = (i: number, e: React.ClipboardEvent<HTMLInputElement>) => {
     const text = e.clipboardData.getData('text');
     if (!text.includes('\t') && !text.includes('\n')) return;

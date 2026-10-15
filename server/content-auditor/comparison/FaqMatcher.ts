@@ -25,13 +25,11 @@ export function auditFaq(
   const notes: string[] = [];
 
   for (const exp of expectedFaqs) {
-    // Look for matching question in page FAQ items
     let matchedItem = actualFaqData.items.find((act) => {
       const qSim = compareTextSimilarity(exp.question, act.question);
       return qSim.status === 'EXACT' || qSim.status === 'NEAR_EXACT' || qSim.status === 'PARTIAL';
     });
 
-    // If not found in page HTML FAQ items, check schema items
     if (!matchedItem && actualFaqData.schemaItems.length > 0) {
       matchedItem = actualFaqData.schemaItems.find((schemaItem) => {
         const qSim = compareTextSimilarity(exp.question, schemaItem.question);
@@ -73,14 +71,12 @@ export function auditFaq(
     }
   }
 
-  // Schema checking: only flag missing schema if explicitly required by reference
   let schemaCorresponds = true;
   if (requiresSchema && !actualFaqData.schemaPresent) {
     notes.push('The reference brief specifies required FAQPage schema, but no FAQPage JSON-LD was detected on the page.');
   }
 
   if (actualFaqData.schemaPresent && actualFaqData.schemaItems.length > 0) {
-    // Check if schema items correspond to reference questions
     let schemaMismatch = 0;
     for (const sItem of actualFaqData.schemaItems) {
       const foundInExp = expectedFaqs.some((exp) => {

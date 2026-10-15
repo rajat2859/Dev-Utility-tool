@@ -17,10 +17,6 @@ import { webkit, type Browser } from "playwright-core";
 
 dotenv.config();
 
-// Tesseract's Node worker can emit an 'error' outside any promise chain (bypassing
-// every try/catch around performLocalOcr), which Node treats as a fatal uncaught
-// exception. That one OCR failure would otherwise kill the whole server for every
-// user, so keep the process alive and just log it.
 process.on('uncaughtException', (err) => {
   console.error('Uncaught exception (server kept alive):', err);
 });
@@ -28,12 +24,8 @@ process.on('uncaughtException', (err) => {
 const app = express();
 const PORT = Number(process.env.PORT) || 2000;
 
-// Compress all responses (static JS/CSS bundles & JSON API payloads)
 app.use(compression());
 
-// Body parsing. Only the content checker (base64 reference screenshot + raw HTML) and the SEO checker
-// (pasted raw HTML) need large bodies, so their parsers are mounted FIRST and mark the request as parsed
-// (body-parser skips requests with req._body set). Everything else falls through to the small global limits.
 app.use("/api/content-checker", express.json({ limit: "50mb" }));
 app.use("/api/seo-checker", express.json({ limit: "10mb" }));
 app.use(express.json({ limit: "2mb" }));
@@ -47,7 +39,6 @@ function normalizeUrl(rawUrl: string): string {
   return /^https?:\/\//i.test(trimmed) ? trimmed : 'https://' + trimmed;
 }
 
-// Helper to fetch webpage HTML directly with browser headers and SSRF-safe redirect handling
 const MAX_SEO_HTML_BYTES = 10 * 1024 * 1024; // 10MB
 async function fetchWebpageHtml(targetUrl: string): Promise<{ html: string; notice?: string }> {
   const sanitizedUrl = normalizeUrl(targetUrl);
@@ -68,8 +59,6 @@ async function fetchWebpageHtml(targetUrl: string): Promise<{ html: string; noti
     "Upgrade-Insecure-Requests": "1"
   };
 
-  // Direct fetch with real browser headers. Every redirect hop is SSRF-validated, and the target
-  // URL is never forwarded to third-party proxy services.
   try {
     const { response: res } = await fetchWithSafeRedirects(sanitizedUrl, {
       headers: browserHeaders,
@@ -81,7 +70,6 @@ async function fetchWebpageHtml(targetUrl: string): Promise<{ html: string; noti
       return { html: text };
     }
   } catch (err: any) {
-    // A blocked URL must surface to the caller with its reason instead of becoming a generic failure.
     if (err instanceof UnsafeUrlError) throw err;
     console.warn(`Direct fetch failed for ${sanitizedUrl}:`, err.message || err);
   }
@@ -89,7 +77,6 @@ async function fetchWebpageHtml(targetUrl: string): Promise<{ html: string; noti
   throw new Error(`Could not retrieve HTML from target URL (${sanitizedUrl}). The target site may be blocking automated crawlers. Try using "Paste Raw HTML" mode.`);
 }
 
-// Extracts the plain text of a publicly-viewable Google Doc via its export endpoint
 async function fetchGoogleDocText(docUrl: string): Promise<string> {
   const idMatch = docUrl.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
   if (!idMatch) {
@@ -114,7 +101,6 @@ async function fetchGoogleDocText(docUrl: string): Promise<string> {
   return text;
 }
 
-// Screaming Frog-style SEO & structured data audit of a URL list, a sitemap, and/or pasted HTML
 app.post("/api/seo-checker/crawl", async (req, res) => {
   try {
     const { urls, rawHtml } = req.body ?? {};
@@ -134,7 +120,6 @@ app.post("/api/seo-checker/crawl", async (req, res) => {
   }
 });
 
-// Mount Content Auditor Router (modularized in server/content-auditor/)
 app.use("/api/content-checker", contentAuditRouter);
 
 // Express Endpoints
@@ -149,11 +134,6 @@ app.get("/api/health", (req, res) => {
 
 // ---------------------------------------------------------------------------
 // Responsive preview proxy
-//
-// A site loaded straight into an <iframe> is cross-origin, so the tool can
-// neither measure its layout nor stop it from refusing to be framed. Streaming
-// the HTML through here makes the preview same-origin, which lets a small
-// injected probe report the real document width back to the parent page.
 // ---------------------------------------------------------------------------
 
 const RESPONSIVE_UA: Record<string, string> = {
@@ -165,8 +145,6 @@ const RESPONSIVE_UA: Record<string, string> = {
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
 };
 
-// Loopback/LAN targets are the point when previewing a local dev server, but
-// they would turn this route into an SSRF hole on a public deployment.
 const ALLOW_PRIVATE_PREVIEW_HOSTS = process.env.NODE_ENV !== "production";
 
 function escapeHtmlAttribute(value: string): string {
@@ -177,8 +155,6 @@ function toJsLiteral(value: string): string {
   return JSON.stringify(String(value));
 }
 
-// Runs inside the previewed page. Dependency-free and defensive on purpose: a
-// throw in here would take the user's site down with it.
 function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, interceptLinks = true): string {
   const userAgent = RESPONSIVE_UA[uaKey] || RESPONSIVE_UA.desktop;
   const touch = uaKey === "mobile" || uaKey === "tablet";
@@ -200,13 +176,8 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
       Object.defineProperty(navigator, "platform", { get: function () { return UA_KEY === "tablet" ? "iPad" : "iPhone"; }, configurable: true });
       if (!("ontouchstart" in window)) { window.ontouchstart = null; }
     }
-  } catch (e) { /* the site just keeps its own UA */ }
+  } catch (e) {}
 
-  // Behind the proxy the document path is /api/responsive/proxy, so SPA routers
-  // (Next.js et al.) think they are on the wrong route: they 404, crash
-  // hydration, or hard-navigate out to the real site. Give the frame the real
-  // path on our origin, and map the router's history calls — which resolve
-  // against the injected <base>, i.e. the real origin — back onto ours.
   try {
     var real = new URL(REAL_URL);
     if (real.origin !== location.origin) {
@@ -219,21 +190,20 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
         var original = history[name];
         history[name] = function (state, title, url) {
           var local = url;
-          try { local = toLocal(url); } catch (e) { /* leave it */ }
+          try { local = toLocal(url); } catch (e) {}
           return original.call(this, state, title, local);
         };
       });
       history.replaceState(history.state, "", real.pathname + real.search + real.hash);
     }
-  } catch (e) { /* history stays native */ }
+  } catch (e) {}
 
-  // Lets the preview (and anyone debugging it) confirm the probe is alive.
-  try { document.documentElement.setAttribute("data-rp-probe", "ready"); } catch (e) { /* noop */ }
+  try { document.documentElement.setAttribute("data-rp-probe", "ready"); } catch (e) {}
 
   function post(message) {
     message.source = "rp-probe";
     message.frameId = FRAME_ID;
-    try { parent.postMessage(message, "*"); } catch (e) { /* detached frame */ }
+    try { parent.postMessage(message, "*"); } catch (e) {}
   }
 
   function cssPath(el) {
@@ -279,9 +249,6 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
     return false;
   }
 
-  // Does the element's own box put pixels on screen, or is it just a transparent
-  // wrapper? A too-wide wrapper that paints nothing is invisible to a visitor,
-  // so it must not drive the verdict — only its painting descendants can.
   function paintsInk(el, style) {
     if (REPLACED[el.tagName]) return true;
     if (style.backgroundImage && style.backgroundImage !== "none") return true;
@@ -293,8 +260,6 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
     return false;
   }
 
-  // Where this element's own text actually lands. A block can be far wider than
-  // the words inside it, so the box edge overstates the visible reach.
   function textInk(el) {
     var span = null;
     for (var i = 0; i < el.childNodes.length; i++) {
@@ -314,8 +279,6 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
     return span;
   }
 
-  // opacity and content-visibility are not inherited, so an invisible ancestor
-  // has to be walked for rather than read off the element's own computed style.
   function hiddenByAncestor(el) {
     var node = el.parentElement;
     while (node) {
@@ -329,9 +292,6 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
     return false;
   }
 
-  // The nearest ancestor that clips horizontally. A carousel track is meant to
-  // be wider than the screen and is contained by its own overflow:hidden — it
-  // is not a page overflow, and reporting it would be a false alarm.
   function clippingAncestor(el) {
     var node = el.parentElement;
     while (node) {
@@ -353,8 +313,6 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
     };
   }
 
-  // An overflowing child drags every ancestor past the edge with it, so only the
-  // innermost nodes are worth reporting.
   function deepestOnly(list) {
     return list.filter(function (candidate) {
       return !list.some(function (other) { return other.el !== candidate.el && candidate.el.contains(other.el); });
@@ -367,19 +325,13 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
     if (!docEl || !body) return;
 
     var viewportWidth = docEl.clientWidth || window.innerWidth;
-    // Only one edge can actually overflow. In LTR, content parked at a negative
-    // left is unreachable and adds no scrollable area: a negative left offset
-    // is a decades-old way to HIDE something, not a layout bug.
     var rtl = window.getComputedStyle(docEl).direction === "rtl";
-    // Only the root scroller decides whether the page actually pans sideways.
     var scrollWidth = docEl.scrollWidth;
     var scrolls = scrollWidth - viewportWidth > 1;
 
     var unclipped = [];
     var rootClipped = [];
     var maxOverhang = 0;
-    // Boxes that reach past the edge while painting nothing. They never set the
-    // verdict, but a real-but-invisible 103% wrapper still has to be findable.
     var ghostEntries = [];
 
     var nodes = body.querySelectorAll("*");
@@ -392,16 +344,12 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
       var left = rect.left + window.scrollX;
       if (right <= viewportWidth + 1 && left >= -1) continue;
       var style = window.getComputedStyle(el);
-      // Fixed layers sit outside document flow and never widen the page.
       if (style.position === "fixed") continue;
       if (style.display === "none" || style.visibility === "hidden") continue;
       if (parseFloat(style.opacity) === 0) continue;
       if (style.contentVisibility === "hidden") continue;
       if (hiddenByAncestor(el)) continue;
 
-      // Only ink counts. The box may be 1400px wide, but if it paints no
-      // background and holds no text of its own, nothing is visibly past the
-      // edge — a painting descendant will be caught on its own pass.
       var inkLeft = Infinity;
       var inkRight = -Infinity;
       if (rect.width > 0 && rect.height > 0 && paintsInk(el, style)) {
@@ -415,8 +363,6 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
       }
       var overhang = inkRight === -Infinity ? -1 : (rtl ? -inkLeft : inkRight - viewportWidth);
       if (overhang <= 1) {
-        // No ink past the edge. Still worth counting when the *box* runs over,
-        // so an invisible 103% wrapper stays findable without setting a verdict.
         var boxOverhang = rtl ? -left : right - viewportWidth;
         var ghostClipper = boxOverhang > 1 ? clippingAncestor(el) : null;
         if (boxOverhang > 1 && ghostEntries.length < 20
@@ -431,18 +377,14 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
       if (!clipper) {
         unclipped.push(entry);
       } else if (clipper === docEl || clipper === body) {
-        // Reaches the page edge and is only held back by overflow-x:hidden on
-        // the root — worth flagging, since iOS Safari can still pan it.
         rootClipped.push(entry);
       } else {
-        continue; // contained by its own scroller; normal markup
+        continue;
       }
       if (overhang > maxOverhang) maxOverhang = overhang;
     }
 
     var primary = deepestOnly(unclipped.length ? unclipped : rootClipped);
-    // The page really does pan, so something is responsible even if it paints
-    // nothing. Better a transparent culprit than an empty list.
     if (!primary.length && scrolls && ghostEntries.length) primary = deepestOnly(ghostEntries);
     offenderNodes = primary.map(function (item) { return item.el; });
 
@@ -497,7 +439,7 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
     if (data.type === "rescan") {
       scan();
     } else if (data.type === "highlight") {
-      try { highlight(data.index); } catch (e) { /* noop */ }
+      try { highlight(data.index); } catch (e) {}
     } else if (data.type === "scroll") {
       var docEl = document.documentElement;
       var max = Math.max(0, Math.max(docEl.scrollHeight, document.body.scrollHeight) - (docEl.clientHeight || window.innerHeight));
@@ -519,7 +461,6 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
     });
   }, { passive: true });
 
-  // Keep in-page navigation inside the proxy so measurement survives a click.
   document.addEventListener("click", function (event) {
     if (!INTERCEPT_LINKS) return;
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
@@ -532,16 +473,9 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
     try { absolute = new URL(anchor.href, REAL_URL).href; } catch (e) { return; }
     if (!/^https?:/i.test(absolute)) return;
     event.preventDefault();
-    // The host drives the navigation by swapping the frame's src, which keeps
-    // its address bar in step and avoids loading the next page twice.
     post({ type: "navigate", url: absolute });
   }, true);
 
-  // Script-driven navigations (location.href = ..., a router's hard-nav
-  // fallback when its cross-origin data fetch is CORS-blocked) would load the
-  // real site into the frame, where X-Frame-Options refuses it. Route them
-  // through the host like clicks; a hard reload of this same page is dropped,
-  // or it would just fail the same way again, forever.
   try {
     if (INTERCEPT_LINKS && window.navigation) {
       navigation.addEventListener("navigate", function (event) {
@@ -552,15 +486,12 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
         if (dest.href.split("#")[0] !== REAL_URL.split("#")[0]) post({ type: "navigate", url: dest.href });
       });
     }
-  } catch (e) { /* no Navigation API: same as before */ }
+  } catch (e) {}
 
   window.addEventListener("resize", function () { scheduleScan(120); });
   document.addEventListener("DOMContentLoaded", function () { scan(); });
   window.addEventListener("load", function () { scan(); });
 
-  // Sliders, lazy images and hydration routinely overflow for a moment before
-  // they settle. Keep re-measuring for a while so the reported number is the
-  // settled layout, not a transient mid-load width.
   [80, 500, 1200, 2500, 4500].forEach(function (delay) { setTimeout(scan, delay); });
   var settleTimer = setInterval(scan, 1500);
   setTimeout(function () { clearInterval(settleTimer); }, 20000);
@@ -573,9 +504,8 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
       sizeObserver.observe(document.documentElement);
     };
     watchBody();
-  } catch (e) { /* timers still cover it */ }
+  } catch (e) {}
 
-  // Late fonts, lazy images and hydration all shift layout well after load.
   try {
     var observer = new MutationObserver(function () { scheduleScan(400); });
     var start = function () {
@@ -583,7 +513,7 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
       observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["style", "class", "width", "src"] });
     };
     start();
-  } catch (e) { /* observation is a bonus; timed scans still run */ }
+  } catch (e) {}
 })();
 `;
 
@@ -610,15 +540,10 @@ function buildPreviewErrorPage(frameId: string, targetUrl: string, message: stri
   </body></html>`;
 }
 
-// Lets the preview tool tell "the server is stale" apart from "the site failed
-// to load" — without it, a server predating the proxy route just renders the
-// /api/* catch-all's JSON 404 inside the device screen.
 app.get("/api/responsive/status", (req, res) => {
   res.json({ ok: true, allowsPrivateHosts: ALLOW_PRIVATE_PREVIEW_HOSTS, userAgents: RESPONSIVE_UA });
 });
 
-// The desktop app previews sites in a real browser view instead of the proxy, and injects this
-// same probe into the live page. Links are left alone there so the page navigates natively.
 app.get("/api/responsive/probe.js", (req, res) => {
   const uaKey = ["mobile", "tablet", "desktop"].includes(String(req.query.ua)) ? String(req.query.ua) : "desktop";
   res.setHeader("Content-Type", "application/javascript; charset=utf-8");
@@ -633,7 +558,6 @@ app.get("/api/responsive/proxy", async (req, res) => {
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
-  // Our own framing policy, not the origin site's.
   res.setHeader("Content-Security-Policy", "frame-ancestors 'self'");
   res.removeHeader("X-Frame-Options");
 
@@ -664,8 +588,6 @@ app.get("/api/responsive/proxy", async (req, res) => {
         "upgrade-insecure-requests": "1",
       },
     };
-    // When private hosts are not allowed, validate DNS and every redirect hop so a public URL
-    // cannot bounce the proxy to an internal address. In dev mode, local previews follow redirects normally.
     let upstream: Response;
     let upstreamUrl: string;
     if (ALLOW_PRIVATE_PREVIEW_HOSTS) {
@@ -691,11 +613,8 @@ app.get("/api/responsive/proxy", async (req, res) => {
       return;
     }
 
-    // A page CSP delivered by <meta> would block the probe. The header form is
-    // already gone because we send our own headers.
     html = html.replace(/<meta[^>]+http-equiv\s*=\s*["']?content-security-policy["']?[^>]*>/gi, "");
 
-    // Relative assets have to resolve against the origin site, not this server.
     let baseHref = finalUrl;
     const existingBase = html.match(/<base[^>]*\shref\s*=\s*["']([^"']+)["'][^>]*>/i);
     if (existingBase) {
@@ -705,8 +624,6 @@ app.get("/api/responsive/proxy", async (req, res) => {
 
     const injection =
       `<base href="${escapeHtmlAttribute(baseHref)}">` +
-      // Real phones use overlay scrollbars. A classic desktop scrollbar would
-      // steal ~15px from the viewport and fake an overflow that isn't there.
       `<style>html{scrollbar-width:none!important;-ms-overflow-style:none!important}html::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}</style>` +
       `<script data-rp-probe>${buildPreviewProbe(frameId, finalUrl, uaKey)}</script>`;
 
@@ -734,19 +651,12 @@ app.get("/api/responsive/proxy", async (req, res) => {
 
 // ---------------------------------------------------------------------------
 // WebKit render
-//
-// The live preview is always Chromium, whatever device is picked. This renders
-// the same page in WebKit — Safari's engine, the one every iPhone browser uses —
-// and returns a screenshot, the closest Windows gets to seeing an Apple device.
 // ---------------------------------------------------------------------------
 
 const WEBKIT_DESKTOP_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15";
 const WEBKIT_MAX_PAGE_HEIGHT = 8000;
 
-// Launching WebKit costs a couple of seconds, so one browser stays warm and each
-// render gets its own throwaway context.
-// ponytail: one shared browser, renders run concurrently in it; a pool if they queue up.
 let webkitBrowser: Promise<Browser> | null = null;
 function getWebkitBrowser(): Promise<Browser> {
   if (!webkitBrowser) {
@@ -796,29 +706,24 @@ app.get("/api/responsive/webkit", async (req, res) => {
       userAgent: touch ? RESPONSIVE_UA[uaKey] : WEBKIT_DESKTOP_UA,
     });
 
-    // Same rule as the proxy: on a public deployment every request the page
-    // makes (redirects, subresources, XHR) is checked so it cannot reach an
-    // internal address. Every route is settled so nothing hangs.
     if (!ALLOW_PRIVATE_PREVIEW_HOSTS) {
       await context.route("**/*", async (route) => {
         const requestUrl = route.request().url();
         let allowed = false;
         try {
           allowed = /^(data|blob|about):/i.test(requestUrl) || (await validateSafeUrl(requestUrl)).valid;
-        } catch { /* fail closed */ }
+        } catch {}
         try {
           if (allowed) await route.continue();
           else await route.abort("blockedbyclient");
-        } catch { /* page already closed */ }
+        } catch {}
       });
     }
 
     const page = await context.newPage();
     await page.goto(target.href, { waitUntil: "domcontentloaded", timeout: 20000 });
-    try { await page.waitForLoadState("networkidle", { timeout: 4000 }); } catch { /* busy sites never go idle */ }
+    try { await page.waitForLoadState("networkidle", { timeout: 4000 }); } catch {}
 
-    // A full-page shot never scrolls, so lazy images and scroll-reveal sections
-    // would stay blank. Walk down the page once to trigger them, then go back up.
     await page.evaluate(async (maxHeight) => {
       const step = window.innerHeight;
       for (let y = 0; y < Math.min(document.documentElement.scrollHeight, maxHeight); y += step) {
@@ -881,8 +786,6 @@ async function setupFrontend() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath, {
-      // Vite content-hashes everything under /assets, so those files can be
-      // cached forever; index.html (and anything else) must always revalidate.
       setHeaders: (res, filePath) => {
         if (filePath.startsWith(path.join(distPath, 'assets') + path.sep)) {
           res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');

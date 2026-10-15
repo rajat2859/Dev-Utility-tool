@@ -189,11 +189,9 @@ describe('Google Doc AST Parser (Mocked API JSON)', () => {
 
     const parsed = parseGoogleDoc(mockDoc);
 
-    // Metadata from preamble is captured
     assert.equal(parsed.metadata?.url, 'https://example.com');
     assert.equal(parsed.metadata?.title, 'Professional Services');
 
-    // Body content strictly begins at first H1
     assert.equal(parsed.elements.length, 2);
     assert.equal(parsed.elements[0].type, 'heading');
     assert.equal(parsed.elements[0].tag, 'h1');
@@ -447,7 +445,6 @@ describe('Website DOM Semantic Extractor', () => {
     assert.equal(tree.elements[0].tag, 'h1');
     assert.equal(tree.elements[0].text, 'Awesome Cloud Solutions');
 
-    // strong inside p should be collapsed into single text string
     assert.equal(tree.elements[1].tag, 'p');
     assert.equal(
       tree.elements[1].text,

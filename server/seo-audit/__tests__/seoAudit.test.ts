@@ -10,7 +10,6 @@ const names = (page: ReturnType<typeof auditPage>, tab: string) =>
 const page = (head: string, body = '') => auditPage(`<html><head>${head}</head><body>${body}</body></html>`, 'https://example.com/a');
 
 test('pixel width: Arial metrics land near real widths', () => {
-  // "iiii" is 4 x 222 units, "WWWW" is 4 x 944 units, at 20px
   assert.equal(titlePixelWidth('iiii'), 18);
   assert.equal(titlePixelWidth('WWWW'), 76);
 });

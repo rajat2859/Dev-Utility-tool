@@ -4,10 +4,6 @@ import type { BlockComparison, BlockComparisonStatus } from '../types/report';
 import type { ReferenceBlock } from '../types/reference';
 import type { PageContentBlock } from '../types/page';
 
-/**
- * Performs order-aware, one-to-one content block comparison.
- * Detects missing, moved, partial, exact, and extra content.
- */
 export function auditContentSequence(
   expectedBlocks: ReferenceBlock[],
   actualBlocks: PageContentBlock[]
@@ -18,7 +14,6 @@ export function auditContentSequence(
   const comparisons: BlockComparison[] = [];
   const claimedActualBlockIds = new Set<string>();
 
-  // Track actual orders matched so far to detect out-of-order / MOVED items
   let lastActualOrder = -1;
 
   for (const exp of expectedBlocks) {
@@ -47,7 +42,6 @@ export function auditContentSequence(
     if (bestMatch) {
       claimedActualBlockIds.add(bestMatch.block.id);
 
-      // Check order: moved if position diverges significantly from expected order or violates monotone flow
       const orderDiff = Math.abs(bestMatch.block.order - exp.order);
       const isMoved = (orderDiff > 2) || (lastActualOrder >= 0 && bestMatch.block.order < lastActualOrder);
 
@@ -98,11 +92,9 @@ export function auditContentSequence(
     }
   }
 
-  // Detect meaningful extra content on the page (Fix 30)
   const extraBlocks: BlockComparison[] = [];
   for (const act of actualBlocks) {
     if (!claimedActualBlockIds.has(act.id)) {
-      // Filter out tiny / noisy blocks (e.g. copyright, single numbers, social icons)
       if (act.text.trim().length > 25 && !/^(copyright|all rights reserved|privacy policy|terms of service)/i.test(act.text)) {
         extraBlocks.push({
           id: `extra-${act.id}`,

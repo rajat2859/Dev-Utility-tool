@@ -20,7 +20,6 @@ export default function DashboardGrid({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Keyboard shortcut: Press '/' anywhere to focus search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (

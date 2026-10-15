@@ -225,15 +225,12 @@ const SAMPLE_HTML_TABLE = `<table border="1" cellpadding="6" cellspacing="0" sty
   </tbody>
 </table>`;
 
-// One ancestor of the caret inside the visual editor, innermost last.
 type NodeCrumb = { tag: string; id: string; classes: string[] };
 
 type WysiwygTool = {
   divider?: boolean;
   command?: string;
-  /** formatBlock argument, e.g. '<h3>'. */
   value?: string;
-  /** Block tag this button represents, used for the active state and to toggle back to <p>. */
   block?: string;
   label?: string;
   icon?: React.ElementType;
@@ -262,7 +259,6 @@ const WYSIWYG_TOOLS: WysiwygTool[] = [
   { command: 'removeFormat', label: 'Clear Formatting', icon: Eraser, danger: true },
 ];
 
-// Commands whose on/off state queryCommandState can report.
 const INLINE_STATE_COMMANDS = ['bold', 'italic', 'underline', 'strikeThrough', 'insertUnorderedList', 'insertOrderedList'];
 
 // Format bytes helper
@@ -365,7 +361,6 @@ function htmlToMarkdown(html: string): string {
   return processNode(doc.body).replace(/\n{3,}/g, '\n\n').trim();
 }
 
-// Pretty print HTML DOM tree preserving inline elements and indenting blocks
 function prettyPrintDom(node: Node, indentLevel = 0): string {
   const indent = '  '.repeat(indentLevel);
   const blockTags = new Set([
@@ -386,7 +381,6 @@ function prettyPrintDom(node: Node, indentLevel = 0): string {
   const el = node as HTMLElement;
   const tag = el.tagName.toLowerCase();
 
-  // If <pre> tag, preserve exact innerHTML
   if (tag === 'pre') {
     return `\n${indent}<pre>${el.innerHTML}</pre>`;
   }
@@ -438,8 +432,6 @@ export default function HtmlCleaner() {
   const wysiwygRef = useRef<HTMLDivElement>(null);
   const rightTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Walks from the caret (or a clicked node) up to the editor root so the footer
-  // can say which tag you are actually standing in.
   const describeNode = (node: Node | null | undefined) => {
     const root = wysiwygRef.current;
     if (!root || !node) return;
@@ -453,36 +445,28 @@ export default function HtmlCleaner() {
     }
     setNodePath(crumbs);
 
-    // Light up the toolbar for whatever the caret is actually inside. Without
-    // this the buttons look identical whether the selection is bold or not, so
-    // toggling reads as random even though the command itself works.
     const inline: Record<string, boolean> = {};
     for (const command of INLINE_STATE_COMMANDS) {
       try { inline[command] = document.queryCommandState(command); } catch { inline[command] = false; }
     }
     let block = '';
-    try { block = String(document.queryCommandValue('formatBlock') || '').toLowerCase(); } catch { /* unsupported */ }
-    // Chrome reports '' for a bare text node directly under the editor.
+    try { block = String(document.queryCommandValue('formatBlock') || '').toLowerCase(); } catch {}
     if (!block) block = crumbs.find((crumb) => /^(p|h[1-6]|blockquote|pre|div)$/.test(crumb.tag))?.tag ?? '';
     setFormatState({ inline, block });
   };
 
-  // selectionchange is the one event that covers clicking, arrow keys and
-  // typing alike, so the readout follows the caret rather than only clicks.
   useEffect(() => {
     const onSelectionChange = () => describeNode(document.getSelection()?.anchorNode);
     document.addEventListener('selectionchange', onSelectionChange);
     return () => document.removeEventListener('selectionchange', onSelectionChange);
   }, []);
 
-  // Sync WYSIWYG editor content when inputHtml changes externally
   useEffect(() => {
     if (wysiwygRef.current && document.activeElement !== wysiwygRef.current) {
       wysiwygRef.current.innerHTML = inputHtml;
     }
   }, [inputHtml]);
 
-  // Clean HTML according to exact options with multi-pass DOM stabilization
   const cleanedResult = useMemo(() => {
     if (!inputHtml.trim()) {
       return {
@@ -515,7 +499,6 @@ export default function HtmlCleaner() {
       .replace(/<\/?m:[^>]*>/gi, '')
       .replace(/<\/?v:[^>]*>/gi, '');
 
-    // Unwrap Google Docs normal bold wrapper: <b id="docs-internal-guid-..." style="font-weight:normal;">...</b>
     processedHtml = processedHtml.replace(
       /<b\s+[^>]*id="docs-internal-guid-[^"]*"[^>]*style="[^"]*font-weight:\s*normal[^"]*"[^>]*>(.*?)<\/b>/gis,
       '$1'
@@ -537,17 +520,10 @@ export default function HtmlCleaner() {
           .filter(Boolean)
       );
 
-      // Word, Google Docs and styled web pages carry bold/italic/strike as inline
-      // CSS on a <span>, not as tags. Stripping styles and unwrapping spans
-      // therefore threw that formatting away outright, so promote it to real
-      // tags first. Runs once, before any pass - re-running it per pass would
-      // nest <strong> inside <strong> on every stabilization loop.
       if (options.convertSemanticTags) {
         body.querySelectorAll<HTMLElement>('[style]').forEach((el) => {
           if (!el.firstChild) return;
           for (const tag of semanticTagsForInlineStyle(el.style)) {
-            // Already inside such a tag, or already wrapping one (which happens
-            // when cleaned output is fed back in through the code pane).
             if (el.closest(tag)) continue;
             const soleChild = el.childNodes.length === 1 ? el.firstChild : null;
             if (soleChild?.nodeType === Node.ELEMENT_NODE
@@ -794,7 +770,6 @@ export default function HtmlCleaner() {
         return true;
       };
 
-      // Run multiple stabilization passes until DOM reaches equilibrium
       for (let pass = 0; pass < 6; pass++) {
         const initialCount = body.querySelectorAll('*').length;
         const childNodes = Array.from(body.childNodes);
@@ -855,7 +830,6 @@ export default function HtmlCleaner() {
     }
   }, [inputHtml, options, findText, replaceText]);
 
-  // Keep rightCodeHtml synced with cleanedResult.html unless user is actively typing in the right code textarea
   useEffect(() => {
     if (document.activeElement !== rightTextareaRef.current) {
       setRightCodeHtml(cleanedResult.html);
@@ -893,7 +867,6 @@ export default function HtmlCleaner() {
     setReplaceText('');
   };
 
-  // Determine current active content to display/copy/export based on activeView
   const currentViewContent = useMemo(() => {
     if (activeView === 'markdown') return cleanedResult.markdown;
     if (activeView === 'text') return cleanedResult.text;
@@ -933,8 +906,6 @@ export default function HtmlCleaner() {
       if (!url) return;
       document.execCommand('createLink', false, url);
     } else if (block && formatState.block === block && block !== 'p') {
-      // Clicking the active heading drops back to a paragraph, so the block
-      // buttons toggle the same way bold does instead of being one-way.
       document.execCommand('formatBlock', false, '<p>');
     } else {
       document.execCommand(command, false, value);
@@ -943,14 +914,9 @@ export default function HtmlCleaner() {
     if (wysiwygRef.current) {
       setInputHtml(wysiwygRef.current.innerHTML);
     }
-    // The command changed the formatting under the caret but does not always
-    // fire selectionchange, so re-read rather than leaving the toolbar stale.
     describeNode(document.getSelection()?.anchorNode);
   };
 
-  // Strip every inline style/class from the visual content, keeping structure.
-  // Bold/italic/etc. carried as CSS (Google Docs, Word) is promoted to real tags
-  // first so clearing styles does not also wipe the emphasis.
   const clearVisualStyles = () => {
     const doc = new DOMParser().parseFromString(inputHtml, 'text/html');
     doc.querySelectorAll('style, meta, link').forEach((el) => el.remove());
@@ -969,20 +935,15 @@ export default function HtmlCleaner() {
     setInputHtml(doc.body.innerHTML);
   };
 
-  // Text copied from a doc arrives as text/html. A textarea only takes the
-  // plain-text flavour, so pasting into the code pane lost every style; use the
-  // HTML flavour instead. Plain text that is itself HTML code is left alone.
   const handleCodePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     if (activeView !== 'html') return;
     const html = e.clipboardData.getData('text/html');
     if (!html) return;
     e.preventDefault();
     setInputHtml(html);
-    e.currentTarget.blur(); // lets the cleaned output replace the textarea value
+    e.currentTarget.blur();
   };
 
-  // The visual pane renders rich pastes natively, but HTML source copied as
-  // plain text (e.g. code written in a doc) would show up as literal tags.
   const handleVisualPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     if (e.clipboardData.getData('text/html')) return;
     const text = e.clipboardData.getData('text/plain');
@@ -1260,8 +1221,6 @@ export default function HtmlCleaner() {
               return (
                 <button
                   key={tool.label}
-                  // Without this, mousedown moves focus off the editor and the
-                  // selection the command is meant to act on can be lost.
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => execWysiwygCommand(tool.command!, tool.value, tool.block)}
                   aria-pressed={active}
@@ -1297,7 +1256,6 @@ export default function HtmlCleaner() {
             />
           </div>
 
-          {/* Element readout: which tag the caret is in, and its ancestors. */}
           <div className="shrink-0 border-t border-slate-200 bg-slate-50 px-3 py-2 flex items-center gap-2 overflow-x-auto">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Element</span>
             {nodePath.length === 0 ? (

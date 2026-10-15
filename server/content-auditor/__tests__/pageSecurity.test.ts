@@ -8,7 +8,6 @@ import {
   UnsafeUrlError,
 } from '../webpage/PageSecurity';
 
-// All cases here are offline: IP literals never hit DNS and hostnames use an injected resolver.
 const publicResolver = async () => ['93.184.216.34'];
 
 test('isPrivateIp: legitimate domains starting with fc/fd/fe80 are not private', () => {

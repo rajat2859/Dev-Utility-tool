@@ -31,10 +31,6 @@ export interface FetchResult {
   notes: string[];
 }
 
-/**
- * Fetches webpage HTML server-side with SSRF protection, redirect verification,
- * size limits, and automatic browser rendering fallback.
- */
 export async function fetchWebpage(targetUrl: string, enableRenderFallback = true): Promise<FetchResult> {
   const notes: string[] = [];
   let currentUrl = targetUrl;
@@ -50,7 +46,7 @@ export async function fetchWebpage(targetUrl: string, enableRenderFallback = tru
     try {
       res = await fetch(currentUrl, {
         headers: BROWSER_HEADERS,
-        redirect: 'manual', // Manually validate each hop for SSRF
+        redirect: 'manual',
         signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
       });
     } catch (err: any) {
@@ -95,7 +91,6 @@ export async function fetchWebpage(targetUrl: string, enableRenderFallback = tru
     throw new Error(`Webpage content exceeds maximum allowed size of 10 MB.`);
   }
 
-  // Check if rendering fallback should be triggered (SPA or empty shell)
   if (enableRenderFallback && shouldTriggerRenderFallback(rawHtml, 0)) {
     notes.push('Detected potential SPA / client-rendered content shell. Attempting browser rendering fallback...');
     const renderResult = await renderPageWithBrowser(currentUrl);

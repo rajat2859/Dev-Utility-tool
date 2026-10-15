@@ -27,7 +27,6 @@ async function mapPool<T, R>(items: T[], size: number, fn: (item: T) => Promise<
   return out;
 }
 
-// Duplicate checks need the whole set of pages, so they run after every page is audited.
 export function markDuplicates(pages: SeoPage[]): void {
   const checks: Array<[IssueTab, (p: SeoPage) => string | undefined, Priority]> = [
     ['Page Titles', (p) => p.title[0], 'High'],
@@ -48,10 +47,6 @@ export function markDuplicates(pages: SeoPage[]): void {
   }
 }
 
-/**
- * Audits a list of URLs (or the URLs of a sitemap) and/or pasted HTML, Screaming Frog "list mode" style.
- * fetchHtml is injected so the caller's SSRF-safe fetcher is used for every request.
- */
 export async function runSeoAudit(
   input: { urls: string[]; rawHtml?: string },
   fetchHtml: (url: string) => Promise<string>
@@ -59,7 +54,6 @@ export async function runSeoAudit(
   const notices: string[] = [];
   let urls = [...new Set(input.urls.map(normalizeUrl).filter(Boolean))];
 
-  // A single sitemap URL is expanded into the pages it lists (one level of sitemap index deep).
   if (urls.length === 1 && isSitemap(urls[0])) {
     try {
       let locs = extractSitemapLocs(await fetchHtml(urls[0]));

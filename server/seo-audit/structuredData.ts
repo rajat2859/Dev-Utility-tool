@@ -3,13 +3,12 @@ import type { SchemaItem } from './types';
 import { sanitizeAndParseJsonLd } from '../../src/lib/utils';
 
 interface Rule {
-  required?: string[]; // missing = validation error
-  oneOf?: string[]; // at least one must be present, else validation error
-  recommended?: string[]; // missing = validation warning
-  rich?: string; // Google rich result feature
+  required?: string[];
+  oneOf?: string[];
+  recommended?: string[];
+  rich?: string;
 }
 
-// Required / recommended properties per Google's structured data docs (the subset Screaming Frog validates).
 const RULES: Record<string, Rule> = {
   Article: { recommended: ['author', 'datePublished', 'headline', 'image', 'dateModified'], rich: 'Article' },
   Product: { required: ['name'], oneOf: ['offers', 'review', 'aggregateRating'], recommended: ['image', 'description', 'brand', 'sku'], rich: 'Product snippet' },
@@ -43,7 +42,6 @@ const ALIASES: Record<string, string> = {
   Corporation: 'Organization', NGO: 'Organization', EducationalOrganization: 'Organization',
 };
 
-// "https://schema.org/FAQPage" / "schema:FAQPage" -> "FAQPage"
 const shortType = (t: string) => t.replace(/^.*[/:#]/, '');
 
 const has = (obj: Record<string, unknown>, key: string) => {
@@ -68,7 +66,6 @@ function validate(obj: Record<string, unknown>, types: string[]) {
   return { errors, warnings, richResult: rich.size ? [...rich].join(', ') : undefined };
 }
 
-// depth 0 = the script's root object or a @graph member; nested entities (author, offers...) are validated too
 function collectJsonLd(node: unknown, out: SchemaItem[], depth: number) {
   if (Array.isArray(node)) return node.forEach((n) => collectJsonLd(n, out, depth));
   if (!node || typeof node !== 'object') return;
@@ -99,7 +96,7 @@ function collectMarkup(
     if (!types.length) return;
     const props: Record<string, unknown> = {};
     $(el).find(`[${propAttr}]`).each((_, p) => {
-      if ($(p).parent().closest(scope).get(0) !== el) return; // belongs to a nested item
+      if ($(p).parent().closest(scope).get(0) !== el) return;
       const value = $(p).attr('content') || $(p).attr('href') || $(p).attr('src') || $(p).text().trim() || true;
       ($(p).attr(propAttr) || '').split(/\s+/).filter(Boolean).forEach((name) => (props[name] = value));
     });

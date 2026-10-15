@@ -4,9 +4,6 @@ import type { HeadingComparison, BlockComparisonStatus } from '../types/report';
 import type { ReferenceHeading } from '../types/reference';
 import type { PageHeading, PageContentBlock } from '../types/page';
 
-/**
- * Validates heading hierarchy, copy accuracy, and heading tag structure.
- */
 export function auditHeadings(
   expectedHeadings: ReferenceHeading[],
   actualHeadings: PageHeading[],
@@ -68,7 +65,7 @@ export function auditHeadings(
     // 2. Not found in headings: check if the text was downgraded to a paragraph or list item (Structure Fail, Fix 3 & 4)
     let nonHeadingMatch: { block: PageContentBlock; score: number; status: BlockComparisonStatus } | null = null;
     for (const block of allPageBlocks) {
-      if (block.type === 'heading') continue; // already checked above
+      if (block.type === 'heading') continue;
       const res = compareTextSimilarity(exp.text, block.text);
       if (res.status === 'EXACT' || res.status === 'NEAR_EXACT' || res.status === 'PARTIAL') {
         if (!nonHeadingMatch || res.similarity > nonHeadingMatch.score) {

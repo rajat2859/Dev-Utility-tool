@@ -52,7 +52,6 @@ const collectBlocks = (container: Node): HTMLElement[] => {
 
 // ── Answer text ──────────────────────────────────────────────────────────────
 
-// Schema answers are plain text: one line per paragraph or list item, no tags.
 const collapse = (text: string | null) => (text ?? '').replace(/\s+/g, ' ').trim();
 
 const answerBlockText = (block: HTMLElement): string => {

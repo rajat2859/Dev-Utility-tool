@@ -1,5 +1,3 @@
-// Advance widths (per 1000 em) of Arial, the font Google renders snippets in.
-// Screaming Frog measures titles at 20px and descriptions at 14px; same here.
 const GROUPS: Array<[string, number]> = [
   ['ijl', 222],
   ["'", 191],

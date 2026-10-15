@@ -25,7 +25,6 @@ const SeoChecker = lazy(toolsMap['seo-checker']);
 const HtmlCleaner = lazy(toolsMap['html-cleaner']);
 const Settings = lazy(toolsMap['settings']);
 
-// Global prefetch helper for instant tool opening on hover
 export const prefetchTool = (toolId: string) => {
   if (toolsMap[toolId]) {
     toolsMap[toolId]().catch(() => {});
@@ -64,7 +63,6 @@ export default function App() {
     document.documentElement.classList.remove('dark');
     localStorage.removeItem('util_hub_theme');
 
-    // Idle background prefetching of all tool bundles for instantaneous navigation
     const timer = setTimeout(() => {
       Object.values(toolsMap).forEach(fn => fn().catch(() => {}));
     }, 800);
@@ -149,10 +147,8 @@ export default function App() {
     }
   };
 
-  // Keyboard navigation: Escape key returns to dashboard
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape closes the mobile drawer first so it doesn't also navigate away underneath it.
       if (e.key !== 'Escape') return;
       if (isDrawerOpen) {
         setIsDrawerOpen(false);

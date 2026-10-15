@@ -9,20 +9,12 @@ import { normalizeText } from '../utils/textNormalizer';
 import { extractWebsiteSemanticTree } from '../webpage/domContentExtractor';
 import type { GoogleDocData } from './GoogleDocsService';
 
-/**
- * Extracts raw textual content from a Google Docs paragraph element
- * by concatenating all text runs and removing structural trailing newlines.
- */
 function extractParagraphText(paragraph?: docs_v1.Schema$Paragraph): string {
   if (!paragraph || !paragraph.elements) return '';
   const raw = paragraph.elements.map((el) => el.textRun?.content || '').join('');
   return normalizeText(raw);
 }
 
-/**
- * Determines whether a bullet in a Google Doc represents an ordered list (ol)
- * or unordered list (ul) by inspecting glyph properties.
- */
 function determineListType(
   doc: docs_v1.Schema$Document,
   bullet?: docs_v1.Schema$Bullet
@@ -40,9 +32,6 @@ function determineListType(
   return 'ul';
 }
 
-/**
- * Extracts optional metadata found in content elements preceding the first H1.
- */
 function extractPreambleMetadata(
   elements: docs_v1.Schema$StructuralElement[]
 ): Record<string, string> {
@@ -77,21 +66,7 @@ function extractPreambleMetadata(
   return metadata;
 }
 
-/**
- * Parses a Google Doc API response or public HTML export into a normalized semantic content tree.
- *
- * Requirements:
- * - Scans from the FIRST HEADING_1 onward.
- * - Discards all content before the first HEADING_1.
- * - Throws "No Heading 1 was found in the Google Doc." if no HEADING_1 exists.
- * - Maps HEADING_1..6 -> h1..h6
- * - Maps NORMAL_TEXT -> p
- * - Maps bullet items -> ul / ol
- * - Maps tables -> table
- * - Ignores fonts, sizes, colors, and layout noise.
- */
 export function parseGoogleDoc(doc: GoogleDocData): NormalizedDocument {
-  // If document was fetched as public HTML export, parse using DOM semantic extractor
   if ('isHtml' in doc && doc.isHtml) {
     const tree = extractWebsiteSemanticTree(doc.html);
     const hasH1 = tree.elements.some((el) => el.type === 'heading' && el.tag === 'h1');
@@ -126,7 +101,6 @@ export function parseGoogleDoc(doc: GoogleDocData): NormalizedDocument {
   const elements: NormalizedElement[] = [];
   let elementIndex = 0;
 
-  // Track pending list items for grouping consecutive list elements
   let currentList: ListElement | null = null;
 
   function finalizePendingList() {
@@ -167,7 +141,6 @@ export function parseGoogleDoc(doc: GoogleDocData): NormalizedDocument {
         continue;
       }
 
-      // Non-bullet paragraph: finalize any active list
       finalizePendingList();
 
       const styleType = paragraph.paragraphStyle?.namedStyleType || 'NORMAL_TEXT';

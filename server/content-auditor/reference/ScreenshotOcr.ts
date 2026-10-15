@@ -19,9 +19,6 @@ export interface OcrExtractionResult {
   notes: string[];
 }
 
-/**
- * Extracts width and height from PNG / JPEG buffers without native dependencies.
- */
 function getImageDimensions(buf: Buffer): { width: number; height: number } | null {
   if (buf.length < 24) return null;
 
@@ -38,7 +35,6 @@ function getImageDimensions(buf: Buffer): { width: number; height: number } | nu
     while (offset < buf.length) {
       if (buf[offset] !== 0xff) break;
       const marker = buf[offset + 1];
-      // Baseline / Progressive SOF markers: 0xC0, 0xC1, 0xC2
       if (marker >= 0xc0 && marker <= 0xc3) {
         const height = buf.readUInt16BE(offset + 5);
         const width = buf.readUInt16BE(offset + 7);
@@ -52,13 +48,6 @@ function getImageDimensions(buf: Buffer): { width: number; height: number } | nu
   return null;
 }
 
-/**
- * Performs high-resolution tiled OCR on screenshot images.
- * Fix 9: Prevents downscaling long vertical screenshots into unreadable text.
- * Fix 10: Calculates overall confidence and assigns HIGH / MEDIUM / LOW tiers.
- * Fix 11: Explicit failure on timeout rather than silent empty return.
- * Fix 12: Validates result against image dimensions to detect suspicious / corrupted outputs.
- */
 export async function performTiledOcr(
   imageBase64: string,
   options: { timeoutMs?: number; tileHeight?: number; overlap?: number } = {}
@@ -82,7 +71,6 @@ export async function performTiledOcr(
   const width = dims?.width || 1200;
   const height = dims?.height || 2000;
 
-  // Determine if tiling is necessary (image height > 2400px)
   const isTallImage = height > 2400;
   const tiles: Array<{ top: number; height: number }> = [];
 
@@ -187,7 +175,6 @@ export async function performTiledOcr(
   const characterCount = cleanText.length;
   const lineCount = ocrResult.lines.length;
 
-  // Fix 10: Thresholds: HIGH >= 90, MEDIUM >= 75, LOW < 75
   const confidenceTier: 'HIGH' | 'MEDIUM' | 'LOW' =
     overallConfidence >= 90 ? 'HIGH' : overallConfidence >= 75 ? 'MEDIUM' : 'LOW';
 

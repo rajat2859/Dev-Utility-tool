@@ -31,7 +31,6 @@ export function extractPageAuditModel(
   // 1. Metadata and feature images
   const { meta, images } = extractPageMetadata($);
 
-  // Alt text is checked against the whole page source, not just the main content scope
   const altTexts = collectAltTexts($);
 
   // 2. Main content scope
@@ -112,7 +111,6 @@ export function extractPageAuditModel(
   });
 
   // 5. Clone $scope and remove tables before extracting linear content blocks
-  // to avoid duplicating table cells as standard paragraphs
   const $contentOnly = $scope.clone();
   $contentOnly.find('table').remove();
 
@@ -120,7 +118,6 @@ export function extractPageAuditModel(
   const blocks: PageContentBlock[] = [];
   let blockCounter = 0;
 
-  // Interleaved traversal of main content elements in document order
   $contentOnly.find('h1, h2, h3, h4, h5, h6, p, ul > li, ol > li').each((_, el) => {
     const tag = el.tagName.toLowerCase();
     const text = normalizeText($(el).text());
@@ -181,7 +178,6 @@ export function extractPageAuditModel(
       let j = i + 1;
       while (j < blocks.length) {
         if (blocks[j].type === 'heading' && blocks[j].level && blocks[j].level! <= (b.level || 2)) {
-          // Reached next major section
           break;
         }
         if (blocks[j].type === 'heading' && blocks[j + 1] && blocks[j + 1].type === 'paragraph') {

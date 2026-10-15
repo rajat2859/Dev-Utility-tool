@@ -45,12 +45,6 @@ export interface MainContentResult {
   isManual: boolean;
 }
 
-/**
- * Resolves the primary content container from an HTML document.
- * If manualSelector is specified, validates and scopes to it strictly (or throws).
- * Otherwise applies hierarchy: <main> -> [role=main] -> <article> -> common selectors -> body.
- * Strips unwanted chrome (navbars, footers, cookie banners) from within the scope.
- */
 export function resolveMainContent(
   $: CheerioAPI,
   manualSelector?: string
@@ -89,7 +83,6 @@ export function resolveMainContent(
         const el = matched.eq(i);
         const text = el.text().trim();
         if (text.length > 50) {
-          // Remove internal chrome (e.g. sidebars or footers inside main)
           CHROME_SELECTORS.forEach((sel) => {
             el.find(sel).remove();
           });
@@ -103,7 +96,6 @@ export function resolveMainContent(
     }
   }
 
-  // Fallback to <body> after stripping global chrome elements
   const body = $('body');
   if (body.length > 0) {
     const clonedBody = body.clone();

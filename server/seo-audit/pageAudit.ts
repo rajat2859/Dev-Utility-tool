@@ -5,7 +5,6 @@ import { extractStructuredData } from './structuredData';
 
 const clean = (s: string) => s.replace(/\s+/g, ' ').trim();
 
-// A page that could not be fetched: shown in the table with its error, never audited as if it were empty.
 export function failedPage(address: string, error: string): SeoPage {
   return {
     address,
@@ -33,12 +32,6 @@ const urlKey = (raw: string, base: string) => {
   }
 };
 
-/**
- * Audits one page's HTML with Screaming Frog's SEO checks and thresholds
- * (titles 30-60 chars / 200-561px, descriptions 70-155 chars / 400-985px, H1/H2 up to 70 chars,
- * image alt text, canonicals, robots directives, structured data validation).
- * Cross-page checks (Duplicate) are added afterwards by markDuplicates.
- */
 export function auditPage(html: string, address: string): SeoPage {
   const $ = cheerio.load(html);
   const texts = (selector: string) =>

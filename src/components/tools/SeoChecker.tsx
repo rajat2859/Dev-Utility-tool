@@ -21,7 +21,6 @@ const first = (list: string[]) => list[0] ?? '';
 const nth = (list: string[], i: number) => list[i] ?? '';
 const types = (page: SeoPage) => page.structuredData.items.map((i) => i.type);
 
-// Columns per tab, named like Screaming Frog's. The Address column is always shown first.
 const COLUMNS: Record<Exclude<TabId, 'issues'>, Column[]> = {
   internal: [
     { header: 'Status', get: (p) => p.error ?? 'OK' },
@@ -83,7 +82,6 @@ const TAB_LABEL = (tab: TabId) => (tab === 'issues' ? 'Issues' : tab === 'intern
 
 const isLink = (address: string) => /^https?:\/\//i.test(address);
 
-// Cells come from audited pages, so neutralise spreadsheet formulas before export.
 const csvCell = (value: string | number) => {
   const text = String(value);
   return `"${(/^[=+\-@\t\r]/.test(text) ? "'" + text : text).replace(/"/g, '""')}"`;
@@ -148,7 +146,6 @@ export default function SeoChecker() {
   const pages = result?.pages ?? [];
   const audited = useMemo(() => pages.filter((p) => !p.error), [pages]);
 
-  // Issues grouped like Frog's Issues pane: one row per (tab, issue) with the number of affected URLs
   const issueGroups = useMemo(() => {
     const groups = new Map<string, { tab: IssueTab; name: string; priority: Priority; urls: number }>();
     for (const page of audited) {

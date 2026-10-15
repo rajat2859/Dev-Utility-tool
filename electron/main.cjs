@@ -18,7 +18,6 @@ const appContentDirectory = app.isPackaged
 let mainWindow = null;
 let appServerUrl = null;
 
-// Caches V8-compiled code of the ~MB server bundle on disk so later launches skip the compile step.
 require('node:module').enableCompileCache(path.join(app.getPath('userData'), 'compile-cache'));
 
 const windowStatePath = path.join(app.getPath('userData'), 'window-state.json');
@@ -46,16 +45,13 @@ function saveWindowState(window) {
   }
 }
 
-// Only hands well-formed http(s)/mailto URLs to the OS; file:, javascript:, custom protocols etc. are ignored.
 function openExternalSafely(url) {
   try {
     if (EXTERNAL_URL_PROTOCOLS.has(new URL(url).protocol)) shell.openExternal(url);
   } catch {
-    // Malformed URL: never pass it to the operating system.
   }
 }
 
-// Compares origins instead of string prefixes. False while the server is not up yet (appServerUrl is null).
 function isAppServerUrl(targetUrl) {
   if (!appServerUrl) return false;
   try {
@@ -93,7 +89,6 @@ async function waitForServerToBeHealthy(serverUrl) {
       const response = await fetch(`${serverUrl}/api/health`, { signal: AbortSignal.timeout(1500) });
       if (response.ok) return;
     } catch {
-      // The server is still starting.
     }
     await new Promise((resolve) => setTimeout(resolve, SERVER_HEALTH_POLL_INTERVAL_MS));
   }

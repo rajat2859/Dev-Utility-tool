@@ -35,8 +35,6 @@ const CHECK_CATEGORIES = [
   { id: 'faq', label: 'FAQ Schema' },
 ] as const;
 
-// Maps a mismatch's free-text category (from the local comparator) to one of the
-// checkable groups above, so the UI can filter to only what the user asked for.
 function categoryGroup(category: string): string {
   const c = category.toLowerCase();
   if (c.includes('title')) return 'title';
@@ -259,7 +257,6 @@ export default function ContentChecker() {
   const [copied, setCopied] = useState<boolean>(false);
   const [showFaqJson, setShowFaqJson] = useState<boolean>(false);
 
-  // Single reference-link field: accepts either an Awesome Screenshot share URL or a Google Doc share URL
   const [referenceUrl, setReferenceUrl] = useState<string>('');
   const [isResolvingReference, setIsResolvingReference] = useState<boolean>(false);
   const [referenceError, setReferenceError] = useState<string | null>(null);
@@ -282,7 +279,6 @@ export default function ContentChecker() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Preserve vertical resolution for tall screenshots (Fix 9)
   const compressImage = (dataUrl: string, maxWidth = 2500, quality = 0.9): Promise<string> => {
     return new Promise((resolve) => {
       if (!dataUrl || !dataUrl.startsWith('data:image/')) {
@@ -391,8 +387,6 @@ export default function ContentChecker() {
     setReferenceError(null);
   };
 
-  // Auto-detects whether the pasted link is an Awesome Screenshot share URL or a Google Doc share URL,
-  // resolves it against the matching backend endpoint, and returns the resolved payload.
   const resolveReferenceLink = async (
     targetUrl?: string
   ): Promise<{ type: 'awesome'; value: string } | { type: 'doc'; value: string } | null> => {
@@ -531,7 +525,6 @@ export default function ContentChecker() {
       try {
         data = JSON.parse(responseText);
       } catch {
-        // ignore JSON parse error for initial try
       }
 
       clearInterval(stepInterval);
@@ -560,7 +553,6 @@ export default function ContentChecker() {
     ? report.bodyContent.mismatches.filter((m) => selectedChecks.has(categoryGroup(m.category)))
     : [];
   const filteredMismatchCount = filteredComparisons.filter((m) => m.status !== 'match').length;
-  // Mismatches need full expected/actual detail; matches are just noise unless someone asks to see them.
   const realMismatches = filteredComparisons.filter((m) => m.status !== 'match');
   const plainMatches = filteredComparisons.filter((m) => m.status === 'match');
   const titleOrDescriptionMismatch = !!report && (
@@ -1267,7 +1259,6 @@ export default function ContentChecker() {
               )}
             </div>
 
-          {/* Feature Image — expected (from the doc) vs actual (og:image/twitter:image/first <img>) */}
           {selectedChecks.has('image') && report.featureImage && report.featureImage.applicable && (
             <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
               <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
