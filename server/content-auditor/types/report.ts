@@ -127,15 +127,38 @@ export interface FeatureImageComparison {
 export interface AltTextComparison {
   expected: string;
   status: 'FOUND' | 'MISSING';
-  pageCount: number; // <img> tags on the page carrying this alt text
-  expectedCount: number; // times the reference lists it
-  duplicate: boolean; // on more images than the reference lists
+  pageCount: number;
+  expectedCount: number;
+  duplicate: boolean;
 }
 
 export interface SchemaComparison {
-  types: string[]; // @type values the doc's schema declares
-  status: 'FOUND' | 'MISSING' | 'INVALID'; // INVALID = the doc's schema couldn't be read as JSON-LD
+  types: string[];
+  status: 'FOUND' | 'MISSING' | 'INVALID';
   missingTypes: string[];
+}
+
+export interface UrlCheck {
+  expected: string;
+  actual: string;
+  status: 'MATCH' | 'MISMATCH' | 'NOT_IN_DOC';
+  canonical?: string;
+  canonicalMatches?: boolean;
+}
+
+export interface MetaCheck {
+  field: 'title' | 'description';
+  expected: string;
+  actual: string;
+  status: 'MATCH' | 'NEAR_MATCH' | 'MISMATCH' | 'MISSING_ON_PAGE' | 'NOT_IN_DOC';
+}
+
+export interface FaqSchemaCheck {
+  present: boolean;
+  valid: boolean;
+  questionCount: number;
+  errors: string[];
+  warnings: string[];
 }
 
 export interface FaqComparison {

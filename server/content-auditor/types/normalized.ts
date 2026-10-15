@@ -1,4 +1,4 @@
-import type { AltTextComparison, SchemaComparison } from './report';
+import type { AltTextComparison, FaqSchemaCheck, MetaCheck, SchemaComparison, UrlCheck } from './report';
 
 export type HeadingTag = 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 
@@ -102,5 +102,8 @@ export interface ContentAuditReport {
   extraWebsiteElements: NormalizedElement[];
   altTexts?: AltTextComparison[];
   schemas?: SchemaComparison[];
+  urlCheck?: UrlCheck;
+  metaChecks?: MetaCheck[];
+  faqSchema?: FaqSchemaCheck;
   page?: { url: string; title?: string; description?: string; canonical?: string };
 }

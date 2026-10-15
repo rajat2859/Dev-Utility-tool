@@ -13,7 +13,9 @@ import { parseGoogleDoc } from '../google/GoogleDocParser';
 import { extractWebsiteSemanticTree } from '../webpage/domContentExtractor';
 import { compareNormalizedTrees } from '../comparison/deterministicComparator';
 import { auditAltTexts, collectAltTexts, parseAltTextLine } from '../comparison/AltTextMatcher';
-import { auditSchemas, collectPageSchemaTypes, extractSchemaBlocks } from '../comparison/SchemaMatcher';
+import { auditFaqSchema, auditSchemas, collectPageSchemaTypes, extractSchemaBlocks } from '../comparison/SchemaMatcher';
+import { auditUrl } from '../comparison/UrlMatcher';
+import { auditMeta } from '../comparison/MetaMatcher';
 import * as cheerio from 'cheerio';
 
 export const contentAuditRouter = Router();
@@ -48,8 +50,6 @@ const ResolveScreenshotSchema = z.object({
 const MAX_SCREENSHOT_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
 const MAX_SCREENSHOT_PAGE_BYTES = 5 * 1024 * 1024; // 5MB
 
-// Downloads an image through the SSRF-safe fetch (every redirect hop validated), requires an
-// image/* content type and caps the size, then returns it as a data URI.
 async function downloadImageAsDataUri(imageUrl: string): Promise<string> {
   const { response } = await fetchWithSafeRedirects(imageUrl, { signal: AbortSignal.timeout(15000) });
   if (!response.ok) throw new Error(`HTTP ${response.status} fetching image.`);
@@ -171,7 +171,6 @@ contentAuditRouter.post('/resolve-awesome-screenshot', async (req: Request, res:
       });
     }
 
-    // The URL was scraped from an untrusted page: resolve it against the page and validate it like any other.
     const resolvedImageUrl = new URL(candidateImageUrl, pageFinalUrl).toString();
     return res.json({ success: true, base64: await downloadImageAsDataUri(resolvedImageUrl) });
   } catch (err: any) {
@@ -272,8 +271,6 @@ contentAuditRouter.post('/analyze', async (req: Request, res: Response) => {
     const duration = Date.now() - startTime;
     console.log(`[ContentAuditor ${auditId}] Completed audit for "${sanitizeForLog(targetUrlName)}" in ${duration}ms. Status: ${report.status}. Issues: ${report.issues.length}.`);
 
-    // Backwards-compatible legacy report shape + new structured model
-    // This allows existing UI to continue functioning seamlessly while unlocking all new features
     return res.json({
       success: true,
       report: {
@@ -294,7 +291,6 @@ contentAuditRouter.post('/analyze', async (req: Request, res: Response) => {
         schemaComparison: report.schemas,
         faqComparison: report.faq,
 
-        // Legacy compatibility mappings for existing ContentChecker UI (Fix 47)
         seo: {
           urlMatches: report.metadata.url.status === 'EXACT',
           expectedUrl: report.metadata.url.expected,
@@ -460,8 +456,6 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
       });
     }
 
-    // Schema code and "Alt text: ..." lines are instructions, not copy: pull them out of the compared content.
-    // A one-cell table is how Docs code blocks usually come through.
     const { blocks: refSchemaBlocks, consumed: schemaIdx } = extractSchemaBlocks(
       referenceTree.elements.map((el) =>
         el.type === 'paragraph' || el.type === 'heading' || (el.type === 'table' && el.rows.length === 1 && el.rows[0].length === 1)
@@ -477,12 +471,33 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
       return !alt;
     });
 
+    const docLines = [
+      ...(referenceTree.metadata?.url ? [`URL: ${referenceTree.metadata.url}`] : []),
+      ...(referenceTree.metadata?.title ? [`Meta Title: ${referenceTree.metadata.title}`] : []),
+      ...(referenceTree.metadata?.description ? [`Meta Description: ${referenceTree.metadata.description}`] : []),
+      ...('isHtml' in docData && docData.isHtml
+        ? (() => {
+            const $doc = cheerio.load(docData.html);
+            return $doc('p, li, tr')
+              .map((_, el) => {
+                const cells = $doc(el).children('td, th');
+                return cells.length ? cells.map((_, c) => $doc(c).text().trim()).get().join(': ') : $doc(el).text();
+              })
+              .get();
+          })()
+        : referenceTree.elements.flatMap((el) =>
+            el.type === 'table' ? el.rows.map((r) => r.join(': ')) : el.type === 'list' ? el.items : [el.text]
+          )),
+    ];
+
     // Step 4: Fetch target website
     const sanitizedUrl = normalizeUrl(rawTargetUrl);
     let pageHtml = '';
+    let finalUrl = sanitizedUrl;
     try {
       const fetched = await fetchWebpage(sanitizedUrl);
       pageHtml = fetched.html;
+      finalUrl = fetched.finalUrl;
     } catch (fetchErr: any) {
       const msg = fetchErr.message || String(fetchErr);
       const errorType = msg.includes('Security validation') ? 'BLOCKED_URL' : 'FETCH_FAILED';
@@ -502,12 +517,32 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
     auditReport.schemas = auditSchemas(refSchemaBlocks, collectPageSchemaTypes($page));
     const { meta } = extractPageMetadata($page);
     auditReport.page = { url: sanitizedUrl, title: meta.titleTag, description: meta.metaDescription, canonical: meta.canonical };
-    const { altTexts, schemas, summary } = auditReport;
-    if (altTexts.some((a) => a.status === 'MISSING') || schemas.some((s) => s.status === 'MISSING')) {
+    let canonical: string | undefined;
+    try {
+      canonical = meta.canonical ? new URL(meta.canonical, finalUrl).href : undefined;
+    } catch {
+      canonical = meta.canonical;
+    }
+    auditReport.urlCheck = auditUrl(docLines, finalUrl, canonical);
+    auditReport.faqSchema = auditFaqSchema($page);
+    auditReport.metaChecks = [auditMeta(docLines, 'title', meta.titleTag), auditMeta(docLines, 'description', meta.metaDescription)];
+    const { altTexts, schemas, summary, urlCheck, faqSchema, metaChecks } = auditReport;
+    if (
+      altTexts.some((a) => a.status === 'MISSING') ||
+      schemas.some((s) => s.status === 'MISSING') ||
+      urlCheck.status === 'MISMATCH' ||
+      metaChecks.some((m) => m.status === 'MISMATCH' || m.status === 'MISSING_ON_PAGE') ||
+      faqSchema.errors.length > 0
+    ) {
       summary.status = 'FAIL';
     } else if (
       summary.status === 'PASS' &&
-      (altTexts.some((a) => a.duplicate) || schemas.some((s) => s.status === 'INVALID'))
+      (altTexts.some((a) => a.duplicate) ||
+        schemas.some((s) => s.status === 'INVALID') ||
+        urlCheck.status === 'NOT_IN_DOC' ||
+        urlCheck.canonicalMatches === false ||
+        metaChecks.some((m) => m.status === 'NEAR_MATCH' || m.status === 'NOT_IN_DOC') ||
+        faqSchema.warnings.length > 0)
     ) {
       summary.status = 'PASS_WITH_WARNINGS';
     }

@@ -17,6 +17,7 @@ import type {
   NormalizedDocument,
   NormalizedElement,
 } from '../../../server/content-auditor/types/normalized';
+import type { MetaCheck } from '../../../server/content-auditor/types/report';
 import { computeWordDiff } from '../../../server/content-auditor/comparison/diff';
 
 interface StructuredElementContentProps {
@@ -27,6 +28,34 @@ interface StructuredElementContentProps {
   side?: 'reference' | 'website';
   counterpart?: { tag: string; text: string; items?: string[]; rows?: string[][] };
 }
+
+const BADGE_TONES = {
+  ok: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  warn: 'bg-amber-100 text-amber-800 border-amber-200',
+  bad: 'bg-red-100 text-red-800 border-red-200',
+};
+
+function StatusBadge({ tone, label }: { tone: keyof typeof BADGE_TONES; label: string }) {
+  return (
+    <span className={`px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border ${BADGE_TONES[tone]}`}>{label}</span>
+  );
+}
+
+const META_TONE: Record<MetaCheck['status'], keyof typeof BADGE_TONES> = {
+  MATCH: 'ok',
+  NEAR_MATCH: 'warn',
+  MISMATCH: 'bad',
+  MISSING_ON_PAGE: 'bad',
+  NOT_IN_DOC: 'warn',
+};
+
+const META_LABEL: Record<MetaCheck['status'], string> = {
+  MATCH: 'Match',
+  NEAR_MATCH: 'Near match',
+  MISMATCH: 'Mismatch',
+  MISSING_ON_PAGE: 'Missing on page',
+  NOT_IN_DOC: 'Not in doc',
+};
 
 const DIFF_HIGHLIGHT_STYLE = {
   reference: 'bg-rose-200 text-rose-900 rounded px-0.5',
@@ -147,7 +176,6 @@ function StructuredElementContent({
   );
 }
 
-// One doc-vs-page audit through /audit-doc; shared by the single and bulk views.
 export async function runDocAudit(googleDocUrl: string, targetUrl: string, contentSelector?: string): Promise<ContentAuditReport> {
   const res = await fetch('/api/content-checker/audit-doc', {
     method: 'POST',
@@ -451,7 +479,6 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
         </div>
       </div>
 
-      {/* Live page details: URL, <title> and meta description as found in the page source */}
       {report.page && (
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2 text-xs">
           <h4 className="text-sm font-bold text-slate-900">Live Page</h4>
@@ -483,7 +510,97 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
         </div>
       )}
 
-      {/* Image alt text listed in the doc, checked against <img alt> in the page source */}
+      {/* Live URL vs the URL/slug the doc specifies */}
+      {report.urlCheck && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-sm font-bold text-slate-900">URL vs Doc</h4>
+            <StatusBadge
+              tone={report.urlCheck.status === 'MATCH' ? 'ok' : report.urlCheck.status === 'MISMATCH' ? 'bad' : 'warn'}
+              label={report.urlCheck.status === 'MATCH' ? 'Match' : report.urlCheck.status === 'MISMATCH' ? 'Mismatch' : 'Not in doc'}
+            />
+          </div>
+          <div className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1.5">
+            <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Doc URL</span>
+            <span className="text-slate-800 font-medium break-all">
+              {report.urlCheck.expected || <em className="text-slate-400">No URL or slug found in the doc</em>}
+            </span>
+            <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Live URL</span>
+            <span className="text-slate-800 font-medium break-all">{report.urlCheck.actual}</span>
+            {report.urlCheck.canonicalMatches === false && (
+              <>
+                <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Canonical</span>
+                <span className="text-amber-700 font-medium break-all">
+                  {report.urlCheck.canonical} does not match the doc URL
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Meta vs Doc */}
+      {!!report.metaChecks?.length && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3 text-xs">
+          <h4 className="text-sm font-bold text-slate-900">Meta vs Doc</h4>
+          {report.metaChecks.map((m) => (
+            <div key={m.field} className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-bold text-slate-500 uppercase text-[10px]">
+                  {m.field === 'title' ? 'Meta Title' : 'Meta Description'}
+                </span>
+                <StatusBadge tone={META_TONE[m.status]} label={META_LABEL[m.status]} />
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1">
+                <span className="text-slate-500">Doc</span>
+                <span className="text-slate-800 font-medium break-words">
+                  {m.expected ? (
+                    <HighlightedText text={m.expected} counterpartText={m.status === 'MATCH' || !m.actual ? undefined : m.actual} side="reference" />
+                  ) : (
+                    <em className="text-slate-400">Not specified in the doc</em>
+                  )}
+                </span>
+                <span className="text-slate-500">Live page</span>
+                <span className="text-slate-800 font-medium break-words">
+                  {m.actual ? (
+                    <HighlightedText text={m.actual} counterpartText={m.status === 'MATCH' || !m.expected ? undefined : m.expected} side="website" />
+                  ) : (
+                    <em className="text-slate-400">Not found on the page</em>
+                  )}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* FAQPage JSON-LD on the live page: present and valid */}
+      {report.faqSchema && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-sm font-bold text-slate-900">FAQ Schema</h4>
+            {report.faqSchema.present || report.faqSchema.errors.length ? (
+              <>
+                <StatusBadge tone="ok" label="Present" />
+                <StatusBadge tone={report.faqSchema.valid ? 'ok' : 'bad'} label={report.faqSchema.valid ? 'Valid' : 'Invalid'} />
+                <span className="text-slate-500">{report.faqSchema.questionCount} question(s)</span>
+              </>
+            ) : (
+              <>
+                <StatusBadge tone="warn" label="Not present" />
+                <span className="text-slate-500">No FAQPage JSON-LD on the page</span>
+              </>
+            )}
+          </div>
+          {report.faqSchema.errors.map((m, i) => (
+            <p key={`e${i}`} className="text-red-700 break-words">• {m}</p>
+          ))}
+          {report.faqSchema.warnings.map((m, i) => (
+            <p key={`w${i}`} className="text-amber-700 break-words">• {m}</p>
+          ))}
+        </div>
+      )}
+
       {!!report.altTexts?.length && (
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
           <h4 className="text-sm font-bold text-slate-900">Image Alt Text ({report.altTexts.length})</h4>
@@ -513,7 +630,6 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
         </div>
       )}
 
-      {/* Schema (JSON-LD) pasted into the doc, checked against the page's JSON-LD scripts */}
       {!!report.schemas?.length && (
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
           <h4 className="text-sm font-bold text-slate-900">Schema in Doc ({report.schemas.length})</h4>

@@ -415,7 +415,6 @@ test('33. feature image mismatch: different file reports MISMATCH', () => {
 });
 
 test('34. long screenshot dimension calculation triggers vertical tiling (Fix 9)', () => {
-  // A test helper verifying height > 2400 logic
   const isTall = 3200 > 2400;
   assert.equal(isTall, true);
 });
@@ -426,7 +425,7 @@ test('35. low-confidence OCR: reports UNVERIFIED status (Fix 10)', () => {
 
   const ref = parseGoogleDocReference('Some text');
   ref.source = 'screenshot';
-  ref.extractionConfidence = 62; // Below 70 threshold
+  ref.extractionConfidence = 62;
   ref.diagnostics.unverifiedFields.push('all');
 
   const report = buildContentAuditReport(page, ref);
@@ -652,7 +651,7 @@ Alt text - Server room`;
 
   const ref = parseGoogleDocReference(refText);
   assert.deepEqual(ref.altTexts, ['Team at work', 'Office & desk', 'Server room']);
-  assert.equal(ref.blocks.some((b) => /alt/i.test(b.text)), false); // not audited as body copy
+  assert.equal(ref.blocks.some((b) => /alt/i.test(b.text)), false);
 
   const report = buildContentAuditReport(extractPageAuditModel(html, 'https://example.com/'), ref);
   const byText = Object.fromEntries((report.altTexts || []).map((a) => [a.expected, a]));
@@ -726,4 +725,53 @@ test('schema in doc: typed labels like "FAQ Schema" above the code are ignored, 
   const { blocks, consumed } = extractSchemaBlocks(doc);
   assert.equal(blocks.length, 3);
   assert.deepEqual([...consumed].sort(), [1, 2, 3, 4, 5]);
+});
+
+import * as cheerio from 'cheerio';
+import { auditUrl, urlMatches } from '../comparison/UrlMatcher';
+import { auditFaqSchema } from '../comparison/SchemaMatcher';
+
+test('url check: doc URL/slug vs live URL', () => {
+  const live = 'https://www.example.com/blog/my-post/';
+  assert.ok(urlMatches('https://example.com/blog/my-post', live));
+  assert.ok(urlMatches('/blog/my-post/', live));
+  assert.ok(urlMatches('my-post', live));
+  assert.ok(!urlMatches('/my-post', live));
+  assert.ok(!urlMatches('https://example.com/blog/other', live));
+  assert.equal(auditUrl(['Title: x', 'URL Slug: /blog/my-post'], live).status, 'MATCH');
+  assert.equal(auditUrl(['URL: https://example.com/blog/old'], live).status, 'MISMATCH');
+  assert.equal(auditUrl(['Publish at https://example.com/blog/my-post please'], live).status, 'MATCH');
+  assert.equal(auditUrl(['no url here'], live).status, 'NOT_IN_DOC');
+  assert.equal(auditUrl(['URL: /blog/my-post'], live, 'https://example.com/other').canonicalMatches, false);
+});
+
+test('faq schema: present and valid', () => {
+  const ld = (o: unknown) => `<script type="application/ld+json">${JSON.stringify(o)}</script>`;
+  const q = (name: string, text?: string) => ({ '@type': 'Question', name, acceptedAnswer: { '@type': 'Answer', text } });
+  const page = (body: string) => cheerio.load(`<html><head>${body}</head></html>`);
+
+  const good = auditFaqSchema(page(ld({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: [q('What is X?', 'X is Y.')] })));
+  assert.ok(good.present && good.valid);
+  assert.equal(good.questionCount, 1);
+
+  const bad = auditFaqSchema(page(ld({ '@graph': [{ '@type': 'FAQPage', mainEntity: [q('What is X?'), q('What is X?', 'a')] }] })));
+  assert.ok(bad.present && !bad.valid);
+  assert.ok(bad.errors.some((e) => e.includes('"text"')));
+  assert.ok(bad.warnings.some((w) => w.includes('duplicate')));
+
+  assert.ok(!auditFaqSchema(page('')).present);
+  assert.equal(auditFaqSchema(page('<script type="application/ld+json">{"@type":"FAQPage",</script>')).errors.length, 1);
+});
+
+import { auditMeta } from '../comparison/MetaMatcher';
+
+test('meta check: doc title/description vs live page', () => {
+  const doc = ['Meta Title (58 chars): Best Cloud Hosting 2026', 'Meta Description:', 'Compare fast and affordable cloud hosting.'];
+  assert.equal(auditMeta(doc, 'title', 'Best Cloud Hosting 2026').status, 'MATCH');
+  assert.equal(auditMeta(doc, 'title', 'Best Cloud Hosting 2026!').status, 'NEAR_MATCH');
+  assert.equal(auditMeta(doc, 'title', 'Cheap VPS Deals For Everyone Today').status, 'MISMATCH');
+  assert.equal(auditMeta(doc, 'description', 'Compare fast and affordable cloud hosting.').status, 'MATCH');
+  assert.equal(auditMeta(doc, 'description', '').status, 'MISSING_ON_PAGE');
+  assert.equal(auditMeta(['SEO Title | Hello World'], 'title', 'Hello World').status, 'MATCH');
+  assert.equal(auditMeta(['no labels here'], 'title', 'Anything').status, 'NOT_IN_DOC');
 });
