@@ -106,11 +106,11 @@ export default function PasswordGenerator() {
     }
 
     if (score <= 2) {
-      return { score: 2, label: 'Fair', color: 'bg-amber-500', text: 'text-amber-600' };
+      return { score: 2, label: 'Fair', color: 'bg-amber-500', text: 'text-amber-700' };
     } else if (score === 3) {
       return { score: 3, label: 'Good', color: 'bg-yellow-500', text: 'text-yellow-600' };
     } else if (score === 4) {
-      return { score: 4, label: 'Strong', color: 'bg-emerald-500', text: 'text-emerald-600' };
+      return { score: 4, label: 'Strong', color: 'bg-emerald-500', text: 'text-emerald-700' };
     } else {
       return { score: 5, label: 'Very Strong', color: 'bg-slate-900', text: 'text-slate-900' };
     }

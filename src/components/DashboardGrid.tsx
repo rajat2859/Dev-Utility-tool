@@ -73,7 +73,7 @@ export default function DashboardGrid({
       badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
       iconBg: 'bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-md shadow-emerald-500/20',
       hoverBorder: 'hover:border-emerald-400/80',
-      accentColor: 'group-hover:text-emerald-600',
+      accentColor: 'group-hover:text-emerald-700',
       stats: 'Multi-Device'
     },
     {
@@ -138,7 +138,7 @@ export default function DashboardGrid({
       badgeStyle: 'bg-amber-50 text-amber-800 border-amber-200/80',
       iconBg: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-amber-500/20',
       hoverBorder: 'hover:border-amber-400/80',
-      accentColor: 'group-hover:text-amber-600',
+      accentColor: 'group-hover:text-amber-700',
       stats: 'Cryptographic'
     }
   ];
@@ -224,7 +224,7 @@ export default function DashboardGrid({
                 ×
               </button>
             ) : (
-              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono font-semibold text-slate-400 bg-slate-100 border border-slate-200 rounded">
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono font-semibold text-slate-600 bg-slate-100 border border-slate-200 rounded">
                 /
               </kbd>
             )}

@@ -401,9 +401,9 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             {report.summary.status === 'PASS' ? (
-              <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
+              <CheckCircle2 className="h-6 w-6 text-emerald-700 shrink-0" />
             ) : report.summary.status === 'PASS_WITH_WARNINGS' ? (
-              <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0" />
+              <AlertTriangle className="h-6 w-6 text-amber-700 shrink-0" />
             ) : (
               <XCircle className="h-6 w-6 text-rose-600 shrink-0" />
             )}

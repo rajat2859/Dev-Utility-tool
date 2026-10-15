@@ -1408,7 +1408,7 @@ export default function HtmlCleaner() {
             />
             <span className="font-bold text-sm tracking-wide text-white">Cleaning options</span>
           </div>
-          <div className="text-xs text-blue-100 font-medium">
+          <div className="text-xs text-blue-50 font-medium">
             {cleanedResult.stats.tagsRemoved + cleanedResult.stats.attrsRemoved} operations performed
           </div>
         </div>
@@ -1450,7 +1450,7 @@ export default function HtmlCleaner() {
               {cleanedResult.stats.wordCount} words
             </span>
           </div>
-          <span className="font-bold font-mono text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+          <span className="font-bold font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
             {cleanedResult.stats.reductionPct}% smaller
           </span>
         </div>

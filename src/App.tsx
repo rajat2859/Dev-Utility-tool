@@ -60,8 +60,6 @@ export default function App() {
         // Fallback
       }
     }
-    document.documentElement.classList.remove('dark');
-    localStorage.removeItem('util_hub_theme');
 
     const timer = setTimeout(() => {
       Object.values(toolsMap).forEach(fn => fn().catch(() => {}));

@@ -42,7 +42,7 @@ function registerAutoUpdate(getMainWindow) {
     return updateState;
   });
   ipcMain.handle('updater:install', () => {
-    if (updateState.status === 'ready-to-install') autoUpdater.quitAndInstall();
+    if (updateState.status === 'ready-to-install') autoUpdater.quitAndInstall(true, true);
   });
 }
 

@@ -206,7 +206,7 @@ function WebkitPanel({ shot, width, height, scale, onClose }: {
         )}
         {shot.status === 'error' && (
           <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center text-xs text-amber-800">
-            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            <AlertTriangle className="h-5 w-5 text-amber-700" />
             {shot.message}
           </div>
         )}
@@ -784,7 +784,7 @@ export default function ResponsivePreview() {
       <div ref={controlsRef} className="space-y-2.5">
       {serviceReady === false && (
         <section role="alert" className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
           <div className="min-w-0 text-xs">
             <p className="font-bold text-amber-900">Preview service is not running on this server</p>
             <p className="mt-0.5 leading-relaxed text-amber-800">
@@ -812,7 +812,7 @@ export default function ResponsivePreview() {
           </button>
           <button type="button" onClick={() => setFrameKey((value) => value + 1)} title="Reload the preview" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"><RefreshCw className="h-3.5 w-3.5" />Reload</button>
           <button type="button" onClick={handleShare} title="Copy the preview URL" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
-            {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Share2 className="h-3.5 w-3.5" />}
+            {copied ? <Check className="h-3.5 w-3.5 text-emerald-700" /> : <Share2 className="h-3.5 w-3.5" />}
             {copied ? 'Copied' : 'Share'}
           </button>
           <a href={previewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-violet-700 transition hover:bg-slate-50 hover:text-violet-900">Open site <ExternalLink className="h-3.5 w-3.5" /></a>

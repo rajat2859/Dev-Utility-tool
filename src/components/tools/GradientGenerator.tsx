@@ -768,7 +768,7 @@ ${layers}
               onClick={handleSaveGradient}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg cursor-pointer transition-colors shadow-2xs"
             >
-              {isSaved ? <BookmarkCheck className="h-3.5 w-3.5 text-emerald-600" /> : <Bookmark className="h-3.5 w-3.5" />}
+              {isSaved ? <BookmarkCheck className="h-3.5 w-3.5 text-emerald-700" /> : <Bookmark className="h-3.5 w-3.5" />}
               <span>{isSaved ? 'Saved!' : 'Save Gradient'}</span>
             </button>
             

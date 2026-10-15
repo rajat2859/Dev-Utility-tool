@@ -1029,7 +1029,7 @@ export default function ContentChecker() {
             {report.recommendations.length > 0 && (
               <div className="border border-amber-200 bg-amber-50/60 rounded-xl p-4 space-y-2">
                 <h3 className="font-bold text-xs uppercase tracking-wider text-amber-900 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-600" /> Recommendations
+                  <AlertTriangle className="h-4 w-4 text-amber-700" /> Recommendations
                 </h3>
                 <ul className="space-y-1.5">
                   {report.recommendations.map((rec, idx) => (
@@ -1058,9 +1058,9 @@ export default function ContentChecker() {
                       <div className="px-2.5 py-1.5 bg-slate-100 text-[11px] font-bold text-slate-700 flex items-center justify-between">
                         <span>{row.label}</span>
                         {row.matches ? (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-700" />
                         ) : (
-                          <XCircle className="h-3.5 w-3.5 text-amber-600" />
+                          <XCircle className="h-3.5 w-3.5 text-amber-700" />
                         )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
@@ -1190,7 +1190,7 @@ export default function ContentChecker() {
                 <p className="text-xs text-slate-600 leading-relaxed">No content in the categories you checked.</p>
               ) : realMismatches.length === 0 ? (
                 <div className="flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50/70 border border-emerald-200 rounded-lg px-3 py-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
                   <span>Every checked item matches the reference.</span>
                 </div>
               ) : (
@@ -1248,7 +1248,7 @@ export default function ContentChecker() {
                     <div className="space-y-1 pt-2">
                       {plainMatches.map((item, idx) => (
                         <div key={idx} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
                           <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{item.category}</span>
                           <span className="text-xs text-slate-600 truncate">{item.actual}</span>
                         </div>
@@ -1266,9 +1266,9 @@ export default function ContentChecker() {
                   <FileImage className="h-4 w-4 text-blue-600" /> Feature Image
                 </h3>
                 {report.featureImage.matches ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-700" />
                 ) : (
-                  <XCircle className="h-3.5 w-3.5 text-amber-600" />
+                  <XCircle className="h-3.5 w-3.5 text-amber-700" />
                 )}
               </div>
               <p className="text-xs text-slate-600 leading-relaxed">{report.featureImage.analysis}</p>
@@ -1316,7 +1316,7 @@ export default function ContentChecker() {
                 <ul className="space-y-1.5">
                   {report.faqSchema.mismatchDetails.map((detail, idx) => (
                     <li key={idx} className="text-xs text-amber-900 bg-amber-50/60 border border-amber-200 rounded-lg px-2.5 py-1.5 flex items-start gap-1.5">
-                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-700 shrink-0 mt-0.5" />
                       <span>{detail}</span>
                     </li>
                   ))}

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./theme-dark.css";
 
 @font-face {
   font-family: 'Plus Jakarta Sans';
@@ -19,6 +20,8 @@
 @theme {
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --color-slate-400: oklch(53% 0.045 257);
+  --color-slate-500: oklch(47% 0.045 257);
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));

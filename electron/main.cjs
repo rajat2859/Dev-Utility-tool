@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, dialog, screen, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, screen, shell } = require('electron');
 const fs = require('node:fs');
 const net = require('node:net');
 const path = require('node:path');
@@ -43,6 +43,34 @@ function saveWindowState(window) {
   } catch (writeError) {
     console.error('Could not save window state:', writeError);
   }
+}
+
+const themePreferencePath = path.join(app.getPath('userData'), 'theme.json');
+const THEME_PREFERENCES = new Set(['light', 'dark', 'system']);
+
+function readThemePreference() {
+  try {
+    const { preference } = JSON.parse(fs.readFileSync(themePreferencePath, 'utf8'));
+    if (THEME_PREFERENCES.has(preference)) return preference;
+  } catch {
+  }
+  return 'system';
+}
+
+function registerThemePreference() {
+  nativeTheme.themeSource = readThemePreference();
+  ipcMain.on('theme:get', (event) => {
+    event.returnValue = nativeTheme.themeSource;
+  });
+  ipcMain.handle('theme:set', (_event, preference) => {
+    if (!THEME_PREFERENCES.has(preference)) return;
+    nativeTheme.themeSource = preference;
+    try {
+      fs.writeFileSync(themePreferencePath, JSON.stringify({ preference }));
+    } catch (writeError) {
+      console.error('Could not save theme preference:', writeError);
+    }
+  });
 }
 
 function openExternalSafely(url) {
@@ -202,6 +230,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(async () => {
     Menu.setApplicationMenu(buildApplicationMenu());
+    registerThemePreference();
     try {
       await createMainWindow();
       appServerUrl = await startServer();

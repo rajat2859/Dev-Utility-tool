@@ -33,7 +33,9 @@ export interface DesktopUpdateState {
   errorMessage: string | null;
 }
 
-export type PreviewWebviewElement = HTMLElement & {
+export type ThemePreference = 'light' | 'dark' | 'system';
+
+export type PreviewWebviewElement =HTMLElement & {
   send: (channel: string, ...args: unknown[]) => void;
   executeJavaScript: (code: string) => Promise<unknown>;
   getURL: () => string;
@@ -46,6 +48,10 @@ declare global {
       checkForUpdates: () => Promise<DesktopUpdateState>;
       installUpdate: () => Promise<void>;
       onStateChange: (listener: (state: DesktopUpdateState) => void) => () => void;
+    };
+    desktopTheme?: {
+      getPreference: () => ThemePreference;
+      setPreference: (preference: ThemePreference) => Promise<void>;
     };
   }
 }

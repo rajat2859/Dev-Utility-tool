@@ -10,3 +10,8 @@ contextBridge.exposeInMainWorld('desktopUpdater', {
     return () => ipcRenderer.removeListener('updater:state', forwardState);
   },
 });
+
+contextBridge.exposeInMainWorld('desktopTheme', {
+  getPreference: () => ipcRenderer.sendSync('theme:get'),
+  setPreference: (preference) => ipcRenderer.invoke('theme:set', preference),
+});
