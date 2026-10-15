@@ -147,6 +147,24 @@ function StructuredElementContent({
   );
 }
 
+// One doc-vs-page audit through /audit-doc; shared by the single and bulk views.
+export async function runDocAudit(googleDocUrl: string, targetUrl: string, contentSelector?: string): Promise<ContentAuditReport> {
+  const res = await fetch('/api/content-checker/audit-doc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      googleDocUrl: googleDocUrl.trim(),
+      targetUrl: targetUrl.trim(),
+      contentSelector: contentSelector?.trim() || undefined,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Content audit failed.');
+  }
+  return data.report;
+}
+
 export default function GoogleDocAuditView() {
   const [docUrl, setDocUrl] = useState<string>('');
   const [targetUrl, setTargetUrl] = useState<string>('');
@@ -157,9 +175,6 @@ export default function GoogleDocAuditView() {
   const [loadingStep, setLoadingStep] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<ContentAuditReport | null>(null);
-
-  const [filter, setFilter] = useState<'all' | 'issues' | 'pass'>('all');
-  const [activeTab, setActiveTab] = useState<'comparison' | 'reference' | 'website'>('comparison');
 
   const handleRunAudit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,24 +209,9 @@ export default function GoogleDocAuditView() {
     }, 1200);
 
     try {
-      const res = await fetch('/api/content-checker/audit-doc', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          googleDocUrl: docUrl.trim(),
-          targetUrl: targetUrl.trim(),
-          contentSelector: contentSelector.trim() || undefined,
-        }),
-      });
-
+      const result = await runDocAudit(docUrl, targetUrl, contentSelector);
       clearInterval(interval);
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Content audit failed.');
-      }
-
-      setReport(data.report);
+      setReport(result);
     } catch (err: any) {
       clearInterval(interval);
       setError(err.message || 'An unexpected error occurred during the content audit.');
@@ -219,14 +219,6 @@ export default function GoogleDocAuditView() {
       setIsLoading(false);
     }
   };
-
-  const filteredResults = report
-    ? report.results.filter((item) => {
-        if (filter === 'issues') return item.status !== 'PASS';
-        if (filter === 'pass') return item.status === 'PASS';
-        return true;
-      })
-    : [];
 
   return (
     <div className="space-y-6">
@@ -351,481 +343,493 @@ export default function GoogleDocAuditView() {
         </div>
       )}
 
-      {/* Results View */}
-      {report && (
-        <div className="space-y-6">
-          {/* Summary Banner Card */}
-          <div
-            className={`border rounded-2xl p-5 shadow-2xs ${
-              report.summary.status === 'PASS'
-                ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
-                : report.summary.status === 'PASS_WITH_WARNINGS'
-                ? 'bg-amber-50/70 border-amber-200 text-amber-950'
-                : 'bg-rose-50/70 border-rose-200 text-rose-950'
-            }`}
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                {report.summary.status === 'PASS' ? (
-                  <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
-                ) : report.summary.status === 'PASS_WITH_WARNINGS' ? (
-                  <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0" />
-                ) : (
-                  <XCircle className="h-6 w-6 text-rose-600 shrink-0" />
-                )}
-                <div>
-                  <h3 className="text-sm font-bold tracking-tight">
-                    {report.summary.status === 'PASS'
-                      ? 'AUDIT PASS — Strict Match'
-                      : report.summary.status === 'PASS_WITH_WARNINGS'
-                      ? 'PASS WITH WARNINGS — Tag or Order Variations'
-                      : 'AUDIT FAIL — Differences Detected'}
-                  </h3>
-                  <p className="text-xs opacity-80 mt-0.5">
-                    {report.summary.status === 'PASS'
-                      ? 'All reference headings, paragraphs, lists, and tables match the live webpage structure.'
-                      : report.summary.status === 'PASS_WITH_WARNINGS'
-                      ? 'Content text matches the reference, but semantic HTML tags (e.g. H2 vs H3, or a heading built as a button) or the order of elements differ.'
-                      : 'Mismatched copy or missing elements were identified between the Google Doc and the live site.'}
-                  </p>
-                </div>
-              </div>
+      {report && <AuditReportView report={report} />}
+    </div>
+  );
+}
 
-              {/* Metric badges */}
-              <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center text-xs">
-                <div className="bg-white/80 border border-slate-200/80 rounded-xl px-2.5 py-1.5 shadow-2xs">
-                  <span className="block text-[10px] uppercase font-bold text-slate-500">
-                    Total
-                  </span>
-                  <span className="text-sm font-bold text-slate-800">
-                    {report.summary.total}
-                  </span>
-                </div>
-                <div className="bg-white/80 border border-emerald-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
-                  <span className="block text-[10px] uppercase font-bold text-emerald-700">
-                    Passed
-                  </span>
-                  <span className="text-sm font-bold text-emerald-700">
-                    {report.summary.passed}
-                  </span>
-                </div>
-                <div className="bg-white/80 border border-amber-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
-                  <span className="block text-[10px] uppercase font-bold text-amber-700">
-                    Wrong Tag
-                  </span>
-                  <span className="text-sm font-bold text-amber-700">
-                    {report.summary.wrongTag}
-                  </span>
-                </div>
-                <div className="bg-white/80 border border-amber-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
-                  <span className="block text-[10px] uppercase font-bold text-amber-700">
-                    Wrong Order
-                  </span>
-                  <span className="text-sm font-bold text-amber-700">
-                    {report.summary.wrongOrder}
-                  </span>
-                </div>
-                <div className="bg-white/80 border border-rose-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
-                  <span className="block text-[10px] uppercase font-bold text-rose-700">
-                    Mismatch
-                  </span>
-                  <span className="text-sm font-bold text-rose-700">
-                    {report.summary.contentMismatch}
-                  </span>
-                </div>
-                <div className="bg-white/80 border border-red-200 rounded-xl px-2.5 py-1.5 shadow-2xs col-span-2 sm:col-span-1">
-                  <span className="block text-[10px] uppercase font-bold text-red-700">
-                    Missing
-                  </span>
-                  <span className="text-sm font-bold text-red-700">
-                    {report.summary.missing}
-                  </span>
-                </div>
-              </div>
+export function AuditReportView({ report }: { report: ContentAuditReport }) {
+  const [filter, setFilter] = useState<'all' | 'issues' | 'pass'>('all');
+  const [activeTab, setActiveTab] = useState<'comparison' | 'reference' | 'website'>('comparison');
+
+  const filteredResults = report.results.filter((item) => {
+    if (filter === 'issues') return item.status !== 'PASS';
+    if (filter === 'pass') return item.status === 'PASS';
+    return true;
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Banner Card */}
+      <div
+        className={`border rounded-2xl p-5 shadow-2xs ${
+          report.summary.status === 'PASS'
+            ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+            : report.summary.status === 'PASS_WITH_WARNINGS'
+            ? 'bg-amber-50/70 border-amber-200 text-amber-950'
+            : 'bg-rose-50/70 border-rose-200 text-rose-950'
+        }`}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            {report.summary.status === 'PASS' ? (
+              <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
+            ) : report.summary.status === 'PASS_WITH_WARNINGS' ? (
+              <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0" />
+            ) : (
+              <XCircle className="h-6 w-6 text-rose-600 shrink-0" />
+            )}
+            <div>
+              <h3 className="text-sm font-bold tracking-tight">
+                {report.summary.status === 'PASS'
+                  ? 'AUDIT PASS — Strict Match'
+                  : report.summary.status === 'PASS_WITH_WARNINGS'
+                  ? 'PASS WITH WARNINGS — Tag or Order Variations'
+                  : 'AUDIT FAIL — Differences Detected'}
+              </h3>
+              <p className="text-xs opacity-80 mt-0.5">
+                {report.summary.status === 'PASS'
+                  ? 'All reference headings, paragraphs, lists, and tables match the live webpage structure.'
+                  : report.summary.status === 'PASS_WITH_WARNINGS'
+                  ? 'Content text matches the reference, but semantic HTML tags (e.g. H2 vs H3, or a heading built as a button) or the order of elements differ.'
+                  : 'Mismatched copy or missing elements were identified between the Google Doc and the live site.'}
+              </p>
             </div>
           </div>
 
-          {/* Live page details: URL, <title> and meta description as found in the page source */}
-          {report.page && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2 text-xs">
-              <h4 className="text-sm font-bold text-slate-900">Live Page</h4>
-              <div className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1.5">
-                <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">URL</span>
-                <a
-                  href={report.page.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline break-all"
-                >
-                  {report.page.url}
-                </a>
-                <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Meta Title</span>
-                <span className="text-slate-800 font-medium break-words">
-                  {report.page.title || <em className="text-slate-400">No &lt;title&gt; tag found</em>}
-                </span>
-                <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Meta Description</span>
-                <span className="text-slate-800 font-medium break-words">
-                  {report.page.description || <em className="text-slate-400">No meta description found</em>}
-                </span>
-                {report.page.canonical && (
-                  <>
-                    <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Canonical</span>
-                    <span className="text-slate-800 font-medium break-all">{report.page.canonical}</span>
-                  </>
-                )}
-              </div>
+          {/* Metric badges */}
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center text-xs">
+            <div className="bg-white/80 border border-slate-200/80 rounded-xl px-2.5 py-1.5 shadow-2xs">
+              <span className="block text-[10px] uppercase font-bold text-slate-500">
+                Total
+              </span>
+              <span className="text-sm font-bold text-slate-800">
+                {report.summary.total}
+              </span>
             </div>
-          )}
-
-          {/* Image alt text listed in the doc, checked against <img alt> in the page source */}
-          {!!report.altTexts?.length && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
-              <h4 className="text-sm font-bold text-slate-900">Image Alt Text ({report.altTexts.length})</h4>
-              {report.altTexts.map((alt, i) => (
-                <div key={i} className="flex flex-wrap items-center gap-2 text-xs">
-                  <span
-                    className={`px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border ${
-                      alt.status === 'MISSING'
-                        ? 'bg-red-100 text-red-800 border-red-200'
-                        : alt.duplicate
-                        ? 'bg-amber-100 text-amber-800 border-amber-200'
-                        : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                    }`}
-                  >
-                    {alt.status === 'MISSING' ? 'Missing' : alt.duplicate ? 'Duplicate' : 'Found'}
-                  </span>
-                  <span className="text-slate-800 font-medium">{alt.expected}</span>
-                  <span className="text-slate-500">
-                    {alt.status === 'MISSING'
-                      ? 'not on any <img> in the page source'
-                      : alt.duplicate
-                      ? `used on ${alt.pageCount} images (doc lists it ${alt.expectedCount})`
-                      : `on ${alt.pageCount} image${alt.pageCount > 1 ? 's' : ''}`}
-                  </span>
-                </div>
-              ))}
+            <div className="bg-white/80 border border-emerald-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
+              <span className="block text-[10px] uppercase font-bold text-emerald-700">
+                Passed
+              </span>
+              <span className="text-sm font-bold text-emerald-700">
+                {report.summary.passed}
+              </span>
             </div>
-          )}
-
-          {/* Schema (JSON-LD) pasted into the doc, checked against the page's JSON-LD scripts */}
-          {!!report.schemas?.length && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
-              <h4 className="text-sm font-bold text-slate-900">Schema in Doc ({report.schemas.length})</h4>
-              {report.schemas.map((schema, i) => (
-                <div key={i} className="flex flex-wrap items-center gap-2 text-xs">
-                  <span
-                    className={`px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border ${
-                      schema.status === 'MISSING'
-                        ? 'bg-red-100 text-red-800 border-red-200'
-                        : schema.status === 'INVALID'
-                        ? 'bg-amber-100 text-amber-800 border-amber-200'
-                        : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                    }`}
-                  >
-                    {schema.status === 'INVALID' ? 'Unreadable' : schema.status === 'MISSING' ? 'Missing' : 'Found'}
-                  </span>
-                  <span className="text-slate-800 font-medium">{schema.types.join(', ') || 'Unknown type'}</span>
-                  <span className="text-slate-500">
-                    {schema.status === 'MISSING'
-                      ? `not in the page JSON-LD: ${schema.missingTypes.join(', ')}`
-                      : schema.status === 'INVALID'
-                      ? 'could not be read as JSON-LD (broken JSON or no @type), so it was not checked'
-                      : 'present in the page JSON-LD'}
-                  </span>
-                </div>
-              ))}
+            <div className="bg-white/80 border border-amber-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
+              <span className="block text-[10px] uppercase font-bold text-amber-700">
+                Wrong Tag
+              </span>
+              <span className="text-sm font-bold text-amber-700">
+                {report.summary.wrongTag}
+              </span>
             </div>
-          )}
-
-          {/* Tabs & Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setActiveTab('comparison')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  activeTab === 'comparison'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Comparison Results ({report.results.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('reference')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  activeTab === 'reference'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Reference Structure ({report.referenceTree.elements.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('website')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  activeTab === 'website'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Website Structure ({report.websiteTree.elements.length})
-              </button>
+            <div className="bg-white/80 border border-amber-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
+              <span className="block text-[10px] uppercase font-bold text-amber-700">
+                Wrong Order
+              </span>
+              <span className="text-sm font-bold text-amber-700">
+                {report.summary.wrongOrder}
+              </span>
             </div>
+            <div className="bg-white/80 border border-rose-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
+              <span className="block text-[10px] uppercase font-bold text-rose-700">
+                Mismatch
+              </span>
+              <span className="text-sm font-bold text-rose-700">
+                {report.summary.contentMismatch}
+              </span>
+            </div>
+            <div className="bg-white/80 border border-red-200 rounded-xl px-2.5 py-1.5 shadow-2xs col-span-2 sm:col-span-1">
+              <span className="block text-[10px] uppercase font-bold text-red-700">
+                Missing
+              </span>
+              <span className="text-sm font-bold text-red-700">
+                {report.summary.missing}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-            {activeTab === 'comparison' && (
-              <div className="flex items-center gap-1.5 text-xs">
-                <span className="text-slate-500 font-medium mr-1 flex items-center gap-1">
-                  <Filter className="h-3.5 w-3.5" /> Filter:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setFilter('all')}
-                  className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-                    filter === 'all'
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  All ({report.results.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilter('issues')}
-                  className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-                    filter === 'issues'
-                      ? 'bg-rose-600 text-white'
-                      : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
-                  }`}
-                >
-                  Issues ({report.summary.wrongTag + report.summary.wrongOrder + report.summary.contentMismatch + report.summary.missing})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilter('pass')}
-                  className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-                    filter === 'pass'
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                  }`}
-                >
-                  Passed ({report.summary.passed})
-                </button>
-              </div>
+      {/* Live page details: URL, <title> and meta description as found in the page source */}
+      {report.page && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2 text-xs">
+          <h4 className="text-sm font-bold text-slate-900">Live Page</h4>
+          <div className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1.5">
+            <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">URL</span>
+            <a
+              href={report.page.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline break-all"
+            >
+              {report.page.url}
+            </a>
+            <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Meta Title</span>
+            <span className="text-slate-800 font-medium break-words">
+              {report.page.title || <em className="text-slate-400">No &lt;title&gt; tag found</em>}
+            </span>
+            <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Meta Description</span>
+            <span className="text-slate-800 font-medium break-words">
+              {report.page.description || <em className="text-slate-400">No meta description found</em>}
+            </span>
+            {report.page.canonical && (
+              <>
+                <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Canonical</span>
+                <span className="text-slate-800 font-medium break-all">{report.page.canonical}</span>
+              </>
             )}
           </div>
+        </div>
+      )}
 
-          {/* Tab 1: Detailed Comparison Results */}
-          {activeTab === 'comparison' && (
-            <div className="space-y-3">
-              {filteredResults.length === 0 ? (
-                <div className="p-8 text-center bg-white border border-slate-200 rounded-2xl text-xs text-slate-500">
-                  No elements found matching the active filter.
-                </div>
-              ) : (
-                filteredResults.map((item) => {
-                  const statusStyle =
-                    item.status === 'PASS'
-                      ? {
-                          badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                          border: 'border-slate-200 hover:border-emerald-300',
-                          label: 'PASS',
-                        }
-                      : item.status === 'WRONG_TAG'
-                      ? {
-                          badge: 'bg-amber-100 text-amber-800 border-amber-200',
-                          border: 'border-amber-200 bg-amber-50/20',
-                          label: 'WRONG TAG',
-                        }
-                      : item.status === 'WRONG_ORDER'
-                      ? {
-                          badge: 'bg-amber-100 text-amber-800 border-amber-200',
-                          border: 'border-amber-200 bg-amber-50/20',
-                          label: 'WRONG ORDER',
-                        }
-                      : item.status === 'CONTENT_MISMATCH'
-                      ? {
-                          badge: 'bg-rose-100 text-rose-800 border-rose-200',
-                          border: 'border-rose-200 bg-rose-50/20',
-                          label: 'CONTENT MISMATCH',
-                        }
-                      : {
-                          badge: 'bg-red-100 text-red-800 border-red-200',
-                          border: 'border-red-200 bg-red-50/20',
-                          label: 'MISSING',
-                        };
+      {/* Image alt text listed in the doc, checked against <img alt> in the page source */}
+      {!!report.altTexts?.length && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
+          <h4 className="text-sm font-bold text-slate-900">Image Alt Text ({report.altTexts.length})</h4>
+          {report.altTexts.map((alt, i) => (
+            <div key={i} className="flex flex-wrap items-center gap-2 text-xs">
+              <span
+                className={`px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border ${
+                  alt.status === 'MISSING'
+                    ? 'bg-red-100 text-red-800 border-red-200'
+                    : alt.duplicate
+                    ? 'bg-amber-100 text-amber-800 border-amber-200'
+                    : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                }`}
+              >
+                {alt.status === 'MISSING' ? 'Missing' : alt.duplicate ? 'Duplicate' : 'Found'}
+              </span>
+              <span className="text-slate-800 font-medium">{alt.expected}</span>
+              <span className="text-slate-500">
+                {alt.status === 'MISSING'
+                  ? 'not on any <img> in the page source'
+                  : alt.duplicate
+                  ? `used on ${alt.pageCount} images (doc lists it ${alt.expectedCount})`
+                  : `on ${alt.pageCount} image${alt.pageCount > 1 ? 's' : ''}`}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
-                  return (
-                    <div
-                      key={item.id}
-                      className={`bg-white border rounded-2xl p-4 transition-all shadow-2xs space-y-3 ${statusStyle.border}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono font-bold text-slate-400">
-                            #{item.order}
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border ${statusStyle.badge}`}
-                          >
-                            {statusStyle.label}
-                          </span>
-                          <span className="text-xs font-mono font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
-                            &lt;{item.reference.tag}&gt;
-                          </span>
-                          {item.outOfOrder && (
-                            <span className="text-xs font-mono font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
-                              &#8644; out of order
-                            </span>
-                          )}
-                          {item.website && item.website.tag !== item.reference.tag && (
-                            <span className="text-xs font-mono font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
-                              &rarr; &lt;{item.website.tag}&gt; on page
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-slate-500 font-medium">
-                          {item.message}
+      {/* Schema (JSON-LD) pasted into the doc, checked against the page's JSON-LD scripts */}
+      {!!report.schemas?.length && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
+          <h4 className="text-sm font-bold text-slate-900">Schema in Doc ({report.schemas.length})</h4>
+          {report.schemas.map((schema, i) => (
+            <div key={i} className="flex flex-wrap items-center gap-2 text-xs">
+              <span
+                className={`px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border ${
+                  schema.status === 'MISSING'
+                    ? 'bg-red-100 text-red-800 border-red-200'
+                    : schema.status === 'INVALID'
+                    ? 'bg-amber-100 text-amber-800 border-amber-200'
+                    : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                }`}
+              >
+                {schema.status === 'INVALID' ? 'Unreadable' : schema.status === 'MISSING' ? 'Missing' : 'Found'}
+              </span>
+              <span className="text-slate-800 font-medium">{schema.types.join(', ') || 'Unknown type'}</span>
+              <span className="text-slate-500">
+                {schema.status === 'MISSING'
+                  ? `not in the page JSON-LD: ${schema.missingTypes.join(', ')}`
+                  : schema.status === 'INVALID'
+                  ? 'could not be read as JSON-LD (broken JSON or no @type), so it was not checked'
+                  : 'present in the page JSON-LD'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Tabs & Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setActiveTab('comparison')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'comparison'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Comparison Results ({report.results.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('reference')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'reference'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Reference Structure ({report.referenceTree.elements.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('website')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'website'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Website Structure ({report.websiteTree.elements.length})
+          </button>
+        </div>
+
+        {activeTab === 'comparison' && (
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-slate-500 font-medium mr-1 flex items-center gap-1">
+              <Filter className="h-3.5 w-3.5" /> Filter:
+            </span>
+            <button
+              type="button"
+              onClick={() => setFilter('all')}
+              className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                filter === 'all'
+                  ? 'bg-slate-900 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              All ({report.results.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilter('issues')}
+              className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                filter === 'issues'
+                  ? 'bg-rose-600 text-white'
+                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+              }`}
+            >
+              Issues ({report.summary.wrongTag + report.summary.wrongOrder + report.summary.contentMismatch + report.summary.missing})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilter('pass')}
+              className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                filter === 'pass'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+              }`}
+            >
+              Passed ({report.summary.passed})
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Tab 1: Detailed Comparison Results */}
+      {activeTab === 'comparison' && (
+        <div className="space-y-3">
+          {filteredResults.length === 0 ? (
+            <div className="p-8 text-center bg-white border border-slate-200 rounded-2xl text-xs text-slate-500">
+              No elements found matching the active filter.
+            </div>
+          ) : (
+            filteredResults.map((item) => {
+              const statusStyle =
+                item.status === 'PASS'
+                  ? {
+                      badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                      border: 'border-slate-200 hover:border-emerald-300',
+                      label: 'PASS',
+                    }
+                  : item.status === 'WRONG_TAG'
+                  ? {
+                      badge: 'bg-amber-100 text-amber-800 border-amber-200',
+                      border: 'border-amber-200 bg-amber-50/20',
+                      label: 'WRONG TAG',
+                    }
+                  : item.status === 'WRONG_ORDER'
+                  ? {
+                      badge: 'bg-amber-100 text-amber-800 border-amber-200',
+                      border: 'border-amber-200 bg-amber-50/20',
+                      label: 'WRONG ORDER',
+                    }
+                  : item.status === 'CONTENT_MISMATCH'
+                  ? {
+                      badge: 'bg-rose-100 text-rose-800 border-rose-200',
+                      border: 'border-rose-200 bg-rose-50/20',
+                      label: 'CONTENT MISMATCH',
+                    }
+                  : {
+                      badge: 'bg-red-100 text-red-800 border-red-200',
+                      border: 'border-red-200 bg-red-50/20',
+                      label: 'MISSING',
+                    };
+
+              return (
+                <div
+                  key={item.id}
+                  className={`bg-white border rounded-2xl p-4 transition-all shadow-2xs space-y-3 ${statusStyle.border}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-slate-400">
+                        #{item.order}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border ${statusStyle.badge}`}
+                      >
+                        {statusStyle.label}
+                      </span>
+                      <span className="text-xs font-mono font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
+                        &lt;{item.reference.tag}&gt;
+                      </span>
+                      {item.outOfOrder && (
+                        <span className="text-xs font-mono font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                          &#8644; out of order
                         </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                        {/* Reference Element */}
-                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                            Reference (Google Doc)
-                          </span>
-                          <StructuredElementContent
-                            {...item.reference}
-                            side="reference"
-                            counterpart={item.status === 'CONTENT_MISMATCH' ? item.website : undefined}
-                          />
-                        </div>
-
-                        {/* Website Element */}
-                        <div
-                          className={`p-3 border rounded-xl space-y-1 ${
-                            item.website
-                              ? 'bg-white border-slate-200'
-                              : 'bg-rose-50/50 border-rose-200 text-rose-700'
-                          }`}
-                        >
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                            Live Website
-                          </span>
-                          {item.website ? (
-                            <StructuredElementContent
-                              {...item.website}
-                              side="website"
-                              counterpart={item.status === 'CONTENT_MISMATCH' ? item.reference : undefined}
-                            />
-                          ) : (
-                            <p className="text-rose-600 font-medium italic">
-                              Element was not detected on the live webpage.
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                      )}
+                      {item.website && item.website.tag !== item.reference.tag && (
+                        <span className="text-xs font-mono font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                          &rarr; &lt;{item.website.tag}&gt; on page
+                        </span>
+                      )}
                     </div>
-                  );
-                })
-              )}
-            </div>
-          )}
-
-          {/* Tab 2: Reference Structure Preview */}
-          {activeTab === 'reference' && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">
-                  Extracted Reference Structure (Starting from First H1)
-                </h4>
-                <p className="text-xs text-slate-500">
-                  The semantic hierarchy extracted from the public Google Doc. All pre-H1 notes and metadata have been ignored.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                {report.referenceTree.elements.map((el, i) => (
-                  <div
-                    key={el.id}
-                    className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs"
-                  >
-                    <span className="text-[11px] font-mono text-slate-400 font-bold shrink-0 mt-0.5">
-                      #{i + 1}
+                    <span className="text-xs text-slate-500 font-medium">
+                      {item.message}
                     </span>
-                    <span
-                      className={`px-2 py-0.5 rounded font-mono font-bold text-[11px] uppercase shrink-0 ${
-                        el.type === 'heading'
-                          ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                          : el.type === 'list'
-                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                          : el.type === 'table'
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                          : 'bg-slate-200 text-slate-800'
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    {/* Reference Element */}
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        Reference (Google Doc)
+                      </span>
+                      <StructuredElementContent
+                        {...item.reference}
+                        side="reference"
+                        counterpart={item.status === 'CONTENT_MISMATCH' ? item.website : undefined}
+                      />
+                    </div>
+
+                    {/* Website Element */}
+                    <div
+                      className={`p-3 border rounded-xl space-y-1 ${
+                        item.website
+                          ? 'bg-white border-slate-200'
+                          : 'bg-rose-50/50 border-rose-200 text-rose-700'
                       }`}
                     >
-                      &lt;{el.tag}&gt;
-                    </span>
-                    <StructuredElementContent
-                      tag={el.tag}
-                      text={el.text}
-                      items={el.type === 'list' ? el.items : undefined}
-                      rows={el.type === 'table' ? el.rows : undefined}
-                    />
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        Live Website
+                      </span>
+                      {item.website ? (
+                        <StructuredElementContent
+                          {...item.website}
+                          side="website"
+                          counterpart={item.status === 'CONTENT_MISMATCH' ? item.reference : undefined}
+                        />
+                      ) : (
+                        <p className="text-rose-600 font-medium italic">
+                          Element was not detected on the live webpage.
+                        </p>
+                      )}
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              );
+            })
           )}
+        </div>
+      )}
 
-          {/* Tab 3: Website Structure Preview */}
-          {activeTab === 'website' && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">
-                  Extracted Website Semantic Tree
-                </h4>
-                <p className="text-xs text-slate-500">
-                  The semantic hierarchy extracted from the target website starting from the first H1.
-                </p>
-              </div>
+      {/* Tab 2: Reference Structure Preview */}
+      {activeTab === 'reference' && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
+          <div>
+            <h4 className="text-sm font-bold text-slate-900">
+              Extracted Reference Structure (Starting from First H1)
+            </h4>
+            <p className="text-xs text-slate-500">
+              The semantic hierarchy extracted from the public Google Doc. All pre-H1 notes and metadata have been ignored.
+            </p>
+          </div>
 
-              <div className="space-y-2">
-                {report.websiteTree.elements.map((el, i) => (
-                  <div
-                    key={el.id}
-                    className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs"
-                  >
-                    <span className="text-[11px] font-mono text-slate-400 font-bold shrink-0 mt-0.5">
-                      #{i + 1}
-                    </span>
-                    <span
-                      className={`px-2 py-0.5 rounded font-mono font-bold text-[11px] uppercase shrink-0 ${
-                        el.type === 'heading'
-                          ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                          : el.type === 'list'
-                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                          : el.type === 'table'
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                          : 'bg-slate-200 text-slate-800'
-                      }`}
-                    >
-                      &lt;{el.tag}&gt;
-                    </span>
-                    <StructuredElementContent
-                      tag={el.tag}
-                      text={el.text}
-                      items={el.type === 'list' ? el.items : undefined}
-                      rows={el.type === 'table' ? el.rows : undefined}
-                    />
-                  </div>
-                ))}
+          <div className="space-y-2">
+            {report.referenceTree.elements.map((el, i) => (
+              <div
+                key={el.id}
+                className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs"
+              >
+                <span className="text-[11px] font-mono text-slate-400 font-bold shrink-0 mt-0.5">
+                  #{i + 1}
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded font-mono font-bold text-[11px] uppercase shrink-0 ${
+                    el.type === 'heading'
+                      ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                      : el.type === 'list'
+                      ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                      : el.type === 'table'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      : 'bg-slate-200 text-slate-800'
+                  }`}
+                >
+                  &lt;{el.tag}&gt;
+                </span>
+                <StructuredElementContent
+                  tag={el.tag}
+                  text={el.text}
+                  items={el.type === 'list' ? el.items : undefined}
+                  rows={el.type === 'table' ? el.rows : undefined}
+                />
               </div>
-            </div>
-          )}
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tab 3: Website Structure Preview */}
+      {activeTab === 'website' && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
+          <div>
+            <h4 className="text-sm font-bold text-slate-900">
+              Extracted Website Semantic Tree
+            </h4>
+            <p className="text-xs text-slate-500">
+              The semantic hierarchy extracted from the target website starting from the first H1.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            {report.websiteTree.elements.map((el, i) => (
+              <div
+                key={el.id}
+                className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs"
+              >
+                <span className="text-[11px] font-mono text-slate-400 font-bold shrink-0 mt-0.5">
+                  #{i + 1}
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded font-mono font-bold text-[11px] uppercase shrink-0 ${
+                    el.type === 'heading'
+                      ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                      : el.type === 'list'
+                      ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                      : el.type === 'table'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      : 'bg-slate-200 text-slate-800'
+                  }`}
+                >
+                  &lt;{el.tag}&gt;
+                </span>
+                <StructuredElementContent
+                  tag={el.tag}
+                  text={el.text}
+                  items={el.type === 'list' ? el.items : undefined}
+                  rows={el.type === 'table' ? el.rows : undefined}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

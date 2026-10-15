@@ -948,6 +948,49 @@ export default function HtmlCleaner() {
     describeNode(document.getSelection()?.anchorNode);
   };
 
+  // Strip every inline style/class from the visual content, keeping structure.
+  // Bold/italic/etc. carried as CSS (Google Docs, Word) is promoted to real tags
+  // first so clearing styles does not also wipe the emphasis.
+  const clearVisualStyles = () => {
+    const doc = new DOMParser().parseFromString(inputHtml, 'text/html');
+    doc.querySelectorAll('style, meta, link').forEach((el) => el.remove());
+    doc.body.querySelectorAll<HTMLElement>('*').forEach((el) => {
+      for (const tag of semanticTagsForInlineStyle(el.style)) {
+        if (el.closest(tag) || !el.firstChild) continue;
+        const wrapper = doc.createElement(tag);
+        while (el.firstChild) wrapper.appendChild(el.firstChild);
+        el.appendChild(wrapper);
+      }
+      el.removeAttribute('style');
+      el.removeAttribute('class');
+      el.removeAttribute('id');
+    });
+    doc.body.querySelectorAll('span, font').forEach((el) => el.replaceWith(...Array.from(el.childNodes)));
+    setInputHtml(doc.body.innerHTML);
+  };
+
+  // Text copied from a doc arrives as text/html. A textarea only takes the
+  // plain-text flavour, so pasting into the code pane lost every style; use the
+  // HTML flavour instead. Plain text that is itself HTML code is left alone.
+  const handleCodePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (activeView !== 'html') return;
+    const html = e.clipboardData.getData('text/html');
+    if (!html) return;
+    e.preventDefault();
+    setInputHtml(html);
+    e.currentTarget.blur(); // lets the cleaned output replace the textarea value
+  };
+
+  // The visual pane renders rich pastes natively, but HTML source copied as
+  // plain text (e.g. code written in a doc) would show up as literal tags.
+  const handleVisualPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    if (e.clipboardData.getData('text/html')) return;
+    const text = e.clipboardData.getData('text/plain');
+    if (!/<\/?[a-z][\s\S]*>/i.test(text)) return;
+    e.preventDefault();
+    document.execCommand('insertHTML', false, text);
+  };
+
   // Drag and drop handlers
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -1169,6 +1212,15 @@ export default function HtmlCleaner() {
 
             <div className="flex items-center gap-2">
               <button
+                onClick={clearVisualStyles}
+                disabled={!inputHtml.trim()}
+                className="text-[11px] font-semibold text-rose-300 hover:text-rose-200 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                title="Remove all inline styles and classes from the visual content"
+              >
+                <Eraser className="h-3 w-3" />
+                <span>Clear Styles</span>
+              </button>
+              <button
                 onClick={() => fileInputRef.current?.click()}
                 className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                 title="Upload HTML or Text File"
@@ -1239,6 +1291,7 @@ export default function HtmlCleaner() {
               ref={wysiwygRef}
               contentEditable
               onInput={(e) => setInputHtml((e.target as HTMLElement).innerHTML)}
+              onPaste={handleVisualPaste}
               onClick={(e) => describeNode(e.target as Node)}
               className="flex-1 p-4 font-sans text-xs text-slate-800 focus:outline-none overflow-y-auto leading-relaxed prose prose-slate max-w-none min-h-0"
             />
@@ -1370,6 +1423,7 @@ export default function HtmlCleaner() {
               ref={rightTextareaRef}
               value={currentViewContent}
               readOnly={activeView !== 'html'}
+              onPaste={handleCodePaste}
               onChange={(e) => {
                 if (activeView === 'html') {
                   handleRightCodeChange(e.target.value);
