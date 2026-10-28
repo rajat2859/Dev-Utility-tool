@@ -82,7 +82,7 @@ export default function Sidebar({
           <div className="h-7 w-7 bg-blue-600 rounded-lg flex items-center justify-center text-white">
             <Wrench className="h-3.5 w-3.5" />
           </div>
-          <span className="font-bold text-sm tracking-tight text-slate-900">Utility Tool Manager</span>
+          <span className="font-bold text-sm tracking-tight text-slate-900">Utility Studio</span>
         </div>
         <button
           onClick={onToggleDrawer}
@@ -109,7 +109,7 @@ export default function Sidebar({
           <div className="h-9 w-9 bg-blue-600 rounded-xl flex items-center justify-center text-white shrink-0">
             <Wrench className="h-4 w-4" />
           </div>
-          <span className="md:hidden font-bold text-sm tracking-tight text-white truncate">Utility Tool Manager</span>
+          <span className="md:hidden font-bold text-sm tracking-tight text-white truncate">Utility Studio</span>
         </div>
 
         <nav className="flex-1 px-3 md:px-2 py-3 space-y-1 overflow-y-auto">

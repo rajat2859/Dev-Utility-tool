@@ -69,8 +69,8 @@ export default function App() {
 
   useEffect(() => {
     const title = activeView === 'dashboard' 
-      ? 'Utility Tool Manager | Developer & Web QA Toolkit' 
-      : `${getToolTitle()} | Utility Tool Manager`;
+      ? 'Utility Studio | Developer & Web QA Tools' 
+      : `${getToolTitle()} | Utility Studio`;
     document.title = title;
   }, [activeView]);
 
