@@ -488,7 +488,7 @@ function buildPreviewProbe(frameId: string, realUrl: string, uaKey: string, inte
     }
   } catch (e) {}
 
-  window.addEventListener("resize", function () { scheduleScan(120); });
+  window.addEventListener("resize", function () { scheduleScan(40); });
   document.addEventListener("DOMContentLoaded", function () { scan(); });
   window.addEventListener("load", function () { scan(); });
 

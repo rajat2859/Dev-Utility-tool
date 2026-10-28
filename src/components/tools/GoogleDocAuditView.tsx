@@ -392,10 +392,10 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
       <div
         className={`border rounded-2xl p-5 shadow-2xs ${
           report.summary.status === 'PASS'
-            ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+            ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
             : report.summary.status === 'PASS_WITH_WARNINGS'
-            ? 'bg-amber-50/70 border-amber-200 text-amber-950'
-            : 'bg-rose-50/70 border-rose-200 text-rose-950'
+            ? 'bg-amber-50/70 border-amber-200 text-amber-900'
+            : 'bg-rose-50/70 border-rose-200 text-rose-900'
         }`}
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

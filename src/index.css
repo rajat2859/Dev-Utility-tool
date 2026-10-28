@@ -104,6 +104,28 @@ body {
   animation: view-enter 120ms ease-out;
 }
 
+/* Fine blueprint dot grid with light dots, overlaid so it doesn't clobber element gradients */
+.dot-grid-light {
+  position: relative;
+}
+.dot-grid-light::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+  background-size: 20px 20px;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.card-lift {
+  transition: transform 180ms ease-out, box-shadow 180ms ease-out, border-color 180ms ease-out;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -12px rgba(15, 23, 42, 0.18);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .view-enter { animation: none; }
 }
@@ -123,3 +145,29 @@ summary {
 img {
   -webkit-user-drag: none;
 }
+
+/* Dashboard page texture — sits behind the dashboard container only. */
+.dash-bg {
+  background-image: radial-gradient(circle, rgba(15, 23, 42, 0.055) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.dark .dash-bg {
+  background-image: radial-gradient(circle, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+}
+
+/* Rich-text editor: restores the document styles Tailwind's preflight resets. It always renders on white paper, so the colors are fixed. */
+.rich-content :where(h1) { font-size: 2em; font-weight: 700; margin: 0.67em 0; }
+.rich-content :where(h2) { font-size: 1.5em; font-weight: 700; margin: 0.83em 0; }
+.rich-content :where(h3) { font-size: 1.17em; font-weight: 700; margin: 1em 0; }
+.rich-content :where(h4) { font-weight: 700; margin: 1.33em 0; }
+.rich-content :where(h5) { font-size: 0.83em; font-weight: 700; margin: 1.67em 0; }
+.rich-content :where(h6) { font-size: 0.67em; font-weight: 700; margin: 2.33em 0; }
+.rich-content :where(p, ul, ol, blockquote, table, pre) { margin: 0 0 1em; }
+.rich-content :where(ul) { list-style: disc; padding-left: 1.5em; }
+.rich-content :where(ol) { list-style: decimal; padding-left: 1.5em; }
+.rich-content :where(li) { margin: 0.25em 0; }
+.rich-content :where(blockquote) { border-left: 3px solid #cbd5e1; padding-left: 1em; color: #475569; }
+.rich-content :where(a) { color: #2563eb; text-decoration: underline; }
+.rich-content :where(table) { border-collapse: collapse; width: 100%; }
+.rich-content :where(th, td) { border: 1px solid #e2e8f0; padding: 0.375em 0.625em; text-align: left; vertical-align: top; }
+.rich-content :where(pre) { white-space: pre-wrap; }

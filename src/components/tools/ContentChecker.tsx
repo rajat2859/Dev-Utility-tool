@@ -773,7 +773,7 @@ export default function ContentChecker() {
 
           {readyToSelectChecks && (
             <div className="p-3.5 bg-blue-50/60 border border-blue-200/80 rounded-xl space-y-2.5">
-              <span className="text-xs font-bold text-blue-950">What do you want to check?</span>
+              <span className="text-xs font-bold text-blue-900">What do you want to check?</span>
               <div className="flex flex-wrap gap-2">
                 {CHECK_CATEGORIES.map((cat) => {
                   const active = selectedChecks.has(cat.id);

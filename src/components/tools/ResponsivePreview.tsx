@@ -120,6 +120,7 @@ const IS_DESKTOP_APP = Boolean(window.desktopUpdater);
 const FRAME_ID = 'stage';
 const ZOOM_STEPS = [1, 0.75, 0.5, 0.33, 0.25];
 const POP_HEADER_HEIGHT = 52;
+const CONFIRM_DELAY_MS = 1200;
 
 function normalizeUrl(value: string) {
   const trimmed = value.trim();
@@ -168,7 +169,7 @@ function chromeMetrics(group: Group, width: number) {
   const capTop = phone ? 22 : tablet ? 16 : 0;
   const capBottom = phone ? 20 : tablet ? 16 : 0;
   const barHeight = screenOnly ? 30 : 0;
-  const standHeight = screenOnly ? 26 : 0;
+  const standHeight = screenOnly ? 22 : 0;
 
   return {
     phone, tablet, screenOnly, bezel, capTop, capBottom, barHeight, standHeight,
@@ -281,10 +282,10 @@ function LiveWebview({
 }
 
 function DeviceShell({
-  device, url, rotated, scale, frameKey, report, serviceReady, popped, onTogglePopped, registerFrame,
+  device, url, rotated, scale, frameKey, confirmKey, report, serviceReady, popped, onTogglePopped, registerFrame,
   userAgents, onProbeMessage, onNavigated,
 }: {
-  device: Device; url: string; rotated: boolean; scale: number; frameKey: number;
+  device: Device; url: string; rotated: boolean; scale: number; frameKey: number; confirmKey: number;
   report: Report; serviceReady: boolean; popped: boolean; onTogglePopped: () => void;
   registerFrame: (element: HTMLElement | null) => void;
   userAgents: Record<string, string> | null;
@@ -292,12 +293,12 @@ function DeviceShell({
   onNavigated: (url: string, isInPage: boolean) => void;
 }) {
   const uaKey = uaKeyFor(device.group, device.width);
-  const liveStartUrl = useMemo(() => url, [device.id, rotated, frameKey]);
+  const liveStartUrl = useMemo(() => url, [uaKey, frameKey, confirmKey]);
   const width = rotated ? device.height : device.width;
   const height = rotated ? device.width : device.height;
   const metrics = chromeMetrics(device.group, device.width);
-  const screenWidth = Math.round(width * scale);
-  const screenHeight = Math.round(height * scale);
+  const screenWidth = Math.floor(width * scale);
+  const screenHeight = Math.floor(height * scale);
   const landscape = width > height;
 
   return (
@@ -315,7 +316,9 @@ function DeviceShell({
         className={`relative ${metrics.screenOnly ? '' : 'bg-slate-900 shadow-2xl shadow-slate-900/25 ring-1 ring-slate-950/20'}`}
         style={{
           borderRadius: metrics.phone ? (landscape ? 30 : 34) : metrics.tablet ? 22 : 10,
-          padding: metrics.bezel,
+          // Longhands only: mixing them with `padding` makes React drop an unchanged side when switching devices.
+          paddingLeft: metrics.bezel,
+          paddingRight: metrics.bezel,
           paddingTop: metrics.bezel + metrics.capTop,
           paddingBottom: metrics.bezel + metrics.capBottom,
         }}
@@ -357,7 +360,7 @@ function DeviceShell({
             <div style={{ width, height, transform: `scale(${scale})`, transformOrigin: 'top left', willChange: 'transform' }}>
               {IS_DESKTOP_APP && userAgents ? (
                 <LiveWebview
-                  key={`${device.id}-${rotated}-${frameKey}`}
+                  key={`${uaKey}-${frameKey}-${confirmKey}`}
                   startUrl={liveStartUrl}
                   userAgent={userAgents[uaKey]}
                   uaKey={uaKey}
@@ -370,7 +373,7 @@ function DeviceShell({
                 />
               ) : (
                 <iframe
-                  key={`${device.id}-${rotated}-${frameKey}`}
+                  key={`${uaKey}-${frameKey}-${confirmKey}`}
                   ref={registerFrame}
                   title={`${device.label} preview of ${displayUrl(url)}`}
                   src={frameSource(url, device, frameKey)}
@@ -425,6 +428,9 @@ export default function ResponsivePreview() {
   const [rotated, setRotated] = useState(false);
   const [zoom, setZoom] = useState<'fit' | number>('fit');
   const [frameKey, setFrameKey] = useState(0);
+  const [confirmKey, setConfirmKey] = useState(0);
+  const [confirming, setConfirming] = useState(false);
+  const awaitingFreshRef = useRef(false);
   const [report, setReport] = useState<Report>(emptyReport);
   const [recentUrls, setRecentUrls] = useState<string[]>([]);
   const [customWidth, setCustomWidth] = useState('414');
@@ -479,10 +485,12 @@ export default function ResponsivePreview() {
     if (stageWidth === 0) return 1;
     const metrics = chromeMetrics(device.group, device.width);
     const screens = webkitShot ? 2 : 1;
-    const availableWidth = stageWidth - 40 - metrics.extraWidth - (webkitShot ? 24 : 0);
-    const availableHeight = stageHeight - 32 - metrics.extraHeight;
-    return Math.max(0.1, Math.min(1, availableWidth / (width * screens), availableHeight / height));
-  }, [stageWidth, stageHeight, device.group, device.width, width, height, webkitShot]);
+    // stageWidth already excludes padding; 8px leaves room for the phone's side buttons.
+    const availableWidth = stageWidth - 8 - metrics.extraWidth - (webkitShot ? 24 : 0);
+    // 32px padding, plus the 1px top and bottom border the popped-out stage does not have.
+    const availableHeight = stageHeight - 32 - (popped ? 0 : 2) - metrics.extraHeight;
+    return Math.max(0.02, Math.min(1, availableWidth / (width * screens), availableHeight / height));
+  }, [stageWidth, stageHeight, popped, device.group, device.width, width, height, webkitShot]);
 
   const scale = zoom === 'fit' ? fitScale : zoom;
 
@@ -538,7 +546,8 @@ export default function ResponsivePreview() {
 
   useEffect(() => {
     if (!popped) return;
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setPopped(false); };
+    // Stop here so the app-level Esc handler on window does not also leave the tool.
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') { event.stopPropagation(); setPopped(false); } };
     document.addEventListener('keydown', onKeyDown);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -558,6 +567,7 @@ export default function ResponsivePreview() {
     if (!data || typeof data !== 'object') return;
 
     if (data.type === 'metrics') {
+      if (awaitingFreshRef.current) { awaitingFreshRef.current = false; setConfirming(false); }
       setReport({
         status: 'ready',
         overflow: Boolean(data.overflow),
@@ -600,6 +610,34 @@ export default function ResponsivePreview() {
     setReport(emptyReport());
     setShowOffenders(false);
   }, [previewUrl, deviceId, rotated, frameKey]);
+
+  // The frame survives size changes within a UA class; rescan in case the size did not actually change.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => sendToFrame({ type: 'rescan' }));
+    return () => cancelAnimationFrame(frame);
+  }, [deviceId, rotated, sendToFrame]);
+
+  // The in-place result can be skewed by layout chosen at load time, so reload at the new size once switching settles.
+  const uaKey = uaKeyFor(device.group, device.width);
+  const lastSizeRef = useRef({ deviceId, rotated, uaKey });
+  useEffect(() => {
+    const last = lastSizeRef.current;
+    lastSizeRef.current = { deviceId, rotated, uaKey };
+    if (last.deviceId === deviceId && last.rotated === rotated) return;
+    if (last.uaKey !== uaKey) { setConfirming(false); return; }
+    setConfirming(true);
+    const timer = setTimeout(() => setConfirmKey((value) => value + 1), CONFIRM_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [deviceId, rotated, uaKey]);
+
+  useEffect(() => {
+    if (confirmKey > 0) awaitingFreshRef.current = true;
+  }, [confirmKey]);
+
+  useEffect(() => {
+    awaitingFreshRef.current = false;
+    setConfirming(false);
+  }, [previewUrl, frameKey]);
 
   useEffect(() => {
     webkitRequestRef.current += 1;
@@ -965,6 +1003,11 @@ export default function ResponsivePreview() {
               {report.status === 'ready' && (report.overflow || report.clipped) && (
                 <span className="hidden shrink-0 font-mono text-[10px] font-medium opacity-70 lg:inline">{report.documentWidth}px / {report.viewportWidth}px</span>
               )}
+              {report.status === 'ready' && confirming && (
+                <span title="Quick result from resizing the live page. Reloading at this size to confirm." className="inline-flex shrink-0 items-center gap-1 text-[10px] font-medium opacity-70">
+                  <LoaderCircle className="h-3 w-3 animate-spin" />confirming
+                </span>
+              )}
             </span>
 
             {report.status === 'ready' && (report.overflow || report.clipped) && report.offenders.length > 0 && (
@@ -1068,6 +1111,7 @@ export default function ResponsivePreview() {
                   : report.overflow ? `Overflows by ${report.overflowAmount}px`
                   : report.clipped ? `Clipped ${report.overflowAmount}px`
                   : 'No horizontal overflow'}
+                {report.status === 'ready' && confirming && <span className="text-[10px] font-medium opacity-70">· confirming</span>}
               </span>
               <button onClick={() => setRotated((value) => !value)} title="Rotate" className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/20"><RotateCw className="h-3.5 w-3.5" />{rotated ? 'Landscape' : 'Portrait'}</button>
               <button onClick={() => setFrameKey((value) => value + 1)} title="Reload" className="inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/10 p-1.5 hover:bg-white/20"><RefreshCw className="h-3.5 w-3.5" /></button>
@@ -1083,7 +1127,7 @@ export default function ResponsivePreview() {
         onClick={(event) => { if (popped && event.target === event.currentTarget) setPopped(false); }}
         className={popped
           ? 'fixed inset-x-0 bottom-0 z-[60] flex items-start justify-center overflow-auto bg-slate-950/95 p-4'
-          : 'flex items-start justify-center overflow-auto rounded-xl border border-slate-200 bg-slate-100 bg-[radial-gradient(circle_at_1px_1px,rgb(203_213_225)_1px,transparent_0)] p-4 [background-size:16px_16px]'}
+          : 'flex items-start justify-center overflow-auto rounded-xl border border-slate-200 bg-slate-100 bg-[radial-gradient(circle_at_1px_1px,var(--color-slate-300)_1px,transparent_0)] p-4 [background-size:16px_16px]'}
         style={popped ? { top: POP_HEADER_HEIGHT, height: stageHeight } : { height: stageHeight }}
       >
         <motion.div layout transition={{ type: 'spring', stiffness: 320, damping: 34 }}>
@@ -1093,6 +1137,7 @@ export default function ResponsivePreview() {
             rotated={rotated}
             scale={scale}
             frameKey={frameKey}
+            confirmKey={confirmKey}
             report={report}
             serviceReady={serviceReady !== false}
             popped={popped}

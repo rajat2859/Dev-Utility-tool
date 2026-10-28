@@ -1252,7 +1252,7 @@ export default function HtmlCleaner() {
               onInput={(e) => setInputHtml((e.target as HTMLElement).innerHTML)}
               onPaste={handleVisualPaste}
               onClick={(e) => describeNode(e.target as Node)}
-              className="flex-1 p-4 font-sans text-xs text-slate-800 focus:outline-none overflow-y-auto leading-relaxed prose prose-slate max-w-none min-h-0"
+              className="flex-1 p-4 font-sans text-xs text-slate-800 focus:outline-none overflow-y-auto leading-relaxed rich-content min-h-0"
             />
           </div>
 
