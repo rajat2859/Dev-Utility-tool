@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "./theme-dark.css";
+@import "./styles/pop.css";
 
 @font-face {
   font-family: 'Plus Jakarta Sans';
@@ -7,6 +7,22 @@
   font-weight: 200 800;
   font-display: swap;
   src: url('/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/space-grotesk-700-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-latin.woff2') format('woff2');
 }
 
 @font-face {
@@ -44,6 +60,34 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+
+  /* POP design system (design.md, Appendix B) */
+  --color-paper: #FBEEE0;
+  --color-surface: #FFFFFF;
+  --color-ink: #141414;
+  --color-ink-soft: #4A4237;
+  --color-ink-muted: #5C554A;
+  --color-ink-faint: #A89F8D;
+  --color-highlight: #FFD23F;
+  --color-acc-blue: #3B82F6;
+  --color-acc-green: #10B981;
+  --color-acc-indigo: #6366F1;
+  --color-acc-sky: #0EA5E9;
+  --color-acc-cyan: #06B6D4;
+  --color-acc-purple: #A855F7;
+  --color-acc-rose: #F43F5E;
+  --color-acc-amber: #F59E0B;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --radius-card: 14px;
+  --radius-tile: 12px;
+  --shadow-brut-1: 2px 2px 0 #141414;
+  --shadow-brut-2: 3px 3px 0 #141414;
+  --shadow-brut-3: 4px 4px 0 #141414;
+  --shadow-brut-4: 6px 6px 0 #141414;
+  --shadow-brut-5: 10px 10px 0 #141414;
+  --ease-spring: cubic-bezier(.34, 1.6, .5, 1);
+  --ease-smooth: cubic-bezier(.2, .8, .2, 1);
 }
 
 :root {
@@ -104,28 +148,6 @@ body {
   animation: view-enter 120ms ease-out;
 }
 
-/* Fine blueprint dot grid with light dots, overlaid so it doesn't clobber element gradients */
-.dot-grid-light {
-  position: relative;
-}
-.dot-grid-light::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.09) 1px, transparent 1px);
-  background-size: 20px 20px;
-  border-radius: inherit;
-  pointer-events: none;
-}
-
-.card-lift {
-  transition: transform 180ms ease-out, box-shadow 180ms ease-out, border-color 180ms ease-out;
-}
-.card-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px -12px rgba(15, 23, 42, 0.18);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .view-enter { animation: none; }
 }
@@ -144,15 +166,6 @@ summary {
 
 img {
   -webkit-user-drag: none;
-}
-
-/* Dashboard page texture — sits behind the dashboard container only. */
-.dash-bg {
-  background-image: radial-gradient(circle, rgba(15, 23, 42, 0.055) 1px, transparent 1px);
-  background-size: 22px 22px;
-}
-.dark .dash-bg {
-  background-image: radial-gradient(circle, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
 }
 
 /* Rich-text editor: restores the document styles Tailwind's preflight resets. It always renders on white paper, so the colors are fixed. */

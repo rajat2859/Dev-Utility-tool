@@ -159,19 +159,20 @@ export default function App() {
   }, [activeView, isDrawerOpen]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-paper text-ink font-body antialiased flex selection:bg-highlight selection:text-ink">
       <Sidebar
         currentView={activeView}
+        isToolView={activeView !== 'dashboard'}
         onSelectView={(id) => {
           prefetchTool(id);
           setActiveView(id);
         }}
         isDrawerOpen={isDrawerOpen}
-        isNavigationReachable={isDesktop || isDrawerOpen}
+        isNavigationReachable={isDrawerOpen || (activeView === 'dashboard' && isDesktop)}
         onToggleDrawer={toggleDrawer}
       />
 
-      <main className="flex-1 min-w-0 pt-14 md:pt-0 md:pl-14">
+      <main className={`flex-1 min-w-0 pt-14 md:pt-0 ${activeView === 'dashboard' ? 'md:pl-[68px]' : ''}`}>
         <div className="p-4 md:p-5 w-full">
           <h1 className="sr-only">{getToolTitle()}</h1>
           <Suspense fallback={
@@ -186,7 +187,7 @@ export default function App() {
               </div>
             </div>
           }>
-            <div key={activeView} className="view-enter">
+            <div key={activeView} className={`view-enter ${activeView === 'dashboard' ? '' : 'pop-skin -mx-4 -my-4 md:-mx-5 md:-my-5 px-4 py-4 md:px-5 md:py-5'}`}>
               {renderActiveTool()}
             </div>
           </Suspense>

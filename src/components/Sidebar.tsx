@@ -8,26 +8,26 @@ interface SidebarProps {
   isDrawerOpen: boolean;
   isNavigationReachable: boolean;
   onToggleDrawer: () => void;
+  /** Tool views hide the permanent rail; it slides in on demand instead. */
+  isToolView: boolean;
 }
 
 interface MenuItem {
   id: string;
   name: string;
   icon: React.ElementType;
-  badge?: string;
-  badgeColor?: string;
 }
 
 const menuItems: MenuItem[] = [
   { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
-  { id: 'seo-checker', name: 'SEO & Schema', icon: Search, badge: 'AI', badgeColor: 'text-sky-300 bg-sky-950 border-sky-800' },
-  { id: 'content-checker', name: 'Content Audit', icon: ShieldCheck, badge: 'AI', badgeColor: 'text-indigo-300 bg-indigo-950 border-indigo-800' },
-  { id: 'responsive-preview', name: 'Responsive Preview', icon: MonitorSmartphone, badge: 'NEW', badgeColor: 'text-emerald-300 bg-emerald-950 border-emerald-800' },
-  { id: 'schema-generator', name: 'Schema Generator', icon: Braces, badge: 'NEW', badgeColor: 'text-emerald-300 bg-emerald-950 border-emerald-800' },
+  { id: 'seo-checker', name: 'SEO & Schema', icon: Search },
+  { id: 'content-checker', name: 'Content Audit', icon: ShieldCheck },
+  { id: 'responsive-preview', name: 'Responsive', icon: MonitorSmartphone },
+  { id: 'schema-generator', name: 'Schema Gen', icon: Braces },
   { id: 'html-cleaner', name: 'HTML Cleaner', icon: FileCode },
-  { id: 'image', name: 'Image Converter', icon: FileImage },
+  { id: 'image', name: 'Image Convert', icon: FileImage },
   { id: 'gradient', name: 'Gradient Studio', icon: Paintbrush },
-  { id: 'password', name: 'Password Generator', icon: Key },
+  { id: 'password', name: 'Passwords', icon: Key },
 ];
 
 const settingsItem: MenuItem = { id: 'settings', name: 'Settings', icon: Settings };
@@ -38,6 +38,7 @@ export default function Sidebar({
   isDrawerOpen,
   isNavigationReachable,
   onToggleDrawer,
+  isToolView,
 }: SidebarProps) {
   const renderMenuButton = (item: MenuItem) => {
     const Icon = item.icon;
@@ -54,69 +55,84 @@ export default function Sidebar({
           onSelectView(item.id);
           if (isDrawerOpen) onToggleDrawer();
         }}
-        className={`w-full flex items-center justify-between md:justify-center gap-2.5 px-3 md:px-0 h-10 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-          isActive
-            ? 'bg-blue-600 text-white font-semibold'
-            : 'text-slate-400 hover:bg-slate-700 hover:text-white'
-        }`}
+        className="pop-navbtn"
       >
-        <span className="flex items-center gap-2.5 min-w-0">
-          <Icon className="h-4 w-4 shrink-0" />
-          <span className="md:hidden truncate">{item.name}</span>
-        </span>
-        {item.badge && (
-          <span className={`md:hidden text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md border tracking-wide ${
-            isActive ? 'bg-white/20 text-white border-white/30' : item.badgeColor
-          }`}>
-            {item.badge}
-          </span>
-        )}
+        <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
+        <span className="md:hidden lg:inline truncate">{item.name}</span>
       </button>
     );
   };
 
+  const Brand = (
+    <>
+      <div
+        className="h-9 w-9 shrink-0 grid place-items-center border-[2.5px] border-ink rounded-tile bg-acc-blue text-white shadow-brut-2"
+        aria-hidden="true"
+      >
+        <Wrench className="h-4 w-4" strokeWidth={2} />
+      </div>
+      <span className="hidden md:hidden lg:inline font-display font-bold uppercase tracking-[.08em] text-[12px] text-ink leading-tight">
+        Utility
+        <br />
+        Studio
+      </span>
+    </>
+  );
+
   return (
     <>
-      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between z-30">
+      {/* Mobile top bar */}
+      <div className="pop-chrome md:hidden fixed top-0 left-0 right-0 h-14 bg-paper border-b-[2.5px] border-ink px-4 flex items-center justify-between z-30">
         <div className="flex items-center gap-2.5">
-          <div className="h-7 w-7 bg-blue-600 rounded-lg flex items-center justify-center text-white">
-            <Wrench className="h-3.5 w-3.5" />
-          </div>
-          <span className="font-bold text-sm tracking-tight text-slate-900">Utility Studio</span>
+          {Brand}
+          <span className="font-display font-bold uppercase tracking-[.08em] text-[13px] text-ink">Utility Studio</span>
         </div>
         <button
           onClick={onToggleDrawer}
-          className="p-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors"
+          className="pop-iconbtn"
           aria-label="Toggle Navigation"
         >
           {isDrawerOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
         </button>
       </div>
 
-      {isDrawerOpen && (
-        <div className="fixed inset-0 bg-slate-950/40 z-40 md:hidden" onClick={onToggleDrawer} />
+      {/* Floating hamburger: tool views hide the rail, slide it in on demand (desktop) */}
+      {isToolView && (
+        <button
+          onClick={onToggleDrawer}
+          className="pop-iconbtn fixed top-3 left-3 z-30 hidden! md:grid!"
+          aria-label="Toggle Navigation"
+          title="Toggle Navigation"
+        >
+          {isDrawerOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+        </button>
       )}
 
+      {(isDrawerOpen && isToolView) && (
+        <div className="fixed inset-0 bg-black/50 z-40" onClick={onToggleDrawer} />
+      )}
+      {(isDrawerOpen && !isToolView) && (
+        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={onToggleDrawer} />
+      )}
+
+      {/* Sidebar rail */}
       <aside
         inert={!isNavigationReachable}
         aria-hidden={!isNavigationReachable}
         aria-label="Tools navigation"
-        className={`fixed inset-y-0 left-0 w-64 md:w-14 bg-[#090d16] text-slate-100 border-r border-slate-800 flex flex-col z-50 transition-transform duration-200 ease-out motion-reduce:transition-none md:transition-none md:translate-x-0 ${
+        className={`pop-chrome fixed inset-y-0 left-0 w-64 md:w-[68px] lg:w-56 bg-paper border-r-[2.5px] border-ink flex flex-col z-50 transition-transform duration-200 ease-out motion-reduce:transition-none ${
           isDrawerOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        } ${isToolView ? '' : 'md:translate-x-0'}`}
       >
-        <div className="h-14 shrink-0 px-4 md:px-0 border-b border-slate-800 flex items-center gap-2.5 md:justify-center">
-          <div className="h-9 w-9 bg-blue-600 rounded-xl flex items-center justify-center text-white shrink-0">
-            <Wrench className="h-4 w-4" />
-          </div>
-          <span className="md:hidden font-bold text-sm tracking-tight text-white truncate">Utility Studio</span>
+        <div className="h-14 shrink-0 px-3.5 border-b-[2.5px] border-ink flex items-center gap-2.5">
+          {Brand}
         </div>
 
-        <nav className="flex-1 px-3 md:px-2 py-3 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-3.5 space-y-2 overflow-y-auto">
           {menuItems.map(renderMenuButton)}
         </nav>
 
-        <div className="shrink-0 px-3 md:px-2 py-3 border-t border-slate-800">
+        <div className="shrink-0 px-3 py-3.5 border-t-[2.5px] border-ink">
           {renderMenuButton(settingsItem)}
         </div>
       </aside>

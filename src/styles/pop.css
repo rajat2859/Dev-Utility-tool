@@ -1,0 +1,330 @@
+/* ============================================================
+   POP — Design System (Utility Studio v1.0)
+   Neo-brutalist, flat-color, hard-shadow design language.
+   Source of truth: design.md. Import after tokens/theme.
+   ============================================================ */
+
+:root {
+  /* surfaces & ink */
+  --paper: #FBEEE0;
+  --surface: #FFFFFF;
+  --ink: #141414;
+  --ink-soft: #4A4237;
+  --ink-muted: #5C554A;
+  --ink-faint: #A89F8D;
+  --highlight: #FFD23F;
+  --dot: rgba(20, 20, 20, .08);
+
+  /* accent ramp (glyph color rules live in the components, §2 table) */
+  --blue: #3B82F6;
+  --green: #10B981;
+  --indigo: #6366F1;
+  --sky: #0EA5E9;
+  --cyan: #06B6D4;
+  --purple: #A855F7;
+  --rose: #F43F5E;
+  --amber: #F59E0B;
+
+  /* structure */
+  --bw: 2.5px;
+  --r-pill: 999px;
+  --r-card: 14px;
+  --r-tile: 12px;
+
+  /* elevation — hard ink shadows only, zero blur */
+  --sh-1: 2px 2px 0 var(--ink);
+  --sh-2: 3px 3px 0 var(--ink);
+  --sh-3: 4px 4px 0 var(--ink);
+  --sh-4: 6px 6px 0 var(--ink);
+  --sh-5: 10px 10px 0 var(--ink);
+  --sh-press: 1px 1px 0 var(--ink);
+
+  /* motion */
+  --spring: cubic-bezier(.34, 1.6, .5, 1);
+  --smooth: cubic-bezier(.2, .8, .2, 1);
+  --t-fast: 150ms;
+  --t-med: 300ms;
+  --t-pop: 500ms;
+
+  /* fonts */
+  --font-display: 'Space Grotesk', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* POP dark-mode overrides were removed: the app is light-only by design. */
+
+/* ---------- page ---------- */
+.pop-chrome {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+.pop-page {
+  background: var(--paper);
+  background-image: radial-gradient(var(--dot) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+.pop-container { max-width: 1060px; margin-inline: auto; padding-inline: 28px; }
+.pop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); gap: 18px; }
+
+.pop-page ::selection { background: var(--highlight); color: var(--ink); }
+.pop-page :focus-visible,
+.pop-chrome :focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* ---------- type helpers ---------- */
+.pop-display {
+  font: 700 clamp(52px, 9vw, 104px)/.92 var(--font-display);
+  letter-spacing: -.03em;
+  text-transform: uppercase;
+}
+.pop-outline { color: transparent; -webkit-text-stroke: 2.5px var(--ink); }
+.pop-kicker { font: 700 11px var(--font-display); letter-spacing: .14em; text-transform: uppercase; }
+.pop-num { font: 700 11px var(--font-display); color: var(--ink-faint); }
+
+/* ---------- button ---------- */
+.pop-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px;
+  border: var(--bw) solid var(--ink); border-radius: var(--r-pill);
+  background: var(--surface);
+  box-shadow: var(--sh-3); cursor: pointer;
+  font: 700 13px/1 var(--font-display); letter-spacing: .06em; text-transform: uppercase;
+  transition: transform var(--t-fast) var(--smooth), box-shadow var(--t-fast) var(--smooth);
+}
+.pop-btn:hover { transform: translate(-2px, -2px); box-shadow: var(--sh-4); }
+.pop-btn:active { transform: translate(2px, 2px); box-shadow: var(--sh-press); }
+.pop-btn--primary { background: var(--ink); color: var(--paper); }
+.pop-btn--accent { background: var(--acc, var(--highlight)); color: var(--ink); }
+
+/* ---------- filter pill ---------- */
+.pop-pill {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px;
+  padding: 9px 16px;
+  border: var(--bw) solid var(--ink); border-radius: var(--r-pill);
+  background: var(--surface);
+  box-shadow: var(--sh-3); cursor: pointer;
+  font: 700 12.5px var(--font-display); letter-spacing: .04em; text-transform: uppercase;
+  color: var(--ink);
+  transition: transform var(--t-fast) var(--smooth), box-shadow var(--t-fast) var(--smooth), background var(--t-fast);
+}
+.pop-pill:hover { transform: translate(-2px, -2px); box-shadow: var(--sh-4); }
+.pop-pill:active { transform: translate(2px, 2px); box-shadow: var(--sh-press); }
+.pop-pill[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.pop-pill sup { font-size: 10px; opacity: .55; margin-left: 3px; }
+
+/* ---------- card ---------- */
+.pop-card {
+  position: relative; width: 100%; text-align: left;
+  padding: 18px; cursor: pointer;
+  border: var(--bw) solid var(--ink); border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--sh-4);
+  transition: transform .18s var(--smooth), box-shadow .18s var(--smooth);
+}
+.pop-card:hover { transform: translate(-4px, -4px); box-shadow: var(--sh-5); }
+.pop-card:active { transform: translate(1px, 1px); box-shadow: var(--sh-2); }
+
+/* ---------- icon tile ---------- */
+.pop-tile {
+  width: 46px; height: 46px; display: grid; place-items: center;
+  border: var(--bw) solid var(--ink); border-radius: var(--r-tile);
+  background: var(--acc); color: #fff;
+  box-shadow: var(--sh-2);
+  transition: transform var(--t-med) var(--spring);
+}
+.pop-card:hover .pop-tile { transform: rotate(-7deg) scale(1.08); }
+.pop-tile--ink-text { color: var(--ink); } /* REQUIRED on green/sky/cyan/amber fills */
+
+/* ---------- badge / tag ---------- */
+.pop-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  border: var(--bw) solid var(--ink); border-radius: var(--r-pill);
+  background: var(--surface);
+  font: 700 10px var(--font-display); letter-spacing: .1em; text-transform: uppercase;
+}
+.pop-badge i { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); }
+
+/* ---------- input ---------- */
+.pop-input {
+  display: flex; align-items: center; gap: 10px;
+  height: 48px; padding: 0 14px;
+  border: var(--bw) solid var(--ink); border-radius: var(--r-tile);
+  background: var(--surface);
+  box-shadow: var(--sh-3); cursor: text;
+  transition: transform var(--t-fast) var(--smooth), box-shadow var(--t-fast) var(--smooth);
+}
+.pop-input:focus-within { transform: translate(-2px, -2px); box-shadow: var(--sh-4); }
+.pop-input input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font: 500 14px var(--font-body); color: var(--ink); }
+.pop-input input::placeholder { color: var(--ink-faint); }
+
+/* ---------- marquee ---------- */
+.pop-marquee {
+  background: var(--ink); color: var(--paper);
+  overflow: hidden; white-space: nowrap; padding: 10px 0;
+}
+.pop-marquee > div {
+  display: inline-block;
+  font: 700 12px var(--font-display); letter-spacing: .18em; text-transform: uppercase;
+  animation: pop-marquee 22s linear infinite;
+}
+.pop-marquee:hover > div { animation-play-state: paused; }
+@keyframes pop-marquee { to { transform: translateX(-50%); } }
+
+/* ---------- sticker ---------- */
+.pop-sticker {
+  display: inline-block; padding: 8px 14px;
+  transform: rotate(6deg);
+  border: var(--bw) solid var(--ink); border-radius: 10px;
+  background: var(--highlight); color: var(--ink);
+  box-shadow: var(--sh-2);
+  font: 700 11px var(--font-display); letter-spacing: .12em; text-transform: uppercase;
+}
+
+/* ---------- toast ---------- */
+.pop-toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  padding: 10px 18px; border-radius: var(--r-tile);
+  background: var(--ink); color: var(--paper);
+  box-shadow: var(--sh-3);
+  font: 600 13px var(--font-body); z-index: 100;
+}
+
+/* ---------- sidebar nav button (chrome) ---------- */
+.pop-navbtn {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  min-height: 40px; padding: 8px 12px;
+  border: var(--bw) solid var(--ink); border-radius: var(--r-tile);
+  background: var(--surface); color: var(--ink);
+  box-shadow: var(--sh-1); cursor: pointer;
+  font: 700 11.5px var(--font-display); letter-spacing: .08em; text-transform: uppercase;
+  text-align: left;
+  transition: transform var(--t-fast) var(--smooth), box-shadow var(--t-fast) var(--smooth), background var(--t-fast);
+}
+.pop-navbtn:hover { transform: translate(-2px, -2px); box-shadow: var(--sh-3); }
+.pop-navbtn:active { transform: translate(1px, 1px); box-shadow: var(--sh-press); }
+.pop-navbtn[aria-current="page"] { background: var(--ink); color: var(--paper); }
+
+/* ---------- icon button (theme toggle, menu) ---------- */
+.pop-iconbtn {
+  width: 40px; height: 40px; display: grid; place-items: center;
+  border: var(--bw) solid var(--ink); border-radius: var(--r-tile);
+  background: var(--surface); color: var(--ink);
+  box-shadow: var(--sh-2); cursor: pointer;
+  transition: transform var(--t-fast) var(--smooth), box-shadow var(--t-fast) var(--smooth);
+}
+.pop-iconbtn:hover { transform: translate(-2px, -2px); box-shadow: var(--sh-3); }
+.pop-iconbtn:active { transform: translate(2px, 2px); box-shadow: var(--sh-press); }
+
+/* ---------- heart (favorite) ---------- */
+.pop-heart {
+  display: grid; place-items: center;
+  width: 32px; height: 32px;
+  border-radius: var(--r-tile); color: var(--ink-faint);
+  cursor: pointer; background: none; border: none;
+  transition: transform var(--t-fast) var(--spring), color var(--t-fast);
+}
+.pop-heart:hover { transform: scale(1.15) rotate(-6deg); color: var(--rose); }
+.pop-heart[aria-pressed="true"] { color: var(--rose); }
+.pop-heart:active { transform: scale(.9); }
+
+/* ---------- empty state ---------- */
+.pop-empty {
+  padding: 48px 24px; text-align: center;
+  border: var(--bw) dashed var(--ink); border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+/* ---------- tool-page skin ----------
+   Wraps tool views (.pop-skin) and retargets the Tailwind palette they were
+   written with onto POP tokens. Same attribute-selector convention that
+   theme-dark.css used, so existing tool code needs no edits. */
+.pop-skin {
+  background: var(--paper);
+  background-image: radial-gradient(var(--dot) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
+  color: var(--ink);
+  font-family: var(--font-body);
+  /* neutral ramp -> POP ink ramp */
+  --color-white: #FFFFFF;
+  --color-slate-50: #F7EBDB;
+  --color-slate-100: #F1E1CC;
+  --color-slate-200: #E6D5BE;
+  --color-slate-300: #A89F8D;
+  --color-slate-400: #8A8071;
+  --color-slate-500: #5C554A;
+  --color-slate-600: #4A4237;
+  --color-slate-700: #2E2A24;
+  --color-slate-800: #1D1A15;
+  --color-slate-900: #141414;
+  --color-slate-950: #141414;
+}
+.pop-skin ::selection { background: var(--highlight); color: var(--ink); }
+.pop-skin :focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* display type for headings (except pasted rich content) */
+.pop-skin :is(h1, h2, h3):not(.rich-content :is(h1, h2, h3)) {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .01em;
+}
+
+/* ink is the only border color; borders get full POP weight */
+.pop-skin :is(
+  [class*="border-slate-"], [class*="border-gray-"], [class*="border-zinc-"],
+  [class*="border-blue-"], [class*="border-indigo-"], [class*="border-sky-"],
+  [class*="border-cyan-"], [class*="border-emerald-"], [class*="border-teal-"],
+  [class*="border-green-"], [class*="border-amber-"], [class*="border-orange-"],
+  [class*="border-rose-"], [class*="border-red-"], [class*="border-purple-"],
+  [class*="border-violet-"], [class*="border-fuchsia-"], [class*="border-pink-"],
+  .border
+):not(.rich-content *):not([class*="border-transparent"]) {
+  border-color: var(--ink) !important;
+}
+.pop-skin .border:not(.rich-content .border) {
+  border-width: var(--bw);
+}
+
+/* flat color only — kill gradients */
+.pop-skin [class*="bg-gradient"] {
+  background-image: none;
+  background-color: var(--color-slate-100);
+}
+
+/* hard shadows only, zero blur */
+.pop-skin :is(
+  [class*="shadow-2xs"], [class*="shadow-xs"], [class*="shadow-sm"],
+  [class*="shadow-md"], [class*="shadow-lg"], [class*="shadow-xl"],
+  [class*="shadow-2xl"], .shadow
+):not(.rich-content *) {
+  box-shadow: 3px 3px 0 var(--ink) !important;
+  transition: transform var(--t-fast) var(--smooth), box-shadow var(--t-fast) var(--smooth);
+}
+.pop-skin :is([class*="hover:shadow-"]):not(.rich-content *):hover {
+  box-shadow: 5px 5px 0 var(--ink) !important;
+  transform: translate(-2px, -2px);
+}
+
+/* ---------- entrance ---------- */
+@keyframes pop-in { from { opacity: 0; transform: scale(.7) rotate(-3deg); } }
+.pop-in { animation: pop-in var(--t-pop) var(--spring) backwards; animation-delay: calc(var(--i, 0) * 50ms); }
+@keyframes pop-debut { from { opacity: 0; transform: rotate(-20deg) scale(0); } }
+.pop-debut { animation: pop-debut 600ms var(--spring) 300ms backwards; }
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
