@@ -116,12 +116,6 @@ const categoryCounts: Record<CategoryId, number> = CATEGORIES.reduce(
   {} as Record<CategoryId, number>,
 );
 
-const MARQUEE_ITEMS = [
-  'SEO', 'SCHEMA', 'RESPONSIVE', 'CONTENT AUDIT', 'GRADIENTS',
-  'PASSWORDS', 'HTML CLEAN', 'IMAGE CONVERT', 'ALL LOCAL', 'ZERO CLOUD',
-];
-const MARQUEE_TEXT = MARQUEE_ITEMS.map((item) => `${item} ✦`).join(' ');
-
 interface DashboardGridProps {
   onSelectTool: (toolId: string) => void;
   favorites: string[];
@@ -145,13 +139,9 @@ export default function DashboardGrid({
 
   return (
     <div
-      className="pop-page -mx-4 -my-4 md:-mx-5 md:-my-5 flex flex-col min-h-[calc(100vh-3.5rem)] md:min-h-screen pb-10"
+      className="pop-page px-4 md:px-5 py-4 md:py-5 flex flex-col min-h-[calc(100vh-3.5rem)] md:min-h-screen pb-10"
       key={activeCategory}
     >
-      <div className="pop-marquee" aria-hidden="true">
-        <div>{MARQUEE_TEXT + MARQUEE_TEXT}</div>
-      </div>
-
       <div className="pop-container w-full pt-10 md:pt-14">
         {/* ---------- headline ---------- */}
         <div className="flex items-start justify-between gap-6">

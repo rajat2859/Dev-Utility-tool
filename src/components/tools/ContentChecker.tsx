@@ -583,7 +583,7 @@ export default function ContentChecker() {
       </div>
 
       {/* Mode Selector */}
-      <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-fit">
+      <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-fit">
         <button
           type="button"
           onClick={() => setAuditMode('google-doc')}

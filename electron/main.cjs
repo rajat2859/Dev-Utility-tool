@@ -45,32 +45,13 @@ function saveWindowState(window) {
   }
 }
 
-const themePreferencePath = path.join(app.getPath('userData'), 'theme.json');
-const THEME_PREFERENCES = new Set(['light', 'dark', 'system']);
-
-function readThemePreference() {
-  try {
-    const { preference } = JSON.parse(fs.readFileSync(themePreferencePath, 'utf8'));
-    if (THEME_PREFERENCES.has(preference)) return preference;
-  } catch {
-  }
-  return 'system';
-}
-
 function registerThemePreference() {
-  nativeTheme.themeSource = readThemePreference();
+  // The UI is light-only (POP design), so the native frame must stay light to match it.
+  nativeTheme.themeSource = 'light';
   ipcMain.on('theme:get', (event) => {
-    event.returnValue = nativeTheme.themeSource;
+    event.returnValue = 'light';
   });
-  ipcMain.handle('theme:set', (_event, preference) => {
-    if (!THEME_PREFERENCES.has(preference)) return;
-    nativeTheme.themeSource = preference;
-    try {
-      fs.writeFileSync(themePreferencePath, JSON.stringify({ preference }));
-    } catch (writeError) {
-      console.error('Could not save theme preference:', writeError);
-    }
-  });
+  ipcMain.handle('theme:set', () => {});
 }
 
 function openExternalSafely(url) {
@@ -164,11 +145,12 @@ function createMainWindow() {
     width: DEFAULT_WINDOW_SIZE.width,
     height: DEFAULT_WINDOW_SIZE.height,
     ...savedWindowState,
-    minWidth: 900,
-    minHeight: 600,
+    minWidth: 800,
+    minHeight: 500,
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#FBEEE0',
+    title: 'Utility Tool Manager',
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -177,7 +159,7 @@ function createMainWindow() {
     },
   });
   if (savedWindowState.isMaximized) mainWindow.maximize();
-  mainWindow.webContents.setVisualZoomLevelLimits(1, 1);
+  mainWindow.webContents.setVisualZoomLevelLimits(1, 3);
 
   const keepInsideApp = (event, targetUrl) => {
     if (!isAppServerUrl(targetUrl)) {
@@ -209,13 +191,19 @@ function createMainWindow() {
     });
   });
 
+  // Recover from a crashed or killed renderer instead of leaving a blank window.
+  mainWindow.webContents.on('render-process-gone', (_event, { reason }) => {
+    console.error('Renderer gone:', reason);
+    if (appServerUrl && reason !== 'clean-exit') mainWindow?.loadURL(appServerUrl);
+  });
+
   mainWindow.on('close', () => saveWindowState(mainWindow));
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 
   const splashIsVisible = new Promise((resolve) => mainWindow.once('ready-to-show', resolve));
-  mainWindow.loadFile(path.join(__dirname, 'splash.html'));
+  mainWindow.loadFile(path.join(__dirname, 'splash.html'), { query: { version: app.getVersion() } });
   return splashIsVisible.then(() => mainWindow.show());
 }
 
@@ -232,8 +220,8 @@ if (!app.requestSingleInstanceLock()) {
     Menu.setApplicationMenu(buildApplicationMenu());
     registerThemePreference();
     try {
-      await createMainWindow();
-      appServerUrl = await startServer();
+      // Show the splash while the server boots instead of waiting for it.
+      [appServerUrl] = await Promise.all([startServer(), createMainWindow()]);
       require('./auto-update.cjs').registerAutoUpdate(() => mainWindow);
       mainWindow?.loadURL(appServerUrl);
     } catch (startupError) {
@@ -243,4 +231,8 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on('window-all-closed', () => app.quit());
+
+  // The API server runs in this process; one bad request must not take the whole app down.
+  process.on('uncaughtException', (error) => console.error('Uncaught exception:', error));
+  process.on('unhandledRejection', (reason) => console.error('Unhandled rejection:', reason));
 }

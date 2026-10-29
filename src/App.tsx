@@ -61,10 +61,9 @@ export default function App() {
       }
     }
 
-    const timer = setTimeout(() => {
-      Object.values(toolsMap).forEach(fn => fn().catch(() => {}));
-    }, 800);
-    return () => clearTimeout(timer);
+    // Prefetch on intent (hover/focus in Sidebar) — not on a timer.
+    // Lazy loading is kept per-tool; no upfront bundle download.
+    return () => {};
   }, []);
 
   useEffect(() => {
@@ -172,7 +171,7 @@ export default function App() {
         onToggleDrawer={toggleDrawer}
       />
 
-      <main className={`flex-1 min-w-0 pt-14 md:pt-0 ${activeView === 'dashboard' ? 'md:pl-[68px]' : ''}`}>
+      <main className={`flex-1 min-w-0 pt-14 md:pt-0 ${activeView === 'dashboard' ? 'md:pl-[68px] lg:pl-[224px]' : ''}`}>
         <div className="p-4 md:p-5 w-full">
           <h1 className="sr-only">{getToolTitle()}</h1>
           <Suspense fallback={
@@ -187,7 +186,7 @@ export default function App() {
               </div>
             </div>
           }>
-            <div key={activeView} className={`view-enter ${activeView === 'dashboard' ? '' : 'pop-skin -mx-4 -my-4 md:-mx-5 md:-my-5 px-4 py-4 md:px-5 md:py-5'}`}>
+            <div key={activeView} className={`view-enter ${activeView === 'dashboard' ? '' : 'pop-skin px-4 py-4 md:px-5 md:py-5'}`}>
               {renderActiveTool()}
             </div>
           </Suspense>

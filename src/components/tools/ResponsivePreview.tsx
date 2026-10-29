@@ -1149,7 +1149,7 @@ export default function ResponsivePreview() {
           />
         </motion.div>
         {webkitShot && (
-          <div className="ml-6 shrink-0">
+          <div className="ml-6 shrink max-w-[45vw]">
             <WebkitPanel shot={webkitShot} width={width} height={height} scale={scale} onClose={() => { webkitRequestRef.current += 1; setWebkitShot(null); }} />
           </div>
         )}

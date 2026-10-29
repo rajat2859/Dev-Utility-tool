@@ -11,6 +11,7 @@ const UPDATE_STATUS_LABELS: Record<DesktopUpdateState['status'], string> = {
   downloading: 'Downloading update…',
   'up-to-date': 'You are on the latest version',
   'ready-to-install': 'Update downloaded and ready to install',
+  installing: 'Restarting to install…',
   error: 'Update check failed',
 };
 
@@ -33,7 +34,7 @@ export default function Settings() {
     return desktopUpdater.onStateChange(setUpdateState);
   }, [desktopUpdater]);
 
-  const isBusy = updateState?.status === 'checking' || updateState?.status === 'downloading';
+  const isBusy = updateState?.status === 'checking' || updateState?.status === 'downloading' || updateState?.status === 'installing';
   const isReadyToInstall = updateState?.status === 'ready-to-install';
   const canUpdate = Boolean(updateState?.isSupported);
 

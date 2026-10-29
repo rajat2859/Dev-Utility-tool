@@ -21,7 +21,7 @@ export interface AppSettings {
   recentTools: string[];
 }
 
-export type DesktopUpdateStatus = 'idle' | 'checking' | 'downloading' | 'up-to-date' | 'ready-to-install' | 'error';
+export type DesktopUpdateStatus = 'idle' | 'checking' | 'downloading' | 'up-to-date' | 'ready-to-install' | 'installing' | 'error';
 
 export interface DesktopUpdateState {
   isSupported: boolean;

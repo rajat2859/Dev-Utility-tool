@@ -163,19 +163,6 @@
 .pop-input input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font: 500 14px var(--font-body); color: var(--ink); }
 .pop-input input::placeholder { color: var(--ink-faint); }
 
-/* ---------- marquee ---------- */
-.pop-marquee {
-  background: var(--ink); color: var(--paper);
-  overflow: hidden; white-space: nowrap; padding: 10px 0;
-}
-.pop-marquee > div {
-  display: inline-block;
-  font: 700 12px var(--font-display); letter-spacing: .18em; text-transform: uppercase;
-  animation: pop-marquee 22s linear infinite;
-}
-.pop-marquee:hover > div { animation-play-state: paused; }
-@keyframes pop-marquee { to { transform: translateX(-50%); } }
-
 /* ---------- sticker ---------- */
 .pop-sticker {
   display: inline-block; padding: 8px 14px;
@@ -292,6 +279,70 @@
 }
 .pop-skin .border:not(.rich-content .border) {
   border-width: var(--bw);
+}
+
+/* Retarget Tailwind compiled background colors to POP tokens */
+/* slate/gray family → paper/surface/ink ramp */
+.pop-skin [class*="bg-slate-50"], .pop-skin [class*="bg-gray-50"],
+.pop-skin [class*="bg-slate-100"], .pop-skin [class*="bg-gray-100"],
+.pop-skin [class*="bg-slate-200"], .pop-skin [class*="bg-gray-200"] {
+  background-color: var(--color-surface) !important;
+}
+.pop-skin [class*="bg-slate-900"], .pop-skin [class*="bg-gray-900"],
+.pop-skin [class*="bg-slate-950"], .pop-skin [class*="bg-gray-950"],
+.pop-skin [class*="bg-zinc-900"], .pop-skin [class*="bg-zinc-950"] {
+  background-color: var(--color-ink) !important;
+}
+
+/* Retarget Tailwind compiled text colors to POP ink ramp */
+.pop-skin [class*="text-slate-900"], .pop-skin [class*="text-gray-900"],
+.pop-skin [class*="text-zinc-900"] {
+  color: var(--color-ink) !important;
+}
+.pop-skin [class*="text-slate-600"], .pop-skin [class*="text-gray-600"],
+.pop-skin [class*="text-zinc-600"] {
+  color: var(--color-ink-soft) !important;
+}
+.pop-skin [class*="text-slate-500"], .pop-skin [class*="text-gray-500"],
+.pop-skin [class*="text-zinc-500"] {
+  color: var(--color-ink-muted) !important;
+}
+.pop-skin [class*="text-slate-400"], .pop-skin [class*="text-gray-400"],
+.pop-skin [class*="text-zinc-400"] {
+  color: var(--color-ink-faint) !important;
+}
+
+/* Retarget accent-family backgrounds (blue/violet/rose/amber/emerald) to POP surface */
+.pop-skin [class*="bg-blue-"], .pop-skin [class*="bg-indigo-"],
+.pop-skin [class*="bg-violet-"], .pop-skin [class*="bg-purple-"],
+.pop-skin [class*="bg-rose-"], .pop-skin [class*="bg-pink-"],
+.pop-skin [class*="bg-amber-"], .pop-skin [class*="bg-orange-"],
+.pop-skin [class*="bg-emerald-"], .pop-skin [class*="bg-teal-"],
+.pop-skin [class*="bg-cyan-"], .pop-skin [class*="bg-sky-"],
+.pop-skin [class*="bg-green-"] {
+  background-color: var(--color-surface) !important;
+}
+
+/* Retarget text accent colors to ink */
+.pop-skin [class*="text-blue-"], .pop-skin [class*="text-indigo-"],
+.pop-skin [class*="text-violet-"], .pop-skin [class*="text-purple-"],
+.pop-skin [class*="text-rose-"], .pop-skin [class*="text-pink-"],
+.pop-skin [class*="text-amber-"], .pop-skin [class*="text-orange-"],
+.pop-skin [class*="text-emerald-"], .pop-skin [class*="text-teal-"],
+.pop-skin [class*="text-cyan-"], .pop-skin [class*="text-sky-"],
+.pop-skin [class*="text-green-"] {
+  color: var(--color-ink) !important;
+}
+
+/* Retarget border accent colors to ink */
+.pop-skin [class*="border-blue-"], .pop-skin [class*="border-indigo-"],
+.pop-skin [class*="border-violet-"], .pop-skin [class*="border-purple-"],
+.pop-skin [class*="border-rose-"], .pop-skin [class*="border-pink-"],
+.pop-skin [class*="border-amber-"], .pop-skin [class*="border-orange-"],
+.pop-skin [class*="border-emerald-"], .pop-skin [class*="border-teal-"],
+.pop-skin [class*="border-cyan-"], .pop-skin [class*="border-sky-"],
+.pop-skin [class*="border-green-"] {
+  border-color: var(--ink) !important;
 }
 
 /* flat color only — kill gradients */
