@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   FileImage, Paintbrush, Key, Heart, ArrowUpRight,
-  ShieldCheck, FileCode, MonitorSmartphone, Braces, Search
+  ShieldCheck, FileCode, MonitorSmartphone, Braces, Search, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { prefetchTool } from '../App';
 
@@ -137,6 +137,37 @@ export default function DashboardGrid({
         ]
       : tools.filter((tool) => tool.category === activeCategory);
 
+  // Up to 4 cards sit in one centered row; beyond that two rows grow sideways into the slider.
+  const columnCount = Math.max(1, visibleTools.length <= 4 ? visibleTools.length : Math.ceil(visibleTools.length / 2));
+
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [scrollEdges, setScrollEdges] = useState({ atStart: true, atEnd: true });
+  const isOverflowing = !(scrollEdges.atStart && scrollEdges.atEnd);
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const updateEdges = () => setScrollEdges({
+      atStart: track.scrollLeft <= 1,
+      atEnd: track.scrollLeft + track.clientWidth >= track.scrollWidth - 1,
+    });
+    updateEdges();
+    track.addEventListener('scroll', updateEdges, { passive: true });
+    const resizeObserver = new ResizeObserver(updateEdges);
+    resizeObserver.observe(track);
+    return () => {
+      track.removeEventListener('scroll', updateEdges);
+      resizeObserver.disconnect();
+    };
+  }, [activeCategory, visibleTools.length]);
+
+  const slide = (direction: 1 | -1) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    track.scrollBy({ left: direction * track.clientWidth * 0.8, behavior: reduceMotion ? 'auto' : 'smooth' });
+  };
+
   return (
     <div
       className="pop-page px-4 md:px-5 py-4 md:py-5 flex flex-col min-h-[calc(100vh-3.5rem)] md:min-h-screen pb-10"
@@ -161,10 +192,11 @@ export default function DashboardGrid({
         </div>
 
         {/* ---------- filters ---------- */}
+        <div className="flex items-end justify-between gap-6 mt-9 mb-7">
         <div
           role="group"
           aria-label="Filter tools by category"
-          className="flex flex-wrap gap-2.5 mt-9 mb-7"
+          className="flex flex-wrap gap-2.5 flex-1 min-w-0"
         >
           {CATEGORIES.map((category) => (
             <button
@@ -179,8 +211,26 @@ export default function DashboardGrid({
           ))}
         </div>
 
-        {/* ---------- tool grid ---------- */}
-        <div className="pop-grid" role="list">
+          {isOverflowing && (
+            <div className="hidden md:flex gap-2.5 shrink-0">
+              <button type="button" className="pop-arrow" onClick={() => slide(-1)} disabled={scrollEdges.atStart} aria-label="Scroll tools left">
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button type="button" className="pop-arrow" onClick={() => slide(1)} disabled={scrollEdges.atEnd} aria-label="Scroll tools right">
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ---------- tool slider ---------- */}
+        <div
+          ref={trackRef}
+          className="pop-track"
+          role="region"
+          aria-label="Tools"
+          style={{ '--cols': columnCount } as React.CSSProperties}
+        >
           {visibleTools.map((tool, index) => {
             const Icon = tool.icon;
             const isPinned = favorites.includes(tool.id);

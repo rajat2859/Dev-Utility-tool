@@ -66,8 +66,35 @@
   color: var(--ink);
   font-family: var(--font-body);
 }
-.pop-container { max-width: 1060px; margin-inline: auto; padding-inline: 28px; }
-.pop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); gap: 18px; }
+.pop-container { max-width: 1160px; margin-inline: auto; padding-inline: 28px; }
+/* Card slider: fixed-width columns (count set inline), centered while they fit,
+   scrolling left-right once they don't. Padding keeps hard shadows + hover lift unclipped. */
+.pop-track {
+  --gap: 18px;
+  /* a quarter of the track, so 4 columns fit whenever cards can stay >= 200px */
+  --card-w: clamp(200px, calc((100% - 3 * var(--gap)) / 4), 260px);
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--card-w));
+  gap: var(--gap);
+  justify-content: safe center;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 6px;
+  padding: 6px 12px 16px 6px;
+  margin: -6px -12px 0 -6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink) transparent;
+}
+.pop-track > * { scroll-snap-align: start; }
+.pop-arrow {
+  display: inline-grid; place-items: center; width: 40px; height: 40px;
+  border: var(--bw) solid var(--ink); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink); box-shadow: var(--sh-2); cursor: pointer;
+  transition: transform var(--t-fast) var(--smooth), box-shadow var(--t-fast) var(--smooth);
+}
+.pop-arrow:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: var(--sh-3); }
+.pop-arrow:disabled { opacity: .35; cursor: default; box-shadow: none; }
 
 .pop-page ::selection { background: var(--highlight); color: var(--ink); }
 .pop-page :focus-visible,
@@ -165,7 +192,7 @@
 
 /* ---------- sticker ---------- */
 .pop-sticker {
-  display: inline-block; padding: 8px 14px;
+  padding: 8px 14px;
   transform: rotate(6deg);
   border: var(--bw) solid var(--ink); border-radius: 10px;
   background: var(--highlight); color: var(--ink);
