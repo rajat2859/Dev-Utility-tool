@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  FileImage, Paintbrush, Key, Heart, ArrowUpRight,
+  FileImage, Paintbrush, Key, Heart,
   ShieldCheck, FileCode, MonitorSmartphone, Braces, Search, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { prefetchTool } from '../App';
@@ -284,13 +284,6 @@ export default function DashboardGrid({
                 <p className="mt-1 text-[12.5px] leading-[1.55]" style={{ color: 'var(--ink-muted)' }}>
                   {tool.description}
                 </p>
-
-                <span
-                  className="mt-3 inline-flex items-center gap-1.5 self-end text-ink-faint transition-transform duration-200 group-hover:translate-x-1"
-                  aria-hidden="true"
-                >
-                  <ArrowUpRight className="h-4 w-4" />
-                </span>
               </div>
             );
           })}
