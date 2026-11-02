@@ -203,7 +203,7 @@ function createMainWindow() {
   });
 
   const splashIsVisible = new Promise((resolve) => mainWindow.once('ready-to-show', resolve));
-  mainWindow.loadFile(path.join(__dirname, 'splash.html'), { query: { version: app.getVersion() } });
+  mainWindow.loadFile(path.join(__dirname, 'splash.html'));
   return splashIsVisible.then(() => mainWindow.show());
 }
 
