@@ -339,26 +339,68 @@
   color: var(--color-ink-faint) !important;
 }
 
-/* Retarget accent-family backgrounds (blue/violet/rose/amber/emerald) to POP surface */
-.pop-skin [class*="bg-blue-"], .pop-skin [class*="bg-indigo-"],
-.pop-skin [class*="bg-violet-"], .pop-skin [class*="bg-purple-"],
-.pop-skin [class*="bg-rose-"], .pop-skin [class*="bg-pink-"],
-.pop-skin [class*="bg-amber-"], .pop-skin [class*="bg-orange-"],
-.pop-skin [class*="bg-emerald-"], .pop-skin [class*="bg-teal-"],
-.pop-skin [class*="bg-cyan-"], .pop-skin [class*="bg-sky-"],
-.pop-skin [class*="bg-green-"] {
+/* Retarget accent-family backgrounds (blue/violet/rose/amber/emerald) to POP surface.
+   <mark> is exempt: diff highlights carry meaning in their color */
+.pop-skin :is(
+  [class*="bg-blue-"], [class*="bg-indigo-"], [class*="bg-violet-"], [class*="bg-purple-"],
+  [class*="bg-rose-"], [class*="bg-pink-"], [class*="bg-amber-"], [class*="bg-orange-"],
+  [class*="bg-emerald-"], [class*="bg-teal-"], [class*="bg-cyan-"], [class*="bg-sky-"],
+  [class*="bg-green-"]
+):not(mark) {
   background-color: var(--color-surface) !important;
 }
 
-/* Retarget text accent colors to ink */
-.pop-skin [class*="text-blue-"], .pop-skin [class*="text-indigo-"],
-.pop-skin [class*="text-violet-"], .pop-skin [class*="text-purple-"],
-.pop-skin [class*="text-rose-"], .pop-skin [class*="text-pink-"],
-.pop-skin [class*="text-amber-"], .pop-skin [class*="text-orange-"],
-.pop-skin [class*="text-emerald-"], .pop-skin [class*="text-teal-"],
-.pop-skin [class*="text-cyan-"], .pop-skin [class*="text-sky-"],
-.pop-skin [class*="text-green-"] {
+/* Solid accent fills with white text (primary buttons, badges, icon tiles) become ink,
+   otherwise the surface retarget above leaves white text on white */
+.pop-skin :is(
+  [class*="bg-blue-"], [class*="bg-indigo-"], [class*="bg-violet-"], [class*="bg-purple-"],
+  [class*="bg-rose-"], [class*="bg-pink-"], [class*="bg-amber-"], [class*="bg-orange-"],
+  [class*="bg-emerald-"], [class*="bg-teal-"], [class*="bg-cyan-"], [class*="bg-sky-"],
+  [class*="bg-green-"]
+).text-white {
+  background-color: var(--color-ink) !important;
+  /* Keep Tailwind's own text color: the slate ramp below matches variants like disabled:text-slate-400 at all times */
+  color: revert-layer !important;
+}
+/* Tinted icons inside those fills (e.g. text-blue-200) would be retargeted to ink below */
+.pop-skin :is(
+  [class*="bg-blue-"], [class*="bg-indigo-"], [class*="bg-violet-"], [class*="bg-purple-"],
+  [class*="bg-rose-"], [class*="bg-pink-"], [class*="bg-amber-"], [class*="bg-orange-"],
+  [class*="bg-emerald-"], [class*="bg-teal-"], [class*="bg-cyan-"], [class*="bg-sky-"],
+  [class*="bg-green-"]
+).text-white [class*="text-"] {
+  color: inherit !important;
+}
+
+/* Retarget text accent colors to ink (marks exempt, see above) */
+.pop-skin :is(
+  [class*="text-blue-"], [class*="text-indigo-"], [class*="text-violet-"], [class*="text-purple-"],
+  [class*="text-rose-"], [class*="text-pink-"], [class*="text-amber-"], [class*="text-orange-"],
+  [class*="text-emerald-"], [class*="text-teal-"], [class*="text-cyan-"], [class*="text-sky-"],
+  [class*="text-green-"]
+):not(mark) {
   color: var(--color-ink) !important;
+}
+
+/* Inside dark panels (code blocks, editor headers) text colors were picked for a dark background:
+   leave them as Tailwind set them instead of retargeting to the ink ramp */
+.pop-skin :is(
+  [class*="bg-slate-800"], [class*="bg-slate-900"], [class*="bg-slate-950"],
+  [class*="bg-gray-900"], [class*="bg-gray-950"], [class*="bg-zinc-900"], [class*="bg-zinc-950"]
+) [class*="text-"] {
+  color: revert-layer !important;
+}
+/* Same for the translucent accent tints those panels use (e.g. bg-emerald-500/20 status pills) */
+.pop-skin :is(
+  [class*="bg-slate-800"], [class*="bg-slate-900"], [class*="bg-slate-950"],
+  [class*="bg-gray-900"], [class*="bg-gray-950"], [class*="bg-zinc-900"], [class*="bg-zinc-950"]
+) :is(
+  [class*="bg-blue-"], [class*="bg-indigo-"], [class*="bg-violet-"], [class*="bg-purple-"],
+  [class*="bg-rose-"], [class*="bg-pink-"], [class*="bg-amber-"], [class*="bg-orange-"],
+  [class*="bg-emerald-"], [class*="bg-teal-"], [class*="bg-cyan-"], [class*="bg-sky-"],
+  [class*="bg-green-"]
+):not(.text-white) {
+  background-color: revert-layer !important;
 }
 
 /* Retarget border accent colors to ink */

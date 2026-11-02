@@ -184,16 +184,16 @@ function renderDiff(diff?: DiffWord[]) {
       {diff.map((token, i) => {
         if (token.added) {
           return (
-            <span key={i} className="bg-emerald-800/80 text-emerald-200 font-semibold px-1 py-0.5 rounded border border-emerald-600/50">
+            <mark key={i} className="bg-emerald-800/80 text-emerald-200 font-semibold px-1 py-0.5 rounded border border-emerald-600/50">
               +{token.value}
-            </span>
+            </mark>
           );
         }
         if (token.removed) {
           return (
-            <span key={i} className="bg-rose-900/80 text-rose-200 line-through px-1 py-0.5 rounded border border-rose-600/50 opacity-80">
+            <mark key={i} className="bg-rose-900/80 text-rose-200 line-through px-1 py-0.5 rounded border border-rose-600/50 opacity-80">
               -{token.value}
-            </span>
+            </mark>
           );
         }
         return <span key={i} className="text-slate-300">{token.value}</span>;
@@ -1034,7 +1034,7 @@ export default function ContentChecker() {
                 <ul className="space-y-1.5">
                   {report.recommendations.map((rec, idx) => (
                     <li key={idx} className="text-xs text-amber-900 flex items-start gap-2">
-                      <span className="mt-1.5 h-1 w-1 rounded-full bg-amber-500 shrink-0" />
+                      <span className="mt-1.5 h-1 w-1 rounded-full bg-acc-amber shrink-0" />
                       <span>{rec}</span>
                     </li>
                   ))}

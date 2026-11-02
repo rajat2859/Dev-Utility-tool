@@ -341,9 +341,9 @@ function DeviceShell({
 
         {metrics.screenOnly && (
           <div className="flex items-center gap-1.5 rounded-t-xl border border-b-0 border-slate-300 bg-gradient-to-b from-slate-100 to-slate-200 px-3" style={{ height: metrics.barHeight }}>
-            <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
-            <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+            <span className="h-2.5 w-2.5 rounded-full bg-acc-rose" />
+            <span className="h-2.5 w-2.5 rounded-full bg-acc-amber" />
+            <span className="h-2.5 w-2.5 rounded-full bg-acc-green" />
             <span className="ml-2 min-w-0 flex-1 truncate rounded-md bg-white px-2 py-0.5 text-[10px] font-medium text-slate-500 shadow-inner">{url}</span>
           </div>
         )}
@@ -390,7 +390,7 @@ function DeviceShell({
 
           {report.status === 'pending' && (
             <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[3px] overflow-hidden bg-violet-100">
-              <div className="h-full w-full animate-pulse bg-violet-500" />
+              <div className="h-full w-full animate-pulse bg-acc-purple" />
             </div>
           )}
           {report.status === 'ready' && (report.overflow || report.clipped) && (

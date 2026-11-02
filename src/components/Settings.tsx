@@ -53,7 +53,7 @@ export default function Settings() {
 
   return (
     <div className="max-w-2xl space-y-4 text-slate-900">
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
         <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shadow-2xs">
           <SettingsIcon className="h-4 w-4" />
         </div>

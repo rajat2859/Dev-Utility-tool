@@ -27,7 +27,7 @@ const rowColor = (i: number) => ROW_COLORS[i % ROW_COLORS.length];
 
 function RowNumber({ i }: { i: number }) {
   return (
-    <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-[11px] font-bold font-mono ${rowColor(i).badge}`}>
+    <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-md px-1.5 text-[11px] font-bold font-mono ${rowColor(i).badge}`}>
       {i + 1}
     </span>
   );
