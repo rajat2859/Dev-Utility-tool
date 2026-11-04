@@ -1,9 +1,22 @@
-import React, { useState } from 'react';
-import { ShieldCheck, RefreshCw, CheckCircle2, XCircle, AlertTriangle, Trash2, Plus } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ShieldCheck, RefreshCw, CheckCircle2, XCircle, AlertTriangle, Trash2, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ContentAuditReport } from '../../../server/content-auditor/types/normalized';
 import { AuditReportView, runDocAudit } from './GoogleDocAuditView';
+import { pairDocAndPageLinks } from '../../lib/utils';
 
-const INITIAL_ROWS = 10;
+// Excel and Google Sheets put an HTML table on the clipboard; hyperlinked cells only
+// keep their real URL there (the plain text has just the display text)
+function cellsFromHtml(html: string): string[][] {
+  const table = new DOMParser().parseFromString(html, 'text/html');
+  return [...table.querySelectorAll('tr')].map((tr) =>
+    [...tr.querySelectorAll('td, th')].map((cell) => {
+      const href = [...cell.querySelectorAll('a[href]')].map((a) => a.getAttribute('href') ?? '').find((h) => /^https?:/i.test(h));
+      return href ?? cell.textContent ?? '';
+    })
+  );
+}
+
+const INITIAL_ROWS = 1;
 const CONCURRENCY = 3;
 
 interface Row {
@@ -33,6 +46,39 @@ function RowNumber({ i }: { i: number }) {
   );
 }
 
+type Outcome = 'pass' | 'warn' | 'fail' | 'error';
+
+function outcomeOf(row: Row): Outcome | null {
+  if (row.state === 'error') return 'error';
+  if (row.state !== 'done' || !row.report) return null;
+  const status = row.report.summary.status;
+  return status === 'PASS' ? 'pass' : status === 'PASS_WITH_WARNINGS' ? 'warn' : 'fail';
+}
+
+// POP accent tokens: the theme leaves bg-acc-* alone, so the colors survive
+const OUTCOME_BADGE: Record<Outcome, { cls: string; icon: React.ReactNode; label: string }> = {
+  pass: { cls: 'bg-acc-green text-ink', icon: <CheckCircle2 className="h-3.5 w-3.5" />, label: 'Pass' },
+  warn: { cls: 'bg-acc-amber text-ink', icon: <AlertTriangle className="h-3.5 w-3.5" />, label: 'Warnings' },
+  fail: { cls: 'bg-acc-rose text-ink', icon: <XCircle className="h-3.5 w-3.5" />, label: 'Fail' },
+  error: { cls: 'bg-acc-rose text-ink', icon: <XCircle className="h-3.5 w-3.5" />, label: 'Error' },
+};
+
+// One-line "what went wrong" for the results column, e.g. "2 mismatch · 1 missing · meta"
+function issueSummary(report: ContentAuditReport): string {
+  const s = report.summary;
+  const parts: string[] = [];
+  if (s.contentMismatch) parts.push(`${s.contentMismatch} mismatch`);
+  if (s.missing) parts.push(`${s.missing} missing`);
+  if (s.wrongTag) parts.push(`${s.wrongTag} wrong tag`);
+  if (s.wrongOrder) parts.push(`${s.wrongOrder} wrong order`);
+  if (report.urlCheck?.status === 'MISMATCH') parts.push('URL');
+  if (report.metaChecks?.some((m) => m.status === 'MISMATCH' || m.status === 'MISSING_ON_PAGE')) parts.push('meta');
+  if (report.altTexts?.some((a) => a.status === 'MISSING')) parts.push('alt text');
+  if (report.schemas?.some((x) => x.status === 'MISSING')) parts.push('schema');
+  if (report.faqSchema?.errors.length) parts.push('FAQ schema');
+  return parts.join(' · ');
+}
+
 const inputClass =
   'w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500';
 
@@ -44,19 +90,45 @@ export default function BulkDocAuditView() {
   const updateRow = (i: number, patch: Partial<Row>) =>
     setRows((prev) => prev.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
+  const [pasteNote, setPasteNote] = useState<string | null>(null);
+
   const handlePaste = (i: number, e: React.ClipboardEvent<HTMLInputElement>) => {
     const text = e.clipboardData.getData('text');
-    if (!text.includes('\t') && !text.includes('\n')) return;
+    const html = e.clipboardData.getData('text/html');
+    const fromSheet = /<tr[\s>]/i.test(html);
+    // A single plain value is ordinary typing-style paste into this cell
+    if (!fromSheet && !text.includes('\t') && !text.includes('\n')) return;
+
+    const { pairs, skipped } = pairDocAndPageLinks(fromSheet ? cellsFromHtml(html) : text.split(/\r?\n/).map((l) => l.split('\t')));
+    if (!pairs.length) return;
     e.preventDefault();
-    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+
     setRows((prev) => {
       const next = [...prev];
-      lines.forEach((line, k) => {
-        const [doc = '', url = ''] = line.split('\t').map((c) => c.trim());
-        next[i + k] = { ...emptyRow(), doc, url };
+      pairs.forEach(({ doc, url }, k) => {
+        const current = next[i + k] ?? emptyRow();
+        // A row with only one link keeps whatever the other column already had
+        next[i + k] = { ...emptyRow(), doc: doc || current.doc, url: url || current.url };
       });
       return next;
     });
+    setSelected(null);
+    const n = pairs.length;
+    const plural = n === 1 ? '' : 's';
+    const incomplete = pairs.filter((p) => !p.doc || !p.url).length;
+    const what = pairs.every((p) => !p.url)
+      ? `Pasted ${n} doc link${plural}`
+      : pairs.every((p) => !p.doc)
+      ? `Pasted ${n} page URL${plural}`
+      : `Pasted ${n} row${plural}`;
+    setPasteNote(
+      [
+        what,
+        skipped && `skipped ${skipped} line${skipped === 1 ? '' : 's'} with no link (like a header row)`,
+        // Only worth flagging when the paste was meant to carry both columns
+        incomplete && incomplete < n && `${incomplete} row${incomplete === 1 ? '' : 's'} had only one link`,
+      ].filter(Boolean).join(' · ') + '.'
+    );
   };
 
   const handleRun = async () => {
@@ -84,18 +156,42 @@ export default function BulkDocAuditView() {
   const filledCount = rows.filter((r) => r.doc.trim() && r.url.trim()).length;
   const selectedReport = selected !== null ? rows[selected].report : undefined;
 
+  const outcomes = rows.map(outcomeOf);
+  const finished = outcomes.flatMap((o, i) => (o ? [i] : []));
+  const counts = { pass: 0, warn: 0, fail: 0, error: 0 };
+  outcomes.forEach((o) => o && counts[o]++);
+  const firstIssue = finished.find((i) => outcomes[i] !== 'pass');
+  const pos = selected !== null ? finished.indexOf(selected) : -1;
+
+  const detailsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (selected !== null) detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [selected]);
+
   return (
     <div className="space-y-6">
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
         <div className="flex items-start justify-between gap-3">
-          <p className="text-[11px] text-slate-500">
-            One doc/page pair per row. Docs must be shared as <strong className="text-slate-700">Anyone with the link &rarr; Viewer</strong>.
-            You can paste two columns straight from a spreadsheet into any cell.
-          </p>
+          <div className="space-y-1.5">
+            <p className="text-[11px] text-slate-500">
+              One doc/page pair per row. Docs must be shared as <strong className="text-slate-700">Anyone with the link &rarr; Viewer</strong>.
+            </p>
+            <p className="text-[11px] text-slate-500">
+              <strong className="text-slate-700">Paste a list:</strong> paste several doc links (or page URLs) into a cell and each one gets its own row.
+              You can also paste whole rows from Excel or Google Sheets: columns can be in any order, extra columns and header rows are ignored, and hyperlinked cells use their link.
+            </p>
+            {pasteNote && (
+              <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {pasteNote}
+              </p>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => {
               setRows(Array.from({ length: INITIAL_ROWS }, emptyRow));
+              setPasteNote(null);
               setSelected(null);
             }}
             disabled={isRunning}
@@ -113,7 +209,7 @@ export default function BulkDocAuditView() {
                 <th className="pb-2 pr-2 w-6">#</th>
                 <th className="pb-2 pr-2">Google Doc URL</th>
                 <th className="pb-2 pr-2">Website URL</th>
-                <th className="pb-2 pr-2 w-44">Result</th>
+                <th className="pb-2 pr-2 w-72">Result</th>
                 <th className="pb-2 w-6" />
               </tr>
             </thead>
@@ -149,10 +245,12 @@ export default function BulkDocAuditView() {
                   <td className="py-1">
                     <button
                       type="button"
-                      title="Clear row"
+                      title={rows.length > 1 ? 'Remove row' : 'Clear row'}
                       onClick={() => {
-                        updateRow(i, emptyRow());
+                        // Rows grow with what you paste, so the bin removes the row; the last one is just cleared
+                        setRows((prev) => (prev.length > 1 ? prev.filter((_, j) => j !== i) : [emptyRow()]));
                         if (selected === i) setSelected(null);
+                        else if (selected !== null && selected > i) setSelected(selected - 1);
                       }}
                       disabled={isRunning}
                       className="p-1 rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40 cursor-pointer"
@@ -165,6 +263,28 @@ export default function BulkDocAuditView() {
             </tbody>
           </table>
         </div>
+
+        {finished.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 text-xs">
+            <span className="font-semibold text-slate-600">{finished.length} checked:</span>
+            {(Object.keys(counts) as Outcome[]).filter((o) => counts[o]).map((o) => (
+              <span key={o} className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border border-ink ${OUTCOME_BADGE[o].cls}`}>
+                {OUTCOME_BADGE[o].icon}
+                {counts[o]} {OUTCOME_BADGE[o].label}
+              </span>
+            ))}
+            {firstIssue !== undefined && (
+              <button
+                type="button"
+                onClick={() => setSelected(firstIssue)}
+                className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer"
+              >
+                Review issues
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center justify-between pt-2 border-t border-slate-100">
           <button
@@ -189,10 +309,10 @@ export default function BulkDocAuditView() {
       </div>
 
       {selected !== null && (rows[selected].state === 'error' || selectedReport) && (
-        <div className={`space-y-4 border-l-4 pl-4 ${rowColor(selected).border}`}>
+        <div ref={detailsRef} className={`space-y-4 border-l-4 pl-4 scroll-mt-4 ${rowColor(selected).border}`}>
           <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex items-start gap-3 text-xs">
             <RowNumber i={selected} />
-            <div className="min-w-0 space-y-0.5">
+            <div className="min-w-0 flex-1 space-y-0.5">
               <h4 className="text-sm font-bold text-slate-900">Row {selected + 1} results</h4>
               <p className="text-slate-500 break-all">
                 <span className="font-semibold text-slate-600">Doc:</span>{' '}
@@ -202,6 +322,27 @@ export default function BulkDocAuditView() {
                 <span className="font-semibold text-slate-600">Page:</span>{' '}
                 <a href={rows[selected].url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{rows[selected].url}</a>
               </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-500">{pos + 1} / {finished.length}</span>
+              <button
+                type="button"
+                title="Previous result"
+                onClick={() => setSelected(finished[pos - 1])}
+                disabled={pos <= 0}
+                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                title="Next result"
+                onClick={() => setSelected(finished[pos + 1])}
+                disabled={pos < 0 || pos >= finished.length - 1}
+                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
           {rows[selected].state === 'error' && (
@@ -227,30 +368,26 @@ function RowResult({ row, onView, isSelected }: { row: Row; onView: () => void; 
     );
   }
 
-  const status = row.report?.summary.status;
-  const badge =
-    row.state === 'error'
-      ? { cls: 'bg-rose-100 text-rose-800 border-rose-200', icon: <XCircle className="h-3.5 w-3.5" />, label: 'Error' }
-      : status === 'PASS'
-      ? { cls: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: <CheckCircle2 className="h-3.5 w-3.5" />, label: 'Pass' }
-      : status === 'PASS_WITH_WARNINGS'
-      ? { cls: 'bg-amber-100 text-amber-800 border-amber-200', icon: <AlertTriangle className="h-3.5 w-3.5" />, label: 'Warnings' }
-      : { cls: 'bg-rose-100 text-rose-800 border-rose-200', icon: <XCircle className="h-3.5 w-3.5" />, label: 'Fail' };
+  const badge = OUTCOME_BADGE[outcomeOf(row) ?? 'error'];
+  const issues = row.state === 'error' ? row.error : row.report && issueSummary(row.report);
 
   return (
     <button
       type="button"
       onClick={onView}
       title={isSelected ? 'Hide details' : 'Show details'}
-      className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border cursor-pointer hover:opacity-80 ${badge.cls}`}
+      className="flex w-full min-w-0 items-center gap-2 text-left cursor-pointer group"
     >
-      {badge.icon}
-      {badge.label}
-      {row.report && (
-        <span className="font-semibold normal-case opacity-80">
-          {row.report.summary.passed}/{row.report.summary.total}
-        </span>
-      )}
+      <span className={`inline-flex shrink-0 items-center gap-1.5 px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border border-ink group-hover:opacity-80 ${badge.cls}`}>
+        {badge.icon}
+        {badge.label}
+        {row.report && (
+          <span className="font-semibold normal-case opacity-80">
+            {row.report.summary.passed}/{row.report.summary.total}
+          </span>
+        )}
+      </span>
+      {issues && <span className="truncate text-[11px] text-slate-600 group-hover:underline" title={issues}>{issues}</span>}
     </button>
   );
 }

@@ -11,6 +11,33 @@ export function normalizeUrl(rawUrl: string): string {
   return 'https://' + trimmed;
 }
 
+const GOOGLE_DOC_LINK = /docs\.google\.com\/document\//i;
+const BARE_URL = /^(?:https?:\/\/)?(?:[\w-]+\.)+[a-z]{2,}(?:[/?#]\S*)?$/i;
+
+function linkInCell(cell: string): string {
+  const text = cell.trim();
+  return text.match(/https?:\/\/[^\s"'<>]+/i)?.[0] ?? (BARE_URL.test(text) ? text : '');
+}
+
+/**
+ * Pairs pasted spreadsheet rows into doc/page links. Columns can be in any order and
+ * extra columns are ignored: the Google Doc link is the doc, the first other link is
+ * the page. Rows with no link at all (headers, notes) are counted as skipped.
+ */
+export function pairDocAndPageLinks(rows: string[][]): { pairs: { doc: string; url: string }[]; skipped: number } {
+  const pairs: { doc: string; url: string }[] = [];
+  let skipped = 0;
+  for (const cells of rows) {
+    if (!cells.some((c) => c.trim())) continue;
+    const links = cells.map(linkInCell).filter(Boolean);
+    const doc = links.find((l) => GOOGLE_DOC_LINK.test(l)) ?? '';
+    const url = links.find((l) => !GOOGLE_DOC_LINK.test(l)) ?? '';
+    if (doc || url) pairs.push({ doc, url });
+    else skipped++;
+  }
+  return { pairs, skipped };
+}
+
 export function copyText(text: string): Promise<boolean> {
   if (!text) return Promise.resolve(false);
   try {
