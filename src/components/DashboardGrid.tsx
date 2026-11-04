@@ -177,10 +177,10 @@ export default function DashboardGrid({
         {/* ---------- headline ---------- */}
         <div className="flex items-start justify-between gap-6">
           <div className="relative min-w-0">
-            <p className="pop-kicker" style={{ color: 'var(--ink-soft)' }}>
+            <p className="pop-kicker" style={{ color: 'var(--on-page-soft)' }}>
               Small utilities · Faster workflows
             </p>
-            <h2 className="pop-display mt-2">
+            <h2 className="pop-display mt-2" style={{ color: 'var(--on-page)' }}>
               Utility <span className="pop-outline">Studio</span>
             </h2>
             <span

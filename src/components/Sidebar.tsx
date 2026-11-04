@@ -71,7 +71,7 @@ export default function Sidebar({
       >
         <Wrench className="h-4 w-4" strokeWidth={2} />
       </div>
-      <span className="hidden md:hidden lg:inline font-display font-bold uppercase tracking-[.08em] text-[12px] text-ink leading-tight">
+      <span className="hidden md:hidden lg:inline font-display font-bold uppercase tracking-[.08em] text-[12px] text-on-page leading-tight">
         Utility
         <br />
         Studio
@@ -82,10 +82,10 @@ export default function Sidebar({
   return (
     <>
       {/* Mobile top bar */}
-      <div className="pop-chrome md:hidden fixed top-0 left-0 right-0 h-14 bg-paper border-b-[2.5px] border-ink px-4 flex items-center justify-between z-30">
+      <div className="pop-chrome md:hidden fixed top-0 left-0 right-0 h-14 bg-page border-b-[2.5px] border-ink px-4 flex items-center justify-between z-30">
         <div className="flex items-center gap-2.5">
           {Brand}
-          <span className="font-display font-bold uppercase tracking-[.08em] text-[13px] text-ink">Utility Studio</span>
+          <span className="font-display font-bold uppercase tracking-[.08em] text-[13px] text-on-page">Utility Studio</span>
         </div>
         <button
           onClick={onToggleDrawer}
@@ -120,7 +120,7 @@ export default function Sidebar({
         inert={!isNavigationReachable}
         aria-hidden={!isNavigationReachable}
         aria-label="Tools navigation"
-        className={`pop-chrome fixed inset-y-0 left-0 w-64 md:w-[68px] lg:w-56 bg-paper border-r-[2.5px] border-ink flex flex-col z-50 transition-transform duration-200 ease-out motion-reduce:transition-none ${
+        className={`pop-chrome fixed inset-y-0 left-0 w-64 md:w-[68px] lg:w-56 bg-page border-r-[2.5px] border-ink flex flex-col z-50 transition-transform duration-200 ease-out motion-reduce:transition-none ${
           isDrawerOpen ? 'translate-x-0' : '-translate-x-full'
         } ${isToolView ? '' : 'md:translate-x-0'}`}
       >

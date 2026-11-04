@@ -158,7 +158,7 @@ export default function App() {
   }, [activeView, isDrawerOpen]);
 
   return (
-    <div className="min-h-screen bg-paper text-ink font-body antialiased flex selection:bg-highlight selection:text-ink">
+    <div className="min-h-screen bg-page text-ink font-body antialiased flex selection:bg-highlight selection:text-ink">
       <Sidebar
         currentView={activeView}
         isToolView={activeView !== 'dashboard'}

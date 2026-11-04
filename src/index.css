@@ -62,7 +62,10 @@
   --radius-sm: calc(var(--radius) - 4px);
 
   /* POP design system (design.md, Appendix B) */
-  --color-paper: #FBEEE0;
+  --color-paper: #E8E8E8;
+  --color-page: #2E2E2E;
+  --color-on-page: #F2F2F2;
+  --color-on-page-soft: #B5B5B5;
   --color-surface: #FFFFFF;
   --color-ink: #141414;
   --color-ink-soft: #4A4237;
@@ -114,7 +117,7 @@
 }
 
 body {
-  background-color: var(--color-paper);
+  background-color: var(--color-page);
   color: var(--color-ink);
   font-family: var(--font-sans);
   font-feature-settings: "cv02" 1, "cv03" 1, "cv04" 1;
@@ -132,11 +135,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-ink);
+  background: #8A8A8A;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-ink-soft);
+  background: var(--color-on-page-soft);
 }
 
 @keyframes view-enter {

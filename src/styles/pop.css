@@ -6,14 +6,18 @@
 
 :root {
   /* surfaces & ink */
-  --paper: #FBEEE0;
+  --paper: #E8E8E8;
   --surface: #FFFFFF;
   --ink: #141414;
   --ink-soft: #4A4237;
   --ink-muted: #5C554A;
   --ink-faint: #A89F8D;
   --highlight: #FFD23F;
-  --dot: rgba(20, 20, 20, .08);
+  /* page background is dark; --paper stays light for text and chips on ink */
+  --page: #2E2E2E;
+  --on-page: #F2F2F2;
+  --on-page-soft: #B5B5B5;
+  --dot: rgba(255, 255, 255, .07);
 
   /* accent ramp (glyph color rules live in the components, §2 table) */
   --blue: #3B82F6;
@@ -55,12 +59,12 @@
 
 /* ---------- page ---------- */
 .pop-chrome {
-  background: var(--paper);
+  background: var(--page);
   color: var(--ink);
   font-family: var(--font-body);
 }
 .pop-page {
-  background: var(--paper);
+  background: var(--page);
   background-image: radial-gradient(var(--dot) 1.2px, transparent 1.2px);
   background-size: 22px 22px;
   color: var(--ink);
@@ -84,7 +88,7 @@
   padding: 6px 12px 16px 6px;
   margin: -6px -12px 0 -6px;
   scrollbar-width: thin;
-  scrollbar-color: var(--ink) transparent;
+  scrollbar-color: #8A8A8A transparent;
 }
 .pop-track > * { scroll-snap-align: start; }
 .pop-arrow {
@@ -99,7 +103,8 @@
 .pop-page ::selection { background: var(--highlight); color: var(--ink); }
 .pop-page :focus-visible,
 .pop-chrome :focus-visible {
-  outline: 3px solid var(--ink);
+  /* highlight reads on both the dark page and white cards */
+  outline: 3px solid var(--highlight);
   outline-offset: 3px;
 }
 
@@ -109,7 +114,7 @@
   letter-spacing: -.03em;
   text-transform: uppercase;
 }
-.pop-outline { color: transparent; -webkit-text-stroke: 2.5px var(--ink); }
+.pop-outline { color: transparent; -webkit-text-stroke: 2.5px var(--on-page); }
 .pop-kicker { font: 700 11px var(--font-display); letter-spacing: .14em; text-transform: uppercase; }
 .pop-num { font: 700 11px var(--font-display); color: var(--ink-faint); }
 
@@ -141,7 +146,7 @@
 }
 .pop-pill:hover { transform: translate(-2px, -2px); box-shadow: var(--sh-4); }
 .pop-pill:active { transform: translate(2px, 2px); box-shadow: var(--sh-press); }
-.pop-pill[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.pop-pill[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--on-page); }
 .pop-pill sup { font-size: 10px; opacity: .55; margin-left: 3px; }
 
 /* ---------- card ---------- */
@@ -222,7 +227,7 @@
 }
 .pop-navbtn:hover { transform: translate(-2px, -2px); box-shadow: var(--sh-3); }
 .pop-navbtn:active { transform: translate(1px, 1px); box-shadow: var(--sh-press); }
-.pop-navbtn[aria-current="page"] { background: var(--ink); color: var(--paper); }
+.pop-navbtn[aria-current="page"] { background: var(--ink); color: var(--paper); border-color: var(--on-page); }
 
 /* ---------- icon button (theme toggle, menu) ---------- */
 .pop-iconbtn {
@@ -259,7 +264,7 @@
    written with onto POP tokens. Same attribute-selector convention that
    theme-dark.css used, so existing tool code needs no edits. */
 .pop-skin {
-  background: var(--paper);
+  background: var(--page);
   background-image: radial-gradient(var(--dot) 1.2px, transparent 1.2px);
   background-size: 22px 22px;
   color: var(--ink);
@@ -280,7 +285,7 @@
 }
 .pop-skin ::selection { background: var(--highlight); color: var(--ink); }
 .pop-skin :focus-visible {
-  outline: 3px solid var(--ink);
+  outline: 3px solid var(--highlight);
   outline-offset: 3px;
 }
 

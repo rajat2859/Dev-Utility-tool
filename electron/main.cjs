@@ -149,7 +149,7 @@ function createMainWindow() {
     minHeight: 500,
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: '#FBEEE0',
+    backgroundColor: '#2E2E2E',
     title: 'Utility Tool Manager',
     webPreferences: {
       contextIsolation: true,
