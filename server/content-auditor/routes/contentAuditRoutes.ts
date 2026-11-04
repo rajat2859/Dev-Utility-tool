@@ -423,6 +423,19 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
       });
     }
 
+    // An invalid selector would otherwise throw deep in extraction as a 500
+    if (contentSelector !== undefined) {
+      try {
+        if (typeof contentSelector !== 'string') throw new Error();
+        cheerio.load('')(contentSelector);
+      } catch {
+        return res.status(400).json({
+          errorType: 'INPUT_INVALID',
+          error: `"${String(contentSelector)}" is not a valid CSS selector. Try something like main, article or .entry-content.`,
+        });
+      }
+    }
+
     // Step 1: Validate and extract document ID
     let docId: string;
     try {

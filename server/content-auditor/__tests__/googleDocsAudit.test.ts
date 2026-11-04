@@ -106,6 +106,13 @@ describe('Google Doc URL Extractor', () => {
     );
   });
 
+  test('rejects "Publish to web" links instead of reading "e" as the doc ID', () => {
+    assert.throws(
+      () => extractGoogleDocId('https://docs.google.com/document/d/e/2PACX-1vQabc123def456/pub'),
+      /Publish to web/
+    );
+  });
+
   test('rejects malformed or empty inputs', () => {
     assert.throws(() => extractGoogleDocId(''), /valid Google Doc URL/);
     assert.throws(
@@ -116,18 +123,47 @@ describe('Google Doc URL Extractor', () => {
 });
 
 describe('Google Docs Service (Public Docs + API Key)', () => {
-  test('throws descriptive error when GOOGLE_API_KEY is not set', async () => {
+  const DOC_ID = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms';
+
+  async function withFakeFetch(response: { status?: number; url?: string; body?: string }, run: () => Promise<void>) {
+    const originalFetch = globalThis.fetch;
     const originalKey = process.env.GOOGLE_API_KEY;
     delete process.env.GOOGLE_API_KEY;
-
+    globalThis.fetch = (async () => {
+      const res = new Response(response.body ?? '', { status: response.status ?? 200 });
+      Object.defineProperty(res, 'url', { value: response.url ?? `https://docs.google.com/document/d/${DOC_ID}/export?format=html` });
+      return res;
+    }) as typeof fetch;
     try {
-      await assert.rejects(
-        () => fetchPublicGoogleDoc('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'),
-        /Google API key is not configured/
-      );
+      await run();
     } finally {
+      globalThis.fetch = originalFetch;
       if (originalKey) process.env.GOOGLE_API_KEY = originalKey;
     }
+  }
+
+  test('a private doc reports the sharing problem, not a missing API key', async () => {
+    await withFakeFetch({ url: 'https://accounts.google.com/v3/signin/identifier?continue=x' }, async () => {
+      await assert.rejects(() => fetchPublicGoogleDoc(DOC_ID), (err: Error) => {
+        assert.match(err.message, /Anyone with the link/);
+        assert.doesNotMatch(err.message, /API key is not configured/);
+        return true;
+      });
+    });
+  });
+
+  test('a public doc that mentions accounts.google.com is still read', async () => {
+    const body = '<html><body><h1>Login help</h1><p>Visit accounts.google.com to sign in.</p></body></html>';
+    await withFakeFetch({ body }, async () => {
+      const doc = await fetchPublicGoogleDoc(DOC_ID);
+      assert.ok('isHtml' in doc && doc.isHtml && doc.html.includes('accounts.google.com'));
+    });
+  });
+
+  test('other export failures without an API key explain both fixes', async () => {
+    await withFakeFetch({ status: 500 }, async () => {
+      await assert.rejects(() => fetchPublicGoogleDoc(DOC_ID), /Public document fetch failed: Google Doc export returned HTTP 500/);
+    });
   });
 });
 

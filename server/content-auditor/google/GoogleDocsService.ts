@@ -48,8 +48,10 @@ export async function fetchPublicGoogleDoc(
       throw new Error(`Google Doc export returned HTTP ${res.status}.`);
     }
 
+    // A private doc redirects to the Google sign-in page; checking the doc's own HTML
+    // for "accounts.google.com" misfires on public docs that mention that address
     const html = await res.text();
-    if (html.includes('ServiceLogin') || html.includes('accounts.google.com')) {
+    if (/^https:\/\/accounts\.google\.com\//i.test(res.url) || html.includes('ServiceLogin')) {
       throw new Error(
         'This Google Doc could not be read publicly.\n\nMake sure sharing is set to:\nAnyone with the link → Viewer'
       );
@@ -58,17 +60,18 @@ export async function fetchPublicGoogleDoc(
     return { isHtml: true, html, title: '' };
   } catch (err: any) {
     const message = err.message || 'Failed to fetch Google Doc.';
-    if (!apiKey) {
-      throw new Error(
-        `Google API key is not configured. Public document fetch failed: ${message}. Please set GOOGLE_API_KEY in your environment (.env file) or ensure sharing is set to "Anyone with the link → Viewer".`
-      );
-    }
-
+    // Sharing and not-found errors are the real cause, with or without an API key
     if (
       message.includes('Anyone with the link') ||
       message.includes('Google Doc not found')
     ) {
       throw err;
+    }
+
+    if (!apiKey) {
+      throw new Error(
+        `Public document fetch failed: ${message}. Make sure sharing is set to "Anyone with the link → Viewer", or set GOOGLE_API_KEY in your environment (.env file).`
+      );
     }
 
     throw new Error(`Failed to fetch Google Doc: ${message}`);
