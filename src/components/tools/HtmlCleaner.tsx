@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useDeferredValue } from 'react';
 import {
   Code,
   FileCode,
@@ -270,6 +270,88 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
+const INERT_REMOVE_SELECTOR = 'script, noscript, style, link, meta, base, iframe, frame, frameset, object, embed, applet';
+const URL_ATTRIBUTES = new Set(['href', 'src', 'xlink:href', 'action', 'formaction', 'srcdoc']);
+
+// The visual editor renders pasted HTML inside the app itself, so anything that can run code
+// (event handlers, script URLs) or restyle the app (<style>, <link>) must never reach it.
+function toInertEditorHtml(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll(INERT_REMOVE_SELECTOR).forEach((el) => el.remove());
+  doc.body.querySelectorAll('*').forEach((el) => {
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith('on') || (URL_ATTRIBUTES.has(name) && /^\s*(javascript|vbscript):/i.test(attr.value))) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  });
+  return doc.body.innerHTML;
+}
+
+function literalSearch(text: string): RegExp {
+  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+}
+
+const REGEX_TIMEOUT_MS = 1000;
+const REGEX_WORKER_SOURCE = `onmessage = (e) => {
+  const { pattern, input, replacement } = e.data;
+  try {
+    const re = new RegExp(pattern, 'gi');
+    const count = (input.match(re) || []).length;
+    postMessage({ count, output: replacement === undefined ? undefined : input.replace(re, replacement) });
+  } catch (err) {
+    postMessage({ error: 'Invalid pattern: ' + err.message });
+  }
+};`;
+
+type RegexResult = { count: number; output?: string } | { error: string };
+
+// A user-typed pattern can backtrack for minutes; in a worker it can be killed instead of freezing the app.
+function runRegexInWorker(pattern: string, input: string, replacement?: string): Promise<RegexResult> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(new Blob([REGEX_WORKER_SOURCE], { type: 'text/javascript' }));
+    const worker = new Worker(url);
+    const finish = (result: RegexResult) => {
+      clearTimeout(timer);
+      worker.terminate();
+      URL.revokeObjectURL(url);
+      resolve(result);
+    };
+    const timer = setTimeout(() => finish({ error: 'Pattern took too long and was stopped' }), REGEX_TIMEOUT_MS);
+    worker.onmessage = (event) => finish(event.data);
+    worker.onerror = (event) => { event.preventDefault(); finish({ error: event.message || 'Invalid pattern' }); };
+    worker.postMessage({ pattern, input, replacement });
+  });
+}
+
+const PLAIN_TEXT_BLOCKS ='p, div, h1, h2, h3, h4, h5, h6, li, tr, blockquote, table, ul, ol, section, article, header, footer, figure, figcaption, hr';
+const PLAIN_TEXT_PARAGRAPHS = 'p, h1, h2, h3, h4, h5, h6, blockquote, table';
+const PARAGRAPH_BREAK = '\u0001';
+const PRE_TOKEN = '\u0002';
+
+// Text view: one line per block, a blank line after paragraphs, code blocks verbatim.
+function htmlBodyToPlainText(body: HTMLElement): string {
+  const copy = body.cloneNode(true) as HTMLElement;
+  const preBlocks: string[] = [];
+  copy.querySelectorAll('pre').forEach((pre) => {
+    preBlocks.push(pre.textContent || '');
+    pre.replaceWith('\n', `${PRE_TOKEN}${preBlocks.length - 1}${PRE_TOKEN}`, PARAGRAPH_BREAK);
+  });
+  copy.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+  copy.querySelectorAll('td, th').forEach((cell) => cell.after('\t'));
+  copy.querySelectorAll(PLAIN_TEXT_BLOCKS).forEach((block) => { block.before('\n'); block.after('\n'); });
+  copy.querySelectorAll(PLAIN_TEXT_PARAGRAPHS).forEach((block) => block.after(PARAGRAPH_BREAK));
+  return (copy.textContent || '')
+    .split('\n')
+    .map((line) => line.replace(/[ \t ]+$/, '').replace(/[  ]+/g, ' ').replace(/ ?\t ?/g, '\t').trim())
+    .join('\n')
+    .replace(/\n{2,}/g, '\n')
+    .replace(new RegExp(`\\s*(${PARAGRAPH_BREAK}\\s*)+`, 'g'), '\n\n')
+    .replace(new RegExp(`${PRE_TOKEN}(\\d+)${PRE_TOKEN}`, 'g'), (_, index) => preBlocks[Number(index)])
+    .trim();
+}
+
 // Convert HTML to clean Markdown
 function htmlToMarkdown(html: string): string {
   if (!html.trim()) return '';
@@ -278,7 +360,9 @@ function htmlToMarkdown(html: string): string {
 
   const processNode = (node: Node): string => {
     if (node.nodeType === Node.TEXT_NODE) {
-      return node.nodeValue || '';
+      const text = node.nodeValue || '';
+      // A literal "<div>" in the copy must stay text, not become raw HTML in the Markdown.
+      return node.parentElement?.closest('pre, code') ? text : text.replace(/</g, '\\<');
     }
     if (node.nodeType !== Node.ELEMENT_NODE) return '';
 
@@ -324,17 +408,16 @@ function htmlToMarkdown(html: string): string {
       }
       case 'hr': return '\n\n---\n\n';
       case 'br': return '  \n';
-      case 'ul': {
-        const items = Array.from(el.children)
-          .filter((c) => c.tagName.toLowerCase() === 'li')
-          .map((c) => `- ${Array.from(c.childNodes).map(processNode).join('').trim()}`)
-          .join('\n');
-        return `\n\n${items}\n\n`;
-      }
+      case 'ul':
       case 'ol': {
         const items = Array.from(el.children)
           .filter((c) => c.tagName.toLowerCase() === 'li')
-          .map((c, i) => `${i + 1}. ${Array.from(c.childNodes).map(processNode).join('').trim()}`)
+          .map((c, i) => {
+            const marker = tag === 'ol' ? `${i + 1}. ` : '- ';
+            const body = Array.from(c.childNodes).map(processNode).join('').trim().replace(/\n{2,}/g, '\n');
+            // Continuation lines (nested lists, wrapped paragraphs) indent under the marker.
+            return marker + body.replace(/\n/g, `\n${' '.repeat(marker.length)}`);
+          })
           .join('\n');
         return `\n\n${items}\n\n`;
       }
@@ -361,14 +444,46 @@ function htmlToMarkdown(html: string): string {
   return processNode(doc.body).replace(/\n{3,}/g, '\n\n').trim();
 }
 
+const PRETTY_BLOCK_TAGS = new Set([
+  'div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li',
+  'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'blockquote',
+  'header', 'footer', 'nav', 'section', 'article', 'aside', 'main', 'figure', 'figcaption', 'hr'
+]);
+const PRETTY_VOID_TAGS = new Set(['img', 'br', 'hr', 'input', 'meta', 'link', 'source', 'track', 'wbr']);
+
+function startsOwnLine(node: Node): boolean {
+  if (node.nodeType === Node.COMMENT_NODE) return true;
+  if (node.nodeType !== Node.ELEMENT_NODE) return false;
+  const tag = (node as HTMLElement).tagName.toLowerCase();
+  return tag === 'pre' || PRETTY_BLOCK_TAGS.has(tag);
+}
+
+// Blocks go on their own lines; each run of inline content between them stays together on one line.
+function prettyPrintChildren(nodes: ArrayLike<Node>, indentLevel: number): string {
+  const indent = '  '.repeat(indentLevel);
+  let output = '';
+  let inlineRun = '';
+  const flushInlineRun = () => {
+    const line = inlineRun.trim();
+    if (line) output += `\n${indent}${line}`;
+    inlineRun = '';
+  };
+  for (const child of Array.from(nodes)) {
+    if (startsOwnLine(child)) {
+      flushInlineRun();
+      output += prettyPrintDom(child, indentLevel);
+    } else {
+      inlineRun += prettyPrintDom(child, indentLevel);
+    }
+  }
+  flushInlineRun();
+  return output;
+}
+
 function prettyPrintDom(node: Node, indentLevel = 0): string {
   const indent = '  '.repeat(indentLevel);
-  const blockTags = new Set([
-    'div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li',
-    'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'blockquote',
-    'header', 'footer', 'nav', 'section', 'article', 'aside', 'main', 'figure', 'figcaption', 'hr'
-  ]);
-  const voidTags = new Set(['img', 'br', 'hr', 'input', 'meta', 'link', 'source', 'track', 'wbr']);
+  const blockTags = PRETTY_BLOCK_TAGS;
+  const voidTags = PRETTY_VOID_TAGS;
 
   if (node.nodeType === Node.TEXT_NODE) {
     return escapeHtml(node.nodeValue?.replace(/\s+/g, ' ') || '');
@@ -408,11 +523,7 @@ function prettyPrintDom(node: Node, indentLevel = 0): string {
     return isBlock ? `\n${indent}<${tag}${attrs}>${inner}</${tag}>` : `<${tag}${attrs}>${inner}</${tag}>`;
   }
 
-  const childrenFormatted = Array.from(el.childNodes)
-    .map((c) => prettyPrintDom(c, indentLevel + 1))
-    .join('');
-
-  return `\n${indent}<${tag}${attrs}>${childrenFormatted}\n${indent}</${tag}>`;
+  return `\n${indent}<${tag}${attrs}>${prettyPrintChildren(el.childNodes, indentLevel + 1)}\n${indent}</${tag}>`;
 }
 
 export default function HtmlCleaner() {
@@ -423,6 +534,9 @@ export default function HtmlCleaner() {
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [findText, setFindText] = useState<string>('');
   const [replaceText, setReplaceText] = useState<string>('');
+  const [useRegex, setUseRegex] = useState<boolean>(false);
+  const [findStatus, setFindStatus] = useState<{ count: number; error?: string }>({ count: 0 });
+  const matchCount = findStatus.count;
   const [showReplaceBar, setShowReplaceBar] = useState<boolean>(false);
   const [rightCodeHtml, setRightCodeHtml] = useState<string>('');
   const [nodePath, setNodePath] = useState<NodeCrumb[]>([]);
@@ -463,12 +577,15 @@ export default function HtmlCleaner() {
 
   useEffect(() => {
     if (wysiwygRef.current && document.activeElement !== wysiwygRef.current) {
-      wysiwygRef.current.innerHTML = inputHtml;
+      wysiwygRef.current.innerHTML = toInertEditorHtml(inputHtml);
     }
   }, [inputHtml]);
 
+  // Cleaning re-parses the whole document; deferring it keeps typing responsive on large pastes.
+  const cleaningInput = useDeferredValue(inputHtml);
+
   const cleanedResult = useMemo(() => {
-    if (!inputHtml.trim()) {
+    if (!cleaningInput.trim()) {
       return {
         html: '',
         markdown: '',
@@ -477,17 +594,7 @@ export default function HtmlCleaner() {
       };
     }
 
-    let processedHtml = inputHtml;
-
-    // Apply active Find and Replace in preview
-    if (findText) {
-      try {
-        const regex = new RegExp(findText, 'gi');
-        processedHtml = processedHtml.replace(regex, replaceText);
-      } catch {
-        processedHtml = processedHtml.split(findText).join(replaceText);
-      }
-    }
+    let processedHtml = cleaningInput;
 
     // 1. String Pre-Clean: strip XML namespaces, MSO conditionals & Google Docs artifacts
     processedHtml = processedHtml
@@ -561,7 +668,8 @@ export default function HtmlCleaner() {
 
         // Text Node
         if (node.nodeType === Node.TEXT_NODE) {
-          if (node.nodeValue) {
+          // Code blocks keep their exact characters and indentation.
+          if (node.nodeValue && !node.parentElement?.closest('pre, textarea')) {
             let val = node.nodeValue;
             if (options.fixSmartQuotes) {
               val = val
@@ -711,11 +819,7 @@ export default function HtmlCleaner() {
             return false;
           }
 
-          // 8. Tag unwraps
-          if (options.removeAllTags) {
-            unwrapElement(el);
-            return false;
-          }
+          // 8. Tag unwraps ("Remove all tags" is applied after the passes, from the block-aware plain text)
 
           if (options.removeSpanTags && el.tagName.toUpperCase() === 'SPAN') {
             unwrapElement(el);
@@ -723,6 +827,15 @@ export default function HtmlCleaner() {
           }
 
           if (options.removeDivTags && el.tagName.toUpperCase() === 'DIV') {
+            // A div that holds only text is acting as a paragraph; unwrapping it would glue it to its neighbours.
+            const wrapsBlocks = Array.from(el.children).some((child) => startsOwnLine(child));
+            if (!wrapsBlocks && el.textContent?.replace(/ /g, ' ').trim()) {
+              const paragraph = doc.createElement('p');
+              while (el.firstChild) paragraph.appendChild(el.firstChild);
+              el.parentNode?.replaceChild(paragraph, el);
+              tagsRemoved++;
+              return false;
+            }
             unwrapElement(el);
             return false;
           }
@@ -783,26 +896,29 @@ export default function HtmlCleaner() {
       const rawCleaned = body.innerHTML;
 
       // Generate Plain Text and Markdown
-      const plainText = (body.textContent || '').replace(/\n\s*\n/g, '\n\n').trim();
+      const plainText = htmlBodyToPlainText(body);
       const markdownText = htmlToMarkdown(rawCleaned);
 
       // Format HTML Output
       let finalHtml = rawCleaned;
-      if (options.formatting === 'minify') {
+      if (options.removeAllTags) {
+        // Text with one line per block, escaped so it is still valid HTML content.
+        tagsRemoved += body.querySelectorAll('*').length;
+        finalHtml = plainText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      } else if (options.formatting === 'minify') {
+        // Odd split parts are <pre> blocks, whose whitespace is content.
         finalHtml = rawCleaned
-          .replace(/>\s+</g, '><')
-          .replace(/\s+/g, ' ')
+          .split(/(<pre[\s\S]*?<\/pre>)/gi)
+          .map((part, i) => (i % 2 ? part : part.replace(/>\s+</g, '><').replace(/\s+/g, ' ')))
+          .join('')
           .trim();
       } else if (options.formatting === 'pretty' && options.setNewLinesAndIndents) {
-        finalHtml = Array.from(body.childNodes)
-          .map((n) => prettyPrintDom(n, 0))
-          .join('\n')
-          .trim();
+        finalHtml = prettyPrintChildren(body.childNodes, 0).trim();
       } else {
         finalHtml = rawCleaned.trim();
       }
 
-      const inputBytes = new Blob([inputHtml]).size;
+      const inputBytes = new Blob([cleaningInput]).size;
       const outputBytes = new Blob([finalHtml]).size;
       const reductionPct = inputBytes > 0 ? Math.round(((inputBytes - outputBytes) / inputBytes) * 100) : 0;
       const wordCount = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
@@ -822,13 +938,13 @@ export default function HtmlCleaner() {
       };
     } catch {
       return {
-        html: inputHtml,
-        markdown: inputHtml,
-        text: inputHtml,
+        html: cleaningInput,
+        markdown: cleaningInput,
+        text: cleaningInput,
         stats: { inputBytes: 0, outputBytes: 0, tagsRemoved: 0, attrsRemoved: 0, reductionPct: 0, wordCount: 0 }
       };
     }
-  }, [inputHtml, options, findText, replaceText]);
+  }, [cleaningInput, options]);
 
   useEffect(() => {
     if (document.activeElement !== rightTextareaRef.current) {
@@ -842,26 +958,32 @@ export default function HtmlCleaner() {
     setInputHtml(newVal);
   };
 
-  // Find & Replace match counter
-  const matchCount = useMemo(() => {
-    if (!findText) return 0;
-    try {
-      const regex = new RegExp(findText, 'gi');
-      const matches = inputHtml.match(regex);
-      return matches ? matches.length : 0;
-    } catch {
-      return inputHtml.split(findText).length - 1;
+  // Find & Replace match counter. Plain-text search is linear and runs inline; regex runs in a worker.
+  useEffect(() => {
+    if (!findText) { setFindStatus({ count: 0 }); return; }
+    if (!useRegex) {
+      setFindStatus({ count: inputHtml.match(literalSearch(findText))?.length ?? 0 });
+      return;
     }
-  }, [inputHtml, findText]);
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      runRegexInWorker(findText, inputHtml).then((result) => {
+        if (!cancelled) setFindStatus('error' in result ? { count: 0, error: result.error } : { count: result.count });
+      });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [inputHtml, findText, useRegex]);
 
   // Apply replacement permanently to inputHtml
-  const handleApplyReplace = () => {
+  const handleApplyReplace = async () => {
     if (!findText) return;
-    try {
-      const regex = new RegExp(findText, 'gi');
-      setInputHtml((prev) => prev.replace(regex, replaceText));
-    } catch {
-      setInputHtml((prev) => prev.split(findText).join(replaceText));
+    if (useRegex) {
+      const result = await runRegexInWorker(findText, inputHtml, replaceText);
+      if ('error' in result) { setFindStatus({ count: 0, error: result.error }); return; }
+      setInputHtml(result.output ?? inputHtml);
+    } else {
+      // Function replacer: "$1" or "$&" in the replacement stay literal text.
+      setInputHtml((prev) => prev.replace(literalSearch(findText), () => replaceText));
     }
     setFindText('');
     setReplaceText('');
@@ -949,7 +1071,7 @@ export default function HtmlCleaner() {
     const text = e.clipboardData.getData('text/plain');
     if (!/<\/?[a-z][\s\S]*>/i.test(text)) return;
     e.preventDefault();
-    document.execCommand('insertHTML', false, text);
+    document.execCommand('insertHTML', false, toInertEditorHtml(text));
   };
 
   // Drag and drop handlers
@@ -1128,7 +1250,9 @@ export default function HtmlCleaner() {
               <div className="relative flex-1 min-w-[180px]">
                 <input
                   type="text"
-                  placeholder="Find (text or regex)..."
+                  placeholder={useRegex ? 'Find (regular expression)...' : 'Find text...'}
+                  aria-label="Find"
+                  aria-invalid={Boolean(findStatus.error)}
                   value={findText}
                   onChange={(e) => setFindText(e.target.value)}
                   className="w-full px-3 py-1.5 text-xs font-mono rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-16"
@@ -1140,8 +1264,19 @@ export default function HtmlCleaner() {
                 )}
               </div>
 
+              <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={useRegex}
+                  onChange={(e) => setUseRegex(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded border-slate-300 cursor-pointer"
+                />
+                Regex
+              </label>
+
               <input
                 type="text"
+                aria-label="Replace with"
                 placeholder="Replace with..."
                 value={replaceText}
                 onChange={(e) => setReplaceText(e.target.value)}
@@ -1155,6 +1290,10 @@ export default function HtmlCleaner() {
               >
                 Replace All
               </button>
+
+              {findStatus.error && (
+                <p role="alert" className="basis-full text-xs font-medium text-red-600">{findStatus.error}</p>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -1167,7 +1306,7 @@ export default function HtmlCleaner() {
           {/* Window Header */}
           <div className="bg-slate-900 text-slate-200 px-3.5 py-2.5 flex items-center justify-between gap-2 border-b border-slate-800">
             <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-blue-400" />
+              <Eye className="h-4 w-4 text-highlight" />
               <span className="font-bold text-xs tracking-tight text-white">Visual Content</span>
             </div>
 
@@ -1175,7 +1314,7 @@ export default function HtmlCleaner() {
               <button
                 onClick={clearVisualStyles}
                 disabled={!inputHtml.trim()}
-                className="text-[11px] font-semibold text-rose-300 hover:text-rose-200 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                className="text-[11px] font-semibold text-ink bg-paper hover:bg-highlight disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                 title="Remove all inline styles and classes from the visual content"
               >
                 <Eraser className="h-3 w-3" />
@@ -1183,7 +1322,7 @@ export default function HtmlCleaner() {
               </button>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                className="text-[11px] font-semibold text-ink bg-paper hover:bg-highlight px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                 title="Upload HTML or Text File"
               >
                 <Upload className="h-3 w-3" />
@@ -1226,7 +1365,7 @@ export default function HtmlCleaner() {
                   aria-pressed={active}
                   className={`p-1 rounded border cursor-pointer transition-colors ${
                     active
-                      ? 'bg-blue-600 border-blue-600 text-white'
+                      ? 'bg-ink border-ink text-paper'
                       : `border-transparent hover:bg-white hover:border-slate-300 ${tool.danger ? 'text-rose-600' : ''}`
                   }`}
                   title={tool.label}
@@ -1252,7 +1391,7 @@ export default function HtmlCleaner() {
               onInput={(e) => setInputHtml((e.target as HTMLElement).innerHTML)}
               onPaste={handleVisualPaste}
               onClick={(e) => describeNode(e.target as Node)}
-              className="flex-1 p-4 font-sans text-xs text-slate-800 focus:outline-none overflow-y-auto leading-relaxed prose prose-slate max-w-none min-h-0"
+              className="flex-1 p-4 font-sans text-xs text-slate-800 focus:outline-none overflow-y-auto leading-relaxed rich-content min-h-0"
             />
           </div>
 
@@ -1271,7 +1410,7 @@ export default function HtmlCleaner() {
                       {index > 0 && <ChevronRight className="h-3 w-3 text-slate-300 shrink-0" />}
                       <code className={`font-mono text-[11px] rounded px-1.5 py-0.5 ${
                         innermost
-                          ? 'bg-blue-600 text-white font-bold'
+                          ? 'bg-ink text-paper font-bold'
                           : 'bg-white border border-slate-200 text-slate-500'
                       }`}>
                         &lt;{crumb.tag}&gt;
@@ -1299,14 +1438,14 @@ export default function HtmlCleaner() {
           {/* Window Header */}
           <div className="bg-slate-900 px-3.5 py-2.5 flex items-center justify-between gap-2 border-b border-slate-800">
             <div className="flex items-center gap-2">
-              <Code className="h-4 w-4 text-emerald-400 shrink-0" />
+              <Code className="h-4 w-4 text-highlight shrink-0" />
               
               {/* Segmented View Switcher */}
               <div className="flex items-center gap-0.5 bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60">
                 <button
                   onClick={() => setActiveView('html')}
                   className={`px-2 py-0.5 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
-                    activeView === 'html' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                    activeView === 'html' ? 'bg-highlight text-ink' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   HTML
@@ -1314,7 +1453,7 @@ export default function HtmlCleaner() {
                 <button
                   onClick={() => setActiveView('markdown')}
                   className={`px-2 py-0.5 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
-                    activeView === 'markdown' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                    activeView === 'markdown' ? 'bg-highlight text-ink' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   Markdown
@@ -1322,7 +1461,7 @@ export default function HtmlCleaner() {
                 <button
                   onClick={() => setActiveView('text')}
                   className={`px-2 py-0.5 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
-                    activeView === 'text' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                    activeView === 'text' ? 'bg-highlight text-ink' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   Text
@@ -1366,7 +1505,7 @@ export default function HtmlCleaner() {
 
               <button
                 onClick={handleDownload}
-                className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
+                className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-highlight text-ink flex items-center gap-1 cursor-pointer transition-colors hover:brightness-95"
                 title={`Download Clean ${activeView.toUpperCase()} File`}
               >
                 <Download className="h-3.5 w-3.5" />
@@ -1382,13 +1521,15 @@ export default function HtmlCleaner() {
               value={currentViewContent}
               readOnly={activeView !== 'html'}
               onPaste={handleCodePaste}
+              // While typing the pane shows your edit; on leaving it, show the cleaned result.
+              onBlur={() => setRightCodeHtml(cleanedResult.html)}
               onChange={(e) => {
                 if (activeView === 'html') {
                   handleRightCodeChange(e.target.value);
                 }
               }}
               placeholder={`Cleaned ${activeView.toUpperCase()} code will appear here (live editable)...`}
-              className="w-full flex-1 p-4 font-mono text-xs text-slate-200 bg-transparent focus:outline-none resize-none leading-relaxed selection:bg-blue-600 focus:ring-1 focus:ring-blue-500/50 min-h-0 overflow-y-auto"
+              className="w-full flex-1 p-4 font-mono text-xs text-slate-200 bg-transparent focus:outline-none resize-none leading-relaxed focus:ring-1 focus:ring-highlight/60 min-h-0 overflow-y-auto"
               spellCheck={false}
             />
           </div>
@@ -1397,7 +1538,7 @@ export default function HtmlCleaner() {
 
       {/* PANEL BELOW: CLEANING OPTIONS CHECKBOXES DIV */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col">
-        <div className="bg-blue-600 text-white px-4 py-2.5 flex items-center justify-between shadow-xs border-b border-blue-700">
+        <div className="bg-ink text-paper px-4 py-2.5 flex items-center justify-between border-b border-ink">
           <div className="flex items-center gap-2.5">
             <input
               type="checkbox"
@@ -1406,9 +1547,9 @@ export default function HtmlCleaner() {
               className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-300 cursor-pointer bg-white"
               title="Select / Deselect All Options"
             />
-            <span className="font-bold text-sm tracking-wide text-white">Cleaning options</span>
+            <span className="font-bold text-sm tracking-wide text-paper">Cleaning options</span>
           </div>
-          <div className="text-xs text-blue-50 font-medium">
+          <div className="text-xs text-paper/80 font-medium">
             {cleanedResult.stats.tagsRemoved + cleanedResult.stats.attrsRemoved} operations performed
           </div>
         </div>

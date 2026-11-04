@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildFaqSchemaMarkup, escapeHtml, randomInt, semanticTagsForInlineStyle, shuffled } from './utils';
+import { buildFaqSchemaMarkup, escapeHtml, pairDocAndPageLinks, randomInt, semanticTagsForInlineStyle, shuffled } from './utils';
 
 
 for (let i = 0; i < 5000; i++) {
@@ -105,3 +105,25 @@ assert.equal(faqJson.mainEntity.length, 1);
 assert.equal(faqJson.mainEntity[0].name, 'What is it?');
 assert.equal(faqJson.mainEntity[0].acceptedAnswer.text, 'A tool </script><b>x</b>');
 assert.equal(faqMarkup.match(/<\/script>/g)?.length, 1, 'answer text closed the script tag early');
+
+{
+  const DOC = 'https://docs.google.com/document/d/abc123/edit';
+  const { pairs, skipped } = pairDocAndPageLinks([
+    ['Google Doc', 'Page URL'], // header row
+    [DOC, 'https://example.com/a'], // doc first
+    ['https://example.com/b', DOC], // columns swapped
+    ['Hosting page', DOC, 'example.com/c', 'Done'], // extra columns, bare domain
+    ['', ''], // blank line
+    ['See doc: ' + DOC + ' for copy', 'https://example.com/d'], // link inside text
+    ['https://example.com/e'], // page link only
+  ]);
+  assert.equal(skipped, 1, 'header row should be skipped');
+  assert.deepEqual(pairs, [
+    { doc: DOC, url: 'https://example.com/a' },
+    { doc: DOC, url: 'https://example.com/b' },
+    { doc: DOC, url: 'example.com/c' },
+    { doc: DOC, url: 'https://example.com/d' },
+    { doc: '', url: 'https://example.com/e' },
+  ]);
+}
+console.log('pairDocAndPageLinks: all checks passed');

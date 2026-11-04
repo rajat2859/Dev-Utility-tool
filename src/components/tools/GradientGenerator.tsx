@@ -49,6 +49,53 @@ interface SavedGradient {
   angle: number;
   stops: ColorStop[];
   createdAt: number;
+  // Optional: saves from before these were stored lack them
+  radialShape?: 'circle' | 'ellipse';
+  radialPosition?: string;
+  radialX?: number;
+  radialY?: number;
+  meshPoints?: MeshPoint[];
+}
+
+const SAVED_KEY = 'util_hub_saved_gradients';
+
+function loadSavedGradients(): SavedGradient[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(g => g && Array.isArray(g.stops) && g.stops.length >= 2);
+  } catch {
+    return [];
+  }
+}
+
+function persistSavedGradients(list: SavedGradient[]) {
+  try {
+    localStorage.setItem(SAVED_KEY, JSON.stringify(list));
+  } catch {
+    // Storage full or blocked: keep the in-memory list
+  }
+}
+
+function randomHex(): string {
+  return '#' + Array.from({ length: 3 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join('');
+}
+
+// CSS default size for circles: distance from center to the farthest corner
+function farthestCorner(px: number, py: number, w: number, h: number): number {
+  return Math.hypot(Math.max(px, w - px), Math.max(py, h - py));
+}
+
+// CSS default ellipse (farthest-corner): farthest-side radii scaled by sqrt(2)
+function ellipseRadii(px: number, py: number, w: number, h: number): [number, number] {
+  return [Math.max(px, w - px) * Math.SQRT2, Math.max(py, h - py) * Math.SQRT2];
+}
+
+function normalizeHexInput(value: string): string | null {
+  const m = value.trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return null;
+  const hex = m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1];
+  return '#' + hex.toLowerCase();
 }
 
 const PRESETS = [
@@ -281,9 +328,11 @@ function parseGradientCss(input: string): ParsedGradient | null {
 
   const parsedStops = stopSegments.map((seg, i) => {
     const tokens = seg.trim().split(/\s+/);
-    const pctToken = tokens.find(t => /^[\d.]+%$/.test(t));
-    const colorTokens = tokens.filter(t => t !== pctToken);
-    const parsedColor = parseCssColorToken(colorTokens.join(' '));
+    // Positions are trailing tokens only, so percentages inside hsl(...) are left alone
+    let end = tokens.length;
+    while (end > 1 && /^-?[\d.]+%$/.test(tokens[end - 1])) end--;
+    const pctToken = tokens[end];
+    const parsedColor = parseCssColorToken(tokens.slice(0, end).join(' '));
     return {
       id: `imp-${i}-${Math.random().toString(36).slice(2, 8)}`,
       color: parsedColor?.hex || '#888888',
@@ -332,19 +381,16 @@ export default function GradientGenerator() {
 
   const activeStopId = stops[0]?.id || '';
   const [selectedStopId, setSelectedStopId] = useState<string>(activeStopId);
+  const [hexDraft, setHexDraft] = useState<string | null>(null);
 
   useEffect(() => {
-    const localSaved = localStorage.getItem('util_hub_saved_gradients');
-    if (localSaved) {
-      try {
-        setSavedGradients(JSON.parse(localSaved));
-      } catch {
-        // Fallback
-      }
-    }
+    setSavedGradients(loadSavedGradients());
   }, []);
 
   const sortedStops = [...stops].sort((a, b) => a.stop - b.stop);
+
+  const getCenterPct = (): [number, number] =>
+    radialPosition === 'custom' ? [radialX, radialY] : (POSITION_KEYWORD_MAP[radialPosition] || [50, 50]);
 
   const hexToRgba = (hex: string, opacityPercent: number) => {
     let cleanHex = hex.replace('#', '');
@@ -379,7 +425,7 @@ export default function GradientGenerator() {
     if (gradientType === 'mesh') {
       return `/* Mesh gradient inline style recommended */`;
     }
-    const stopsStr = sortedStops.map(s => `${s.color}_${s.stop}%`).join(',');
+    const stopsStr = sortedStops.map(s => `${hexToRgba(s.color, s.opacity).replace(/\s+/g, '')}_${s.stop}%`).join(',');
     const positionToken = radialPosition === 'custom' ? `${radialX}%_${radialY}%` : radialPosition.replace(/\s+/g, '_');
     if (gradientType === 'linear') {
       return `bg-[linear-gradient(${angle}deg,${stopsStr})]`;
@@ -396,16 +442,19 @@ export default function GradientGenerator() {
     ).join('\n      ');
 
     if (gradientType === 'mesh') {
-      const defs = meshPoints.map((p, i) => `
-    <radialGradient id="mesh${i}" cx="${p.x}%" cy="${p.y}%" r="${p.radius}%">
+      const defs = meshPoints.map((p, i) => {
+        const cx = p.x * 10, cy = p.y * 10;
+        const r = (farthestCorner(cx, cy, 1000, 1000) * p.radius / 100).toFixed(1);
+        return `
+    <radialGradient id="mesh${i}" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${cy}" r="${r}">
       <stop offset="0%" stop-color="${p.color}" stop-opacity="1" />
       <stop offset="100%" stop-color="${p.color}" stop-opacity="0" />
-    </radialGradient>`).join('');
+    </radialGradient>`;
+      }).join('');
       const layers = meshPoints.map((_, i) => `  <rect width="100%" height="100%" fill="url(#mesh${i})" />`).join('\n');
       return `<svg width="100%" height="100%" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
   <defs>${defs}
   </defs>
-  <rect width="100%" height="100%" fill="#0f172a" />
 ${layers}
 </svg>`;
     }
@@ -413,7 +462,8 @@ ${layers}
     if (gradientType === 'linear') {
       const rad = (angle * Math.PI) / 180;
       const dx = Math.sin(rad), dy = -Math.cos(rad);
-      const cx = 500, cy = 500, half = 500;
+      // CSS gradient line length for a 1000x1000 box at this angle
+      const cx = 500, cy = 500, half = 500 * (Math.abs(dx) + Math.abs(dy));
       const x1 = (cx - dx * half).toFixed(1), y1 = (cy - dy * half).toFixed(1);
       const x2 = (cx + dx * half).toFixed(1), y2 = (cy + dy * half).toFixed(1);
       return `<svg width="100%" height="100%" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
@@ -427,14 +477,18 @@ ${layers}
     }
 
     if (gradientType === 'radial') {
-      const [pxPct, pyPct] = radialPosition === 'custom' ? [radialX, radialY] : (POSITION_KEYWORD_MAP[radialPosition] || [50, 50]);
+      const [pxPct, pyPct] = getCenterPct();
       const cx = pxPct * 10, cy = pyPct * 10;
-      const transform = radialShape === 'ellipse'
-        ? ` gradientTransform="translate(${cx} ${cy}) scale(1.4 1) translate(${-cx} ${-cy})"`
-        : '';
+      let r = farthestCorner(cx, cy, 1000, 1000);
+      let transform = '';
+      if (radialShape === 'ellipse') {
+        const [rx, ry] = ellipseRadii(cx, cy, 1000, 1000);
+        r = rx;
+        transform = ` gradientTransform="translate(${cx} ${cy}) scale(1 ${(ry / rx).toFixed(4)}) translate(${-cx} ${-cy})"`;
+      }
       return `<svg width="100%" height="100%" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <radialGradient id="gradient" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${cy}" r="750"${transform}>
+    <radialGradient id="gradient" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${cy}" r="${r.toFixed(1)}"${transform}>
       ${stopsXml}
     </radialGradient>
   </defs>
@@ -532,15 +586,23 @@ ${layers}
   };
 
   const handleRandomize = () => {
-    const hexChars = '0123456789ABCDEF';
-    const randomizedColors = stops.map(s => {
-      let color = '#';
-      for (let i = 0; i < 6; i++) {
-        color += hexChars[Math.floor(Math.random() * 16)];
-      }
-      return { ...s, color };
-    });
-    setStops(randomizedColors);
+    if (gradientType === 'mesh') {
+      setMeshPoints(meshPoints.map(p => ({ ...p, color: randomHex() })));
+      return;
+    }
+    setStops(stops.map(s => ({ ...s, color: randomHex() })));
+  };
+
+  const updateMeshPoint = (id: string, patch: Partial<MeshPoint>) => {
+    setMeshPoints(prev => prev.map(p => p.id === id ? { ...p, ...patch } : p));
+  };
+
+  const handleAddMeshPoint = () => {
+    setMeshPoints(prev => [...prev, { id: Math.random().toString(36).substring(2, 9), color: randomHex(), x: 50, y: 50, radius: 60 }]);
+  };
+
+  const handleRemoveMeshPoint = (id: string) => {
+    setMeshPoints(prev => prev.length <= 1 ? prev : prev.filter(p => p.id !== id));
   };
 
   // Color Harmony Generator
@@ -648,20 +710,38 @@ ${layers}
       type: gradientType,
       angle,
       stops: [...stops],
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      radialShape,
+      radialPosition,
+      radialX,
+      radialY,
+      meshPoints: [...meshPoints]
     };
     const updated = [newSave, ...savedGradients];
     setSavedGradients(updated);
-    localStorage.setItem('util_hub_saved_gradients', JSON.stringify(updated));
+    persistSavedGradients(updated);
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
+  };
+
+  const handleLoadSaved = (saved: SavedGradient) => {
+    setStops(saved.stops);
+    setSelectedStopId(saved.stops[0].id);
+    setGradientType(saved.type);
+    setAngle(saved.angle);
+    setGradientName(saved.name);
+    setRadialShape(saved.radialShape ?? 'circle');
+    setRadialPosition(saved.radialPosition ?? 'center');
+    setRadialX(saved.radialX ?? 50);
+    setRadialY(saved.radialY ?? 50);
+    if (saved.meshPoints?.length) setMeshPoints(saved.meshPoints);
   };
 
   const handleDeleteSaved = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const filtered = savedGradients.filter(g => g.id !== id);
     setSavedGradients(filtered);
-    localStorage.setItem('util_hub_saved_gradients', JSON.stringify(filtered));
+    persistSavedGradients(filtered);
   };
 
   const copyToClipboard = (text: string, type: string) => {
@@ -680,13 +760,10 @@ ${layers}
     if (!ctx) return;
 
     if (gradientType === 'mesh') {
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(0, 0, width, height);
-
       meshPoints.forEach(p => {
         const px = (p.x / 100) * width;
         const py = (p.y / 100) * height;
-        const rad = (p.radius / 100) * Math.max(width, height);
+        const rad = farthestCorner(px, py, width, height) * p.radius / 100;
         const grad = ctx.createRadialGradient(px, py, 0, px, py, rad);
         grad.addColorStop(0, p.color);
         grad.addColorStop(1, hexToRgba(p.color, 0));
@@ -695,22 +772,30 @@ ${layers}
       });
     } else {
       let fillStyle: CanvasGradient;
+      const [xPct, yPct] = getCenterPct();
+      const px = (xPct / 100) * width;
+      const py = (yPct / 100) * height;
 
       if (gradientType === 'linear') {
         const angleRad = (angle * Math.PI) / 180;
         const dx = Math.sin(angleRad), dy = -Math.cos(angleRad);
-        const r = Math.sqrt(width * width + height * height) / 2;
+        // Half the CSS gradient line length for this box and angle
+        const r = (Math.abs(width * dx) + Math.abs(height * dy)) / 2;
         fillStyle = ctx.createLinearGradient(
           width / 2 - dx * r, height / 2 - dy * r,
           width / 2 + dx * r, height / 2 + dy * r
         );
+      } else if (gradientType === 'conic') {
+        // Canvas starts at 3 o'clock, CSS at 12 o'clock
+        fillStyle = ctx.createConicGradient(((angle - 90) * Math.PI) / 180, px, py);
+      } else if (radialShape === 'ellipse') {
+        const [rx, ry] = ellipseRadii(px, py, width, height);
+        // Draw a circle in a vertically squashed space so it renders as the ellipse
+        ctx.translate(px, py);
+        ctx.scale(1, ry / rx);
+        fillStyle = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
       } else {
-        const [xPct, yPct] = radialPosition === 'custom'
-          ? [radialX, radialY]
-          : (POSITION_KEYWORD_MAP[radialPosition] || [50, 50]);
-        const px = (xPct / 100) * width;
-        const py = (yPct / 100) * height;
-        fillStyle = ctx.createRadialGradient(px, py, 0, px, py, Math.max(width, height));
+        fillStyle = ctx.createRadialGradient(px, py, 0, px, py, farthestCorner(px, py, width, height));
       }
 
       sortedStops.forEach(s => {
@@ -718,7 +803,11 @@ ${layers}
       });
 
       ctx.fillStyle = fillStyle;
-      ctx.fillRect(0, 0, width, height);
+      // Map the canvas rect back through any transform applied above
+      const inv = ctx.getTransform().inverse();
+      const tl = inv.transformPoint({ x: 0, y: 0 });
+      const br = inv.transformPoint({ x: width, y: height });
+      ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
     }
 
     const link = document.createElement('a');
@@ -790,14 +879,16 @@ ${layers}
             </button>
             <button
               onClick={handleReverse}
-              className="p-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
+              disabled={gradientType === 'mesh'}
+              className="p-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               title="Reverse Order"
             >
               <ArrowRightLeft className="h-4 w-4" />
             </button>
             <button
               onClick={handleDistributeEvenly}
-              className="p-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
+              disabled={gradientType === 'mesh'}
+              className="p-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               title="Distribute Evenly"
             >
               <LayoutGrid className="h-4 w-4" />
@@ -859,10 +950,10 @@ ${layers}
         </div>
 
         {/* Dynamic Controls per Type */}
-        {gradientType === 'linear' && (
+        {(gradientType === 'linear' || gradientType === 'conic') && (
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-700">Rotation Angle</label>
+              <label className="text-xs font-semibold text-slate-700">{gradientType === 'conic' ? 'Start Angle' : 'Rotation Angle'}</label>
               <span className="text-xs font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
                 {angle}°
               </span>
@@ -891,20 +982,22 @@ ${layers}
           </div>
         )}
 
-        {gradientType === 'radial' && (
+        {(gradientType === 'radial' || gradientType === 'conic') && (
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Shape</label>
-                <select
-                  value={radialShape}
-                  onChange={(e) => setRadialShape(e.target.value as any)}
-                  className="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-2xs focus:ring-2 focus:ring-blue-600 outline-none"
-                >
-                  <option value="circle">Circle</option>
-                  <option value="ellipse">Ellipse</option>
-                </select>
-              </div>
+            <div className={`grid gap-3 ${gradientType === 'radial' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              {gradientType === 'radial' && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Shape</label>
+                  <select
+                    value={radialShape}
+                    onChange={(e) => setRadialShape(e.target.value as any)}
+                    className="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-2xs focus:ring-2 focus:ring-blue-600 outline-none"
+                  >
+                    <option value="circle">Circle</option>
+                    <option value="ellipse">Ellipse</option>
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">Center Position</label>
@@ -954,6 +1047,57 @@ ${layers}
           </div>
         )}
 
+        {gradientType === 'mesh' ? (
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Mesh Points</span>
+              <button
+                onClick={handleAddMeshPoint}
+                className="inline-flex items-center gap-1 text-xs bg-slate-900 hover:bg-slate-800 text-white font-semibold px-3 py-1.5 rounded-lg shadow-2xs transition-colors cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add Point</span>
+              </button>
+            </div>
+            {meshPoints.map((p, i) => (
+              <div key={p.id} className="p-3 bg-white border border-slate-200 rounded-lg space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={p.color}
+                    onChange={(e) => updateMeshPoint(p.id, { color: e.target.value })}
+                    className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer bg-white p-0.5 shrink-0"
+                    aria-label={`Point ${i + 1} color`}
+                  />
+                  <span className="text-xs font-mono font-bold text-slate-900 flex-1">{p.color.toUpperCase()}</span>
+                  <button
+                    onClick={() => handleRemoveMeshPoint(p.id)}
+                    disabled={meshPoints.length <= 1}
+                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    title="Remove point"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {([['x', 'X', 0], ['y', 'Y', 0], ['radius', 'Radius', 20]] as const).map(([key, label, min]) => (
+                    <div key={key}>
+                      <span className="text-[11px] font-semibold text-slate-600 block">{label}: {p[key]}%</span>
+                      <input
+                        type="range"
+                        min={min}
+                        max={100}
+                        value={p[key]}
+                        onChange={(e) => updateMeshPoint(p.id, { [key]: Number(e.target.value) })}
+                        className="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (<>
         {/* Color Harmony Synthesizer */}
         <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl space-y-2">
           <div className="flex items-center justify-between">
@@ -1028,6 +1172,8 @@ ${layers}
                   handleUpdateStopValue(s.id, Math.round(Math.min(Math.max(pct, 0), 100)));
                 }}
                 onPointerUp={() => { draggingStopIdRef.current = null; }}
+                onPointerCancel={() => { draggingStopIdRef.current = null; }}
+                onLostPointerCapture={() => { draggingStopIdRef.current = null; }}
                 title={`Drag to reposition (${s.stop}%)`}
                 className={`absolute w-6 h-6 rounded-full border-2 transform -translate-x-1/2 shadow-md cursor-grab active:cursor-grabbing touch-none select-none transition-transform ${
                   selectedStopId === s.id ? 'border-slate-900 scale-125 z-10 ring-2 ring-blue-500' : 'border-white'
@@ -1076,8 +1222,14 @@ ${layers}
                     />
                     <input
                       type="text"
-                      value={activeStop.color.toUpperCase()}
-                      onChange={(e) => handleUpdateColor(activeStop.id, e.target.value)}
+                      value={hexDraft ?? activeStop.color.toUpperCase()}
+                      onChange={(e) => {
+                        // Only commit complete hex values; partial input stays in the draft
+                        setHexDraft(e.target.value);
+                        const hex = normalizeHexInput(e.target.value);
+                        if (hex) handleUpdateColor(activeStop.id, hex);
+                      }}
+                      onBlur={() => setHexDraft(null)}
                       className="w-full px-3 py-1.5 text-xs font-mono font-bold text-slate-900 bg-white border border-slate-200 rounded-lg outline-none uppercase shadow-2xs"
                     />
                   </div>
@@ -1128,6 +1280,7 @@ ${layers}
             </div>
           );
         })()}
+        </>)}
 
         {/* Export Formats */}
         <div className="space-y-3 pt-2">
@@ -1359,20 +1512,16 @@ ${layers}
               {savedGradients.map((saved) => (
                 <div
                   key={saved.id}
-                  onClick={() => {
-                    setStops(saved.stops);
-                    setSelectedStopId(saved.stops[0].id);
-                    setGradientType(saved.type);
-                    setAngle(saved.angle);
-                    setGradientName(saved.name);
-                  }}
+                  onClick={() => handleLoadSaved(saved)}
                   className="group relative p-2.5 border border-slate-200 rounded-xl hover:border-blue-400 bg-white cursor-pointer transition-all flex items-center justify-between shadow-2xs"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <div 
                       className="w-7 h-7 rounded-lg shrink-0 border border-slate-200 shadow-2xs"
                       style={{
-                        backgroundImage: `linear-gradient(135deg, ${saved.stops.map(s => s.color).join(', ')})`
+                        backgroundImage: saved.type === 'mesh' && saved.meshPoints?.length
+                          ? `linear-gradient(135deg, ${saved.meshPoints.map(p => p.color).join(', ')})`
+                          : `linear-gradient(135deg, ${[...saved.stops].sort((a, b) => a.stop - b.stop).map(s => `${hexToRgba(s.color, s.opacity)} ${s.stop}%`).join(', ')})`
                       }}
                     />
                     <div className="min-w-0">

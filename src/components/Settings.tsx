@@ -1,13 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Settings as SettingsIcon, RefreshCw, Download, RotateCw, GitBranch, ExternalLink, Sun, Moon, Monitor } from 'lucide-react';
-import type { DesktopUpdateState, ThemePreference } from '../types';
-import { getThemePreference, setThemePreference } from '../theme';
-
-const THEME_OPTIONS: { value: ThemePreference; label: string; Icon: typeof Sun }[] = [
-  { value: 'light', label: 'Light', Icon: Sun },
-  { value: 'dark', label: 'Dark', Icon: Moon },
-  { value: 'system', label: 'System', Icon: Monitor },
-];
+import { Settings as SettingsIcon, RefreshCw, Download, RotateCw, GitBranch, ExternalLink } from 'lucide-react';
+import type { DesktopUpdateState } from '../types';
 
 const REPOSITORY_URL = 'https://github.com/rajat2859/Dev-Utility-tool';
 const RELEASES_URL = `${REPOSITORY_URL}/releases`;
@@ -18,6 +11,7 @@ const UPDATE_STATUS_LABELS: Record<DesktopUpdateState['status'], string> = {
   downloading: 'Downloading update…',
   'up-to-date': 'You are on the latest version',
   'ready-to-install': 'Update downloaded and ready to install',
+  installing: 'Restarting to install…',
   error: 'Update check failed',
 };
 
@@ -32,7 +26,6 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 
 export default function Settings() {
   const [updateState, setUpdateState] = useState<DesktopUpdateState | null>(null);
-  const [themePreference, setThemePreferenceState] = useState(getThemePreference);
   const desktopUpdater = window.desktopUpdater;
 
   useEffect(() => {
@@ -41,7 +34,7 @@ export default function Settings() {
     return desktopUpdater.onStateChange(setUpdateState);
   }, [desktopUpdater]);
 
-  const isBusy = updateState?.status === 'checking' || updateState?.status === 'downloading';
+  const isBusy = updateState?.status === 'checking' || updateState?.status === 'downloading' || updateState?.status === 'installing';
   const isReadyToInstall = updateState?.status === 'ready-to-install';
   const canUpdate = Boolean(updateState?.isSupported);
 
@@ -60,38 +53,15 @@ export default function Settings() {
 
   return (
     <div className="max-w-2xl space-y-4 text-slate-900">
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
         <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shadow-2xs">
           <SettingsIcon className="h-4 w-4" />
         </div>
         <div>
           <h2 className="text-base font-semibold tracking-tight">Settings</h2>
-          <p className="text-xs text-slate-500 font-medium">Appearance, app updates and repository info</p>
+          <p className="text-xs text-slate-500 font-medium">App updates and repository info</p>
         </div>
       </div>
-
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs">
-        <h3 className="text-sm font-semibold tracking-tight">Appearance</h3>
-        <p className="mt-1 text-xs text-slate-500">System follows your Windows light or dark setting.</p>
-        <div role="group" aria-label="Theme" className="mt-4 inline-flex gap-1 p-1 bg-slate-100 border border-slate-200 rounded-xl">
-          {THEME_OPTIONS.map(({ value, label, Icon }) => (
-            <button
-              key={value}
-              onClick={() => {
-                setThemePreferenceState(value);
-                setThemePreference(value);
-              }}
-              aria-pressed={themePreference === value}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
-                themePreference === value ? 'bg-white text-blue-600 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {label}
-            </button>
-          ))}
-        </div>
-      </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs">
         <h3 className="text-sm font-semibold tracking-tight">Updates</h3>

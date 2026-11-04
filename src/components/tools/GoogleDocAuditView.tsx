@@ -30,9 +30,9 @@ interface StructuredElementContentProps {
 }
 
 const BADGE_TONES = {
-  ok: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  warn: 'bg-amber-100 text-amber-800 border-amber-200',
-  bad: 'bg-red-100 text-red-800 border-red-200',
+  ok: 'bg-acc-green text-ink border-ink',
+  warn: 'bg-acc-amber text-ink border-ink',
+  bad: 'bg-acc-rose text-ink border-ink',
 };
 
 function StatusBadge({ tone, label }: { tone: keyof typeof BADGE_TONES; label: string }) {
@@ -186,7 +186,10 @@ export async function runDocAudit(googleDocUrl: string, targetUrl: string, conte
       contentSelector: contentSelector?.trim() || undefined,
     }),
   });
-  const data = await res.json();
+  // A proxy/timeout page or a crashed server returns HTML, not JSON
+  const data = await res.json().catch(() => {
+    throw new Error(`Server returned an unexpected response (HTTP ${res.status}). Please try again.`);
+  });
   if (!res.ok || !data.success) {
     throw new Error(data.error || 'Content audit failed.');
   }
@@ -251,7 +254,9 @@ export default function GoogleDocAuditView() {
   return (
     <div className="space-y-6">
       {/* Input Form */}
+      {/* noValidate: the server accepts bare domains and doc IDs that type="url" would reject */}
       <form
+        noValidate
         onSubmit={handleRunAudit}
         className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4"
       >
@@ -392,10 +397,10 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
       <div
         className={`border rounded-2xl p-5 shadow-2xs ${
           report.summary.status === 'PASS'
-            ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+            ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
             : report.summary.status === 'PASS_WITH_WARNINGS'
-            ? 'bg-amber-50/70 border-amber-200 text-amber-950'
-            : 'bg-rose-50/70 border-rose-200 text-rose-950'
+            ? 'bg-amber-50/70 border-amber-200 text-amber-900'
+            : 'bg-rose-50/70 border-rose-200 text-rose-900'
         }`}
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -609,10 +614,10 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
               <span
                 className={`px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border ${
                   alt.status === 'MISSING'
-                    ? 'bg-red-100 text-red-800 border-red-200'
+                    ? 'bg-acc-rose text-ink border-ink'
                     : alt.duplicate
-                    ? 'bg-amber-100 text-amber-800 border-amber-200'
-                    : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    ? 'bg-acc-amber text-ink border-ink'
+                    : 'bg-acc-green text-ink border-ink'
                 }`}
               >
                 {alt.status === 'MISSING' ? 'Missing' : alt.duplicate ? 'Duplicate' : 'Found'}
@@ -638,10 +643,10 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
               <span
                 className={`px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border ${
                   schema.status === 'MISSING'
-                    ? 'bg-red-100 text-red-800 border-red-200'
+                    ? 'bg-acc-rose text-ink border-ink'
                     : schema.status === 'INVALID'
-                    ? 'bg-amber-100 text-amber-800 border-amber-200'
-                    : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    ? 'bg-acc-amber text-ink border-ink'
+                    : 'bg-acc-green text-ink border-ink'
                 }`}
               >
                 {schema.status === 'INVALID' ? 'Unreadable' : schema.status === 'MISSING' ? 'Missing' : 'Found'}
@@ -699,7 +704,7 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
 
         {activeTab === 'comparison' && (
           <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-slate-500 font-medium mr-1 flex items-center gap-1">
+            <span className="text-on-page-soft font-medium mr-1 flex items-center gap-1">
               <Filter className="h-3.5 w-3.5" /> Filter:
             </span>
             <button
@@ -751,30 +756,30 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
               const statusStyle =
                 item.status === 'PASS'
                   ? {
-                      badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                      badge: 'bg-acc-green text-ink border-ink',
                       border: 'border-slate-200 hover:border-emerald-300',
                       label: 'PASS',
                     }
                   : item.status === 'WRONG_TAG'
                   ? {
-                      badge: 'bg-amber-100 text-amber-800 border-amber-200',
+                      badge: 'bg-acc-amber text-ink border-ink',
                       border: 'border-amber-200 bg-amber-50/20',
                       label: 'WRONG TAG',
                     }
                   : item.status === 'WRONG_ORDER'
                   ? {
-                      badge: 'bg-amber-100 text-amber-800 border-amber-200',
+                      badge: 'bg-acc-amber text-ink border-ink',
                       border: 'border-amber-200 bg-amber-50/20',
                       label: 'WRONG ORDER',
                     }
                   : item.status === 'CONTENT_MISMATCH'
                   ? {
-                      badge: 'bg-rose-100 text-rose-800 border-rose-200',
+                      badge: 'bg-acc-rose text-ink border-ink',
                       border: 'border-rose-200 bg-rose-50/20',
                       label: 'CONTENT MISMATCH',
                     }
                   : {
-                      badge: 'bg-red-100 text-red-800 border-red-200',
+                      badge: 'bg-acc-rose text-ink border-ink',
                       border: 'border-red-200 bg-red-50/20',
                       label: 'MISSING',
                     };

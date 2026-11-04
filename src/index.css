@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "./theme-dark.css";
+@import "./styles/pop.css";
 
 @font-face {
   font-family: 'Plus Jakarta Sans';
@@ -7,6 +7,22 @@
   font-weight: 200 800;
   font-display: swap;
   src: url('/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/space-grotesk-700-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-latin.woff2') format('woff2');
 }
 
 @font-face {
@@ -44,6 +60,37 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+
+  /* POP design system (design.md, Appendix B) */
+  --color-paper: #E8E8E8;
+  --color-page: #2E2E2E;
+  --color-on-page: #F2F2F2;
+  --color-on-page-soft: #B5B5B5;
+  --color-surface: #FFFFFF;
+  --color-ink: #141414;
+  --color-ink-soft: #4A4237;
+  --color-ink-muted: #5C554A;
+  --color-ink-faint: #A89F8D;
+  --color-highlight: #FFD23F;
+  --color-acc-blue: #3B82F6;
+  --color-acc-green: #10B981;
+  --color-acc-indigo: #6366F1;
+  --color-acc-sky: #0EA5E9;
+  --color-acc-cyan: #06B6D4;
+  --color-acc-purple: #A855F7;
+  --color-acc-rose: #F43F5E;
+  --color-acc-amber: #F59E0B;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --radius-card: 14px;
+  --radius-tile: 12px;
+  --shadow-brut-1: 2px 2px 0 #141414;
+  --shadow-brut-2: 3px 3px 0 #141414;
+  --shadow-brut-3: 4px 4px 0 #141414;
+  --shadow-brut-4: 6px 6px 0 #141414;
+  --shadow-brut-5: 10px 10px 0 #141414;
+  --ease-spring: cubic-bezier(.34, 1.6, .5, 1);
+  --ease-smooth: cubic-bezier(.2, .8, .2, 1);
 }
 
 :root {
@@ -70,8 +117,8 @@
 }
 
 body {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--color-page);
+  color: var(--color-ink);
   font-family: var(--font-sans);
   font-feature-settings: "cv02" 1, "cv03" 1, "cv04" 1;
   -webkit-font-smoothing: antialiased;
@@ -88,11 +135,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #8A8A8A;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--color-on-page-soft);
 }
 
 @keyframes view-enter {
@@ -123,3 +170,20 @@ summary {
 img {
   -webkit-user-drag: none;
 }
+
+/* Rich-text editor: restores the document styles Tailwind's preflight resets. It always renders on white paper, so the colors are fixed. */
+.rich-content :where(h1) { font-size: 2em; font-weight: 700; margin: 0.67em 0; }
+.rich-content :where(h2) { font-size: 1.5em; font-weight: 700; margin: 0.83em 0; }
+.rich-content :where(h3) { font-size: 1.17em; font-weight: 700; margin: 1em 0; }
+.rich-content :where(h4) { font-weight: 700; margin: 1.33em 0; }
+.rich-content :where(h5) { font-size: 0.83em; font-weight: 700; margin: 1.67em 0; }
+.rich-content :where(h6) { font-size: 0.67em; font-weight: 700; margin: 2.33em 0; }
+.rich-content :where(p, ul, ol, blockquote, table, pre) { margin: 0 0 1em; }
+.rich-content :where(ul) { list-style: disc; padding-left: 1.5em; }
+.rich-content :where(ol) { list-style: decimal; padding-left: 1.5em; }
+.rich-content :where(li) { margin: 0.25em 0; }
+.rich-content :where(blockquote) { border-left: 3px solid #cbd5e1; padding-left: 1em; color: #475569; }
+.rich-content :where(a) { color: #2563eb; text-decoration: underline; }
+.rich-content :where(table) { border-collapse: collapse; width: 100%; }
+.rich-content :where(th, td) { border: 1px solid #e2e8f0; padding: 0.375em 0.625em; text-align: left; vertical-align: top; }
+.rich-content :where(pre) { white-space: pre-wrap; }

@@ -21,7 +21,7 @@ export default function PasswordGenerator() {
   const [useNumbers, setUseNumbers] = useState(true);
   const [useSymbols, setUseSymbols] = useState(true);
   const [excludeSimilar, setExcludeSimilar] = useState(false);
-  const [passwordMode, setPasswordMode] = useState<'random' | 'passphrase'>('random');
+  const [passwordMode, setPasswordMode] = useState<'simple' | 'random' | 'passphrase'>('simple');
   
   // Passphrase settings
   const [wordCount, setWordCount] = useState(4);
@@ -52,6 +52,13 @@ export default function PasswordGenerator() {
     return includeNumberPass ? phrase + randomInt(10) + randomInt(10) : phrase;
   };
 
+  // Easy to read and type, e.g. Tiger@4821
+  const buildSimple = () => {
+    const word = WORDS_POOL[randomInt(WORDS_POOL.length)];
+    const digits = Array.from({ length: 4 }, () => randomInt(10)).join('');
+    return word.charAt(0).toUpperCase() + word.slice(1) + pick('!@#$%&*') + digits;
+  };
+
   const buildRandomKey = () => {
     const trim = (pool: string) => (excludeSimilar ? pool.replace(SIMILAR, '') : pool);
     const pools = [
@@ -69,15 +76,16 @@ export default function PasswordGenerator() {
     return shuffled([...mandatory, ...rest]).join('');
   };
 
+  const builders = { simple: buildSimple, random: buildRandomKey, passphrase: buildPassphrase };
+
   const generatePassword = () => {
-    const next = passwordMode === 'passphrase' ? buildPassphrase() : buildRandomKey();
+    const next = builders[passwordMode]();
     setPassword(next);
     if (next) setHistory(prev => [next, ...prev.slice(0, 19)]);
   };
 
   const generateBatch = () => {
-    const build = passwordMode === 'passphrase' ? buildPassphrase : buildRandomKey;
-    setBatchPasswords(Array.from({ length: batchCount }, build).filter(Boolean));
+    setBatchPasswords(Array.from({ length: batchCount }, builders[passwordMode]).filter(Boolean));
   };
 
   useEffect(() => {
@@ -102,15 +110,15 @@ export default function PasswordGenerator() {
     score += Math.floor(diversityCount / 2);
 
     if (pass.length < 8) {
-      return { score: 1, label: 'Weak', color: 'bg-rose-500', text: 'text-rose-600' };
+      return { score: 1, label: 'Weak', color: 'bg-acc-rose', text: 'text-rose-600' };
     }
 
     if (score <= 2) {
-      return { score: 2, label: 'Fair', color: 'bg-amber-500', text: 'text-amber-700' };
+      return { score: 2, label: 'Fair', color: 'bg-acc-amber', text: 'text-amber-700' };
     } else if (score === 3) {
       return { score: 3, label: 'Good', color: 'bg-yellow-500', text: 'text-yellow-600' };
     } else if (score === 4) {
-      return { score: 4, label: 'Strong', color: 'bg-emerald-500', text: 'text-emerald-700' };
+      return { score: 4, label: 'Strong', color: 'bg-acc-green', text: 'text-emerald-700' };
     } else {
       return { score: 5, label: 'Very Strong', color: 'bg-slate-900', text: 'text-slate-900' };
     }
@@ -132,7 +140,7 @@ export default function PasswordGenerator() {
       {/* Control Configuration Panel */}
       <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-6">
 
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2.5">
             <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shadow-2xs">
               <Key className="h-4 w-4" />
@@ -143,8 +151,8 @@ export default function PasswordGenerator() {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-md border border-slate-200/80">
-            {(['random', 'passphrase'] as const).map(mode => (
+          <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-md border border-slate-200/80">
+            {(['simple', 'random', 'passphrase'] as const).map(mode => (
               <button
                 key={mode}
                 onClick={() => setPasswordMode(mode)}
@@ -222,7 +230,11 @@ export default function PasswordGenerator() {
           )}
         </div>
 
-        {passwordMode === 'random' ? (
+        {passwordMode === 'simple' ? (
+          <p className="text-xs text-slate-500">
+            One word, one symbol and four digits, e.g. <code className="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-800">Tiger@4821</code>. Easy to read and type.
+          </p>
+        ) : passwordMode === 'random' ? (
           <div className="space-y-5">
             {/* Length Configuration */}
             <div className="space-y-2">

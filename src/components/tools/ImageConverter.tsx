@@ -624,7 +624,7 @@ export default function ImageConverter() {
 
   return (
     <div className="space-y-6 text-slate-900">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b pb-4 border-slate-200">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-base font-semibold tracking-tight">Bulk Image Format Converter</h2>
@@ -811,7 +811,7 @@ export default function ImageConverter() {
                       className="bg-slate-900 h-full transition-all duration-300" 
                       style={{ width: `${Math.max(10, 100 + activeSavingsPct)}%` }}
                     />
-                    <div className="bg-emerald-500 h-full opacity-80 flex-1" />
+                    <div className="bg-acc-green h-full opacity-80 flex-1" />
                   </>
                 ) : (
                   <>
@@ -819,7 +819,7 @@ export default function ImageConverter() {
                       className="bg-slate-900 h-full transition-all duration-300" 
                       style={{ width: `${Math.max(20, Math.round((activeOriginalSize / activeProjectedSize) * 100))}%` }}
                     />
-                    <div className="bg-amber-500 h-full flex-1" />
+                    <div className="bg-acc-amber h-full flex-1" />
                   </>
                 )}
               </div>
