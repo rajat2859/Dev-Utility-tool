@@ -13,6 +13,11 @@ function textMatchKey(text: string): string {
   return normalizeText(text).replace(HEADING_MARKER_PATTERN, '').trim();
 }
 
+// Ignores case and punctuation: a match here but not on textMatchKey is a cosmetic difference
+function looseMatchKey(text: string): string {
+  return textMatchKey(text).toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
+}
+
 export function isTextMatch(a: string, b: string): boolean {
   return textMatchKey(a) === textMatchKey(b);
 }
@@ -277,7 +282,8 @@ export function compareNormalizedTrees(
     const reference = describeElement(ref) as ElementComparisonResult['reference'];
 
     if (pairedByPositionReferenceIndexes.has(r)) {
-      let message = 'Content differs from reference.';
+      const minor = looseMatchKey(ref.text) === looseMatchKey(web.text);
+      let message = minor ? 'Only capitalisation or punctuation differs from the reference.' : 'Content differs from reference.';
       if (ref.type === 'list' && web.type === 'list') {
         const listComparison = compareListDetails(ref.items, web.items);
         if (!listComparison.matches) message = listComparison.detail;
@@ -303,6 +309,7 @@ export function compareNormalizedTrees(
         website: describeElement(web, pageTag),
         message,
         ...(isOutOfPosition && { outOfOrder: true }),
+        ...(minor && { minor: true }),
       };
     }
 
@@ -352,9 +359,9 @@ export function compareNormalizedTrees(
     missing: countOf('MISSING'),
     extraOnWebsite: extraWebsiteElements.length,
     status:
-      countOf('MISSING') + countOf('CONTENT_MISMATCH') > 0
+      countOf('MISSING') + results.filter((result) => result.status === 'CONTENT_MISMATCH' && !result.minor).length > 0
         ? 'FAIL'
-        : countOf('WRONG_TAG') + countOf('WRONG_ORDER') > 0
+        : countOf('WRONG_TAG') + countOf('WRONG_ORDER') + countOf('CONTENT_MISMATCH') > 0
         ? 'PASS_WITH_WARNINGS'
         : 'PASS',
   };

@@ -17,7 +17,7 @@ import type {
   NormalizedDocument,
   NormalizedElement,
 } from '../../../server/content-auditor/types/normalized';
-import type { MetaCheck } from '../../../server/content-auditor/types/report';
+import type { MetaCheck, LinkCheck } from '../../../server/content-auditor/types/report';
 import { computeWordDiff } from '../../../server/content-auditor/comparison/diff';
 
 interface StructuredElementContentProps {
@@ -55,6 +55,22 @@ const META_LABEL: Record<MetaCheck['status'], string> = {
   MISMATCH: 'Mismatch',
   MISSING_ON_PAGE: 'Missing on page',
   NOT_IN_DOC: 'Not in doc',
+};
+
+const LINK_TONE: Record<LinkCheck['status'], keyof typeof BADGE_TONES> = {
+  MATCH: 'ok',
+  ANCHOR_DIFFERS: 'warn',
+  WRONG_URL: 'bad',
+  NOT_LINKED: 'bad',
+  MISSING: 'bad',
+};
+
+const LINK_LABEL: Record<LinkCheck['status'], string> = {
+  MATCH: 'Match',
+  ANCHOR_DIFFERS: 'Anchor differs',
+  WRONG_URL: 'Wrong URL',
+  NOT_LINKED: 'Not linked',
+  MISSING: 'Missing',
 };
 
 const DIFF_HIGHLIGHT_STYLE = {
@@ -306,7 +322,7 @@ export default function GoogleDocAuditView() {
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+            className="flex items-center gap-1 min-h-8 text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
           >
             {showAdvanced ? (
               <ChevronDown className="h-3.5 w-3.5" />
@@ -381,6 +397,77 @@ export default function GoogleDocAuditView() {
   );
 }
 
+type PageRow = { label: string; tone: keyof typeof BADGE_TONES; status: string; doc: React.ReactNode; live: React.ReactNode };
+
+// URL, meta title, meta description and canonical in one table: each value shown once, doc next to live page
+function PageVsDocCard({ report }: { report: ContentAuditReport }) {
+  const missing = (text: string) => <em className="text-slate-400 font-normal">{text}</em>;
+  const { urlCheck, metaChecks = [], page } = report;
+  const rows: PageRow[] = [];
+  if (urlCheck) {
+    rows.push({
+      label: 'URL',
+      tone: urlCheck.status === 'MATCH' ? 'ok' : urlCheck.status === 'MISMATCH' ? 'bad' : 'warn',
+      status: urlCheck.status === 'MATCH' ? 'Match' : urlCheck.status === 'MISMATCH' ? 'Mismatch' : 'Not in doc',
+      doc: urlCheck.expected || missing('No URL or slug in the doc'),
+      live: (
+        <a href={urlCheck.actual} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+          {urlCheck.actual}
+        </a>
+      ),
+    });
+  }
+  metaChecks.forEach((m) => {
+    const differs = m.status !== 'MATCH' && !!m.expected && !!m.actual;
+    rows.push({
+      label: m.field === 'title' ? 'Meta Title' : 'Meta Description',
+      tone: META_TONE[m.status],
+      status: META_LABEL[m.status],
+      doc: m.expected ? <HighlightedText text={m.expected} counterpartText={differs ? m.actual : undefined} side="reference" /> : missing('Not in the doc'),
+      live: m.actual ? <HighlightedText text={m.actual} counterpartText={differs ? m.expected : undefined} side="website" /> : missing('Not on the page'),
+    });
+  });
+  if (page?.canonical) {
+    const canonicalMatches = urlCheck?.canonicalMatches;
+    rows.push({
+      label: 'Canonical',
+      tone: canonicalMatches === false ? 'warn' : 'ok',
+      status: canonicalMatches === false ? 'Differs' : canonicalMatches ? 'Match' : 'Found',
+      doc: missing('Checked against the doc URL'),
+      live: page.canonical,
+    });
+  }
+  if (!rows.length) return null;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs text-xs">
+      <h4 className="text-sm font-bold text-slate-900 mb-2">Page vs Doc</h4>
+      <div className="hidden md:grid grid-cols-[8.5rem_7rem_minmax(0,1fr)_minmax(0,1fr)] gap-x-4 pb-1.5 text-[10px] uppercase font-bold text-slate-400">
+        <span>Field</span>
+        <span>Status</span>
+        <span>Doc</span>
+        <span>Live page</span>
+      </div>
+      {rows.map((row) => (
+        <div key={row.label} className="grid grid-cols-[auto_minmax(0,1fr)] md:grid-cols-[8.5rem_7rem_minmax(0,1fr)_minmax(0,1fr)] gap-x-4 gap-y-1 py-2.5 border-t border-slate-100 items-start">
+          <span className="font-bold text-slate-500 uppercase text-[10px] pt-1">{row.label}</span>
+          <span>
+            <StatusBadge tone={row.tone} label={row.status} />
+          </span>
+          <span className="col-span-2 md:col-span-1 text-slate-800 font-medium break-words [overflow-wrap:anywhere]">
+            <span className="md:hidden text-slate-400 font-normal">Doc: </span>
+            {row.doc}
+          </span>
+          <span className="col-span-2 md:col-span-1 text-slate-800 font-medium break-words [overflow-wrap:anywhere]">
+            <span className="md:hidden text-slate-400 font-normal">Live: </span>
+            {row.live}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function AuditReportView({ report }: { report: ContentAuditReport }) {
   const [filter, setFilter] = useState<'all' | 'issues' | 'pass'>('all');
   const [activeTab, setActiveTab] = useState<'comparison' | 'reference' | 'website'>('comparison');
@@ -393,6 +480,13 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
 
   return (
     <div className="space-y-6">
+      {report.notices?.map((notice, i) => (
+        <div key={i} role="status" className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-2xl p-4 text-xs text-amber-900">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-700" />
+          <p className="font-medium">{notice}</p>
+        </div>
+      ))}
+
       {/* Summary Banner Card */}
       <div
         className={`border rounded-2xl p-5 shadow-2xs ${
@@ -417,168 +511,44 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
                 {report.summary.status === 'PASS'
                   ? 'AUDIT PASS — Strict Match'
                   : report.summary.status === 'PASS_WITH_WARNINGS'
-                  ? 'PASS WITH WARNINGS — Tag or Order Variations'
+                  ? 'PASS WITH WARNINGS — Minor Variations'
                   : 'AUDIT FAIL — Differences Detected'}
               </h3>
               <p className="text-xs opacity-80 mt-0.5">
                 {report.summary.status === 'PASS'
                   ? 'All reference headings, paragraphs, lists, and tables match the live webpage structure.'
                   : report.summary.status === 'PASS_WITH_WARNINGS'
-                  ? 'Content text matches the reference, but semantic HTML tags (e.g. H2 vs H3, or a heading built as a button) or the order of elements differ.'
+                  ? 'Content matches the doc. Only capitalisation, punctuation, HTML tags or element order differ.'
                   : 'Mismatched copy or missing elements were identified between the Google Doc and the live site.'}
               </p>
             </div>
           </div>
 
-          {/* Metric badges */}
-          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center text-xs">
-            <div className="bg-white/80 border border-slate-200/80 rounded-xl px-2.5 py-1.5 shadow-2xs">
-              <span className="block text-[10px] uppercase font-bold text-slate-500">
-                Total
-              </span>
-              <span className="text-sm font-bold text-slate-800">
-                {report.summary.total}
-              </span>
-            </div>
-            <div className="bg-white/80 border border-emerald-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
-              <span className="block text-[10px] uppercase font-bold text-emerald-700">
-                Passed
-              </span>
-              <span className="text-sm font-bold text-emerald-700">
-                {report.summary.passed}
-              </span>
-            </div>
-            <div className="bg-white/80 border border-amber-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
-              <span className="block text-[10px] uppercase font-bold text-amber-700">
-                Wrong Tag
-              </span>
-              <span className="text-sm font-bold text-amber-700">
-                {report.summary.wrongTag}
-              </span>
-            </div>
-            <div className="bg-white/80 border border-amber-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
-              <span className="block text-[10px] uppercase font-bold text-amber-700">
-                Wrong Order
-              </span>
-              <span className="text-sm font-bold text-amber-700">
-                {report.summary.wrongOrder}
-              </span>
-            </div>
-            <div className="bg-white/80 border border-rose-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
-              <span className="block text-[10px] uppercase font-bold text-rose-700">
-                Mismatch
-              </span>
-              <span className="text-sm font-bold text-rose-700">
-                {report.summary.contentMismatch}
-              </span>
-            </div>
-            <div className="bg-white/80 border border-red-200 rounded-xl px-2.5 py-1.5 shadow-2xs col-span-2 sm:col-span-1">
-              <span className="block text-[10px] uppercase font-bold text-red-700">
-                Missing
-              </span>
-              <span className="text-sm font-bold text-red-700">
-                {report.summary.missing}
-              </span>
-            </div>
-          </div>
+          {/* Metric badges: one-word labels so they never wrap; the full meaning is on hover */}
+          <dl className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center shrink-0">
+            {[
+              { label: 'Total', value: report.summary.total, hint: 'Elements in the doc', tone: 'border-slate-200/80 text-slate-800' },
+              { label: 'Passed', value: report.summary.passed, hint: 'Same text and same HTML tag', tone: 'border-emerald-200 text-emerald-700' },
+              { label: 'Tag', value: report.summary.wrongTag, hint: 'Wrong tag: text matches, HTML tag differs (e.g. H2 vs H3)', tone: 'border-amber-200 text-amber-700' },
+              { label: 'Order', value: report.summary.wrongOrder, hint: 'Wrong order: text is on the page, in a different position', tone: 'border-amber-200 text-amber-700' },
+              { label: 'Mismatch', value: report.summary.contentMismatch, hint: 'Text differs from the doc', tone: 'border-rose-200 text-rose-700' },
+              { label: 'Missing', value: report.summary.missing, hint: 'Not found on the page', tone: 'border-red-200 text-red-700' },
+            ].map(({ label, value, hint, tone }) => (
+              <div key={label} title={hint} className={`min-w-[4.75rem] bg-white/80 border rounded-xl px-2 py-1.5 shadow-2xs ${tone}`}>
+                <dt className="text-[10px] uppercase font-bold whitespace-nowrap opacity-80">{label}</dt>
+                <dd className="text-base font-bold leading-tight tabular-nums">{value}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </div>
 
-      {report.page && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2 text-xs">
-          <h4 className="text-sm font-bold text-slate-900">Live Page</h4>
-          <div className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1.5">
-            <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">URL</span>
-            <a
-              href={report.page.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline break-all"
-            >
-              {report.page.url}
-            </a>
-            <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Meta Title</span>
-            <span className="text-slate-800 font-medium break-words">
-              {report.page.title || <em className="text-slate-400">No &lt;title&gt; tag found</em>}
-            </span>
-            <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Meta Description</span>
-            <span className="text-slate-800 font-medium break-words">
-              {report.page.description || <em className="text-slate-400">No meta description found</em>}
-            </span>
-            {report.page.canonical && (
-              <>
-                <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Canonical</span>
-                <span className="text-slate-800 font-medium break-all">{report.page.canonical}</span>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Doc vs page checks: one Page vs Doc table, the small checks side by side, Links full width */}
+      <div className="space-y-4">
+      <PageVsDocCard report={report} />
 
-      {/* Live URL vs the URL/slug the doc specifies */}
-      {report.urlCheck && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2 text-xs">
-          <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-sm font-bold text-slate-900">URL vs Doc</h4>
-            <StatusBadge
-              tone={report.urlCheck.status === 'MATCH' ? 'ok' : report.urlCheck.status === 'MISMATCH' ? 'bad' : 'warn'}
-              label={report.urlCheck.status === 'MATCH' ? 'Match' : report.urlCheck.status === 'MISMATCH' ? 'Mismatch' : 'Not in doc'}
-            />
-          </div>
-          <div className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1.5">
-            <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Doc URL</span>
-            <span className="text-slate-800 font-medium break-all">
-              {report.urlCheck.expected || <em className="text-slate-400">No URL or slug found in the doc</em>}
-            </span>
-            <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Live URL</span>
-            <span className="text-slate-800 font-medium break-all">{report.urlCheck.actual}</span>
-            {report.urlCheck.canonicalMatches === false && (
-              <>
-                <span className="font-bold text-slate-500 uppercase text-[10px] pt-0.5">Canonical</span>
-                <span className="text-amber-700 font-medium break-all">
-                  {report.urlCheck.canonical} does not match the doc URL
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Meta vs Doc */}
-      {!!report.metaChecks?.length && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3 text-xs">
-          <h4 className="text-sm font-bold text-slate-900">Meta vs Doc</h4>
-          {report.metaChecks.map((m) => (
-            <div key={m.field} className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-bold text-slate-500 uppercase text-[10px]">
-                  {m.field === 'title' ? 'Meta Title' : 'Meta Description'}
-                </span>
-                <StatusBadge tone={META_TONE[m.status]} label={META_LABEL[m.status]} />
-              </div>
-              <div className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1">
-                <span className="text-slate-500">Doc</span>
-                <span className="text-slate-800 font-medium break-words">
-                  {m.expected ? (
-                    <HighlightedText text={m.expected} counterpartText={m.status === 'MATCH' || !m.actual ? undefined : m.actual} side="reference" />
-                  ) : (
-                    <em className="text-slate-400">Not specified in the doc</em>
-                  )}
-                </span>
-                <span className="text-slate-500">Live page</span>
-                <span className="text-slate-800 font-medium break-words">
-                  {m.actual ? (
-                    <HighlightedText text={m.actual} counterpartText={m.status === 'MATCH' || !m.expected ? undefined : m.expected} side="website" />
-                  ) : (
-                    <em className="text-slate-400">Not found on the page</em>
-                  )}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
+      {/* auto-fit: two or three small cards always share the full width, no empty column */}
+      <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
       {/* FAQPage JSON-LD on the live page: present and valid */}
       {report.faqSchema && (
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2 text-xs">
@@ -635,6 +605,7 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
         </div>
       )}
 
+
       {!!report.schemas?.length && (
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
           <h4 className="text-sm font-bold text-slate-900">Schema in Doc ({report.schemas.length})</h4>
@@ -663,6 +634,60 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
           ))}
         </div>
       )}
+
+      </div>
+
+      {(!!report.links?.length || !!report.extraLinks?.length) && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-sm font-bold text-slate-900">Links ({report.links?.length ?? 0})</h4>
+            {(['MATCH', 'ANCHOR_DIFFERS', 'WRONG_URL', 'NOT_LINKED', 'MISSING'] as const).map((status) => {
+              const count = report.links?.filter((l) => l.status === status).length ?? 0;
+              return count ? <StatusBadge key={status} tone={LINK_TONE[status]} label={`${count} ${LINK_LABEL[status]}`} /> : null;
+            })}
+          </div>
+          {!report.links?.length && <p className="text-slate-500">The doc has no links in its article content.</p>}
+          {report.links?.map((link, i) => (
+            <div key={i} className="space-y-1 border-t border-slate-100 pt-2 first-of-type:border-0 first-of-type:pt-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge tone={LINK_TONE[link.status]} label={LINK_LABEL[link.status]} />
+                <span className="text-slate-800 font-semibold break-words">"{link.text}"</span>
+                <span className="text-slate-400">in {link.context}</span>
+              </div>
+              <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-1">
+                <span className="text-slate-500">Doc link</span>
+                <span className="text-slate-800 font-medium break-all">{link.expectedUrl}</span>
+                <span className="text-slate-500">Live page</span>
+                <span className={`font-medium break-all ${link.status === 'MATCH' ? 'text-slate-800' : 'text-rose-700'}`}>
+                  {link.status === 'MISSING'
+                    ? 'Anchor text not found on the page'
+                    : link.status === 'NOT_LINKED'
+                    ? 'Text is on the page but not linked'
+                    : link.status === 'ANCHOR_DIFFERS'
+                    ? `Same URL, anchor text is "${link.actualText}"`
+                    : link.actualUrl}
+                </span>
+              </div>
+            </div>
+          ))}
+          {!!report.extraLinks?.length && (
+            <details className="pt-1">
+              <summary className="cursor-pointer py-2 text-slate-500 font-semibold">
+                {report.extraLinks.length} link{report.extraLinks.length === 1 ? '' : 's'} on the page not in the doc (info only)
+              </summary>
+              <ul className="mt-2 space-y-1">
+                {report.extraLinks.map((link, i) => (
+                  <li key={i} className="break-all">
+                    <span className="text-slate-800 font-medium">"{link.text}"</span>{' '}
+                    <span className="text-slate-500">→ {link.href}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
+      </div>
 
       {/* Tabs & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
@@ -772,6 +797,12 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
                       border: 'border-amber-200 bg-amber-50/20',
                       label: 'WRONG ORDER',
                     }
+                  : item.status === 'CONTENT_MISMATCH' && item.minor
+                  ? {
+                      badge: 'bg-acc-amber text-ink border-ink',
+                      border: 'border-amber-200 bg-amber-50/20',
+                      label: 'MINOR DIFFERENCE',
+                    }
                   : item.status === 'CONTENT_MISMATCH'
                   ? {
                       badge: 'bg-acc-rose text-ink border-ink',
@@ -789,8 +820,8 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
                   key={item.id}
                   className={`bg-white border rounded-2xl p-4 transition-all shadow-2xs space-y-3 ${statusStyle.border}`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-mono font-bold text-slate-400">
                         #{item.order}
                       </span>
@@ -813,7 +844,7 @@ export function AuditReportView({ report }: { report: ContentAuditReport }) {
                         </span>
                       )}
                     </div>
-                    <span className="text-xs text-slate-500 font-medium">
+                    <span className="text-xs text-slate-500 font-medium min-w-0 break-words">
                       {item.message}
                     </span>
                   </div>

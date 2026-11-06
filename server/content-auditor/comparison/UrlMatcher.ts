@@ -27,9 +27,23 @@ export function urlMatches(expected: string, live: string): boolean {
   return e.startsWith('/') ? livePath === p : livePath === p || livePath.endsWith(p);
 }
 
+// Safety net for a doc label glued onto the URL with no space, like ".../benefits-explained/Meta".
+// Capitalised label words only, and only when the URL as written fails, so a real ".../seo" path is kept
+const GLUED_LABEL = /\/(?:Meta|META|SEO|Title|TITLE|Description|Desc|Slug|Keywords?|Focus|H1)$/;
+const cleanDocUrl = (u: string, liveUrl: string) => {
+  const unglued = u.replace(GLUED_LABEL, '/');
+  return unglued !== u && !urlMatches(u, liveUrl) ? unglued : u;
+};
+
 export function auditUrl(docLines: string[], liveUrl: string, canonical?: string): UrlCheck {
-  const labeled = docLines.map((l) => l.match(LABEL)?.[1]).find(Boolean);
-  const expected = labeled || docLines.flatMap((l) => l.match(/https?:\/\/[^\s"'<>]+/gi) ?? []).find((u) => urlMatches(u, liveUrl));
+  const raw = docLines.map((l) => l.match(LABEL)?.[1]).find(Boolean);
+  const labeled = raw && cleanDocUrl(raw, liveUrl);
+  const expected =
+    labeled ||
+    docLines
+      .flatMap((l) => l.match(/https?:\/\/[^\s"'<>]+/gi) ?? [])
+      .map((u) => cleanDocUrl(u, liveUrl))
+      .find((u) => urlMatches(u, liveUrl));
   if (!expected) return { expected: '', actual: liveUrl, status: 'NOT_IN_DOC', canonical };
   return {
     expected,

@@ -202,24 +202,31 @@ export default function BulkDocAuditView() {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
+        {/* A table on laptops and up; on phones and tablets each row becomes a stacked card (number, doc, delete / page / result) */}
+        <div className="lg:overflow-x-auto">
+          <table className="w-full text-xs max-lg:block lg:table-fixed">
+            <thead className="max-lg:hidden">
               <tr className="text-left text-[10px] uppercase font-bold text-slate-500">
-                <th className="pb-2 pr-2 w-6">#</th>
+                <th className="pb-2 pr-2 w-10">#</th>
                 <th className="pb-2 pr-2">Google Doc URL</th>
                 <th className="pb-2 pr-2">Website URL</th>
                 <th className="pb-2 pr-2 w-72">Result</th>
-                <th className="pb-2 w-6" />
+                <th className="pb-2 w-10" />
               </tr>
             </thead>
-            <tbody>
+            <tbody className="max-lg:block max-lg:space-y-2">
               {rows.map((row, i) => (
-                <tr key={i} className={selected === i ? 'bg-blue-100/70' : i % 2 ? 'bg-slate-50' : undefined}>
-                  <td className="py-1 px-1.5"><RowNumber i={i} /></td>
-                  <td className="py-1 pr-2">
+                <tr
+                  key={i}
+                  className={`max-lg:grid max-lg:grid-cols-[auto_minmax(0,1fr)_auto] max-lg:items-center max-lg:gap-x-2 max-lg:gap-y-1.5 max-lg:p-2 max-lg:rounded-xl max-lg:border max-lg:border-slate-200 ${
+                    selected === i ? 'bg-blue-100/70' : i % 2 ? 'bg-slate-50' : ''
+                  }`}
+                >
+                  <td className="py-1 px-1.5 max-lg:p-0 max-lg:col-start-1 max-lg:row-start-1"><RowNumber i={i} /></td>
+                  <td className="py-1 pr-2 max-lg:p-0 max-lg:col-start-2 max-lg:row-start-1">
                     <input
                       type="url"
+                      aria-label={`Row ${i + 1} Google Doc URL`}
                       placeholder="https://docs.google.com/document/d/.../edit"
                       value={row.doc}
                       onChange={(e) => updateRow(i, { doc: e.target.value })}
@@ -228,9 +235,10 @@ export default function BulkDocAuditView() {
                       className={inputClass}
                     />
                   </td>
-                  <td className="py-1 pr-2">
+                  <td className="py-1 pr-2 max-lg:p-0 max-lg:col-start-2 max-lg:col-span-2 max-lg:row-start-2">
                     <input
                       type="url"
+                      aria-label={`Row ${i + 1} website URL`}
                       placeholder="https://example.com/page"
                       value={row.url}
                       onChange={(e) => updateRow(i, { url: e.target.value })}
@@ -239,10 +247,10 @@ export default function BulkDocAuditView() {
                       className={inputClass}
                     />
                   </td>
-                  <td className="py-1 pr-2">
+                  <td className="py-1 pr-2 max-lg:p-0 max-lg:col-start-2 max-lg:col-span-2 max-lg:row-start-3">
                     <RowResult row={row} onView={() => setSelected(selected === i ? null : i)} isSelected={selected === i} />
                   </td>
-                  <td className="py-1">
+                  <td className="py-1 max-lg:p-0 max-lg:col-start-3 max-lg:row-start-1">
                     <button
                       type="button"
                       title={rows.length > 1 ? 'Remove row' : 'Clear row'}
@@ -253,7 +261,8 @@ export default function BulkDocAuditView() {
                         else if (selected !== null && selected > i) setSelected(selected - 1);
                       }}
                       disabled={isRunning}
-                      className="p-1 rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40 cursor-pointer"
+                      aria-label={rows.length > 1 ? `Remove row ${i + 1}` : `Clear row ${i + 1}`}
+                      className="p-1.5 max-lg:p-2 rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40 cursor-pointer"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -376,7 +385,7 @@ function RowResult({ row, onView, isSelected }: { row: Row; onView: () => void; 
       type="button"
       onClick={onView}
       title={isSelected ? 'Hide details' : 'Show details'}
-      className="flex w-full min-w-0 items-center gap-2 text-left cursor-pointer group"
+      className="flex w-full min-w-0 min-h-8 items-center gap-2 text-left cursor-pointer group"
     >
       <span className={`inline-flex shrink-0 items-center gap-1.5 px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border border-ink group-hover:opacity-80 ${badge.cls}`}>
         {badge.icon}
@@ -387,7 +396,8 @@ function RowResult({ row, onView, isSelected }: { row: Row; onView: () => void; 
           </span>
         )}
       </span>
-      {issues && <span className="truncate text-[11px] text-slate-600 group-hover:underline" title={issues}>{issues}</span>}
+      {/* One line with a hover tooltip on desktop; touch screens have no hover, so the text wraps there */}
+      {issues && <span className="lg:truncate min-w-0 break-words text-[11px] text-slate-600 group-hover:underline" title={issues}>{issues}</span>}
     </button>
   );
 }
