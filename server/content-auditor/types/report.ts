@@ -138,6 +138,22 @@ export interface SchemaComparison {
   missingTypes: string[];
 }
 
+/**
+ * One hyperlink from the doc checked against the page's main content.
+ * MATCH: same anchor text and URL. ANCHOR_DIFFERS: same URL, slightly different anchor text (warning).
+ * WRONG_URL: same anchor text, different URL. NOT_LINKED: the text is on the page but not linked.
+ * MISSING: the anchor text is not on the page at all.
+ */
+export interface LinkCheck {
+  text: string;
+  expectedUrl: string;
+  status: 'MATCH' | 'ANCHOR_DIFFERS' | 'WRONG_URL' | 'NOT_LINKED' | 'MISSING';
+  actualText?: string;
+  actualUrl?: string;
+  /** Where the link sits in the doc, e.g. 'H2 "How benefits work"' */
+  context: string;
+}
+
 export interface UrlCheck {
   expected: string;
   actual: string;

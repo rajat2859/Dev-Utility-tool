@@ -2,7 +2,9 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import type { docs_v1 } from 'googleapis';
 import { extractGoogleDocId } from '../google/GoogleDocUrl';
-import { parseGoogleDoc } from '../google/GoogleDocParser';
+import { exportedDocLines, isEditorNotesLine, parseGoogleDoc } from '../google/GoogleDocParser';
+import { auditUrl } from '../comparison/UrlMatcher';
+import { auditMeta } from '../comparison/MetaMatcher';
 import { fetchPublicGoogleDoc } from '../google/GoogleDocsService';
 import { normalizeText, areTextsMatching } from '../utils/textNormalizer';
 import { extractWebsiteSemanticTree } from '../webpage/domContentExtractor';
@@ -264,7 +266,7 @@ describe('Google Doc AST Parser (Mocked API JSON)', () => {
 
     assert.throws(
       () => parseGoogleDoc(mockDocWithoutH1),
-      /No Heading 1 was found in the Google Doc\./
+      /No Heading 1 or Title was found in the Google Doc\./
     );
   });
 
@@ -883,5 +885,116 @@ describe('Deterministic Comparator', () => {
     assert.equal(report.summary.extraOnWebsite, 1);
     assert.equal(report.extraWebsiteElements.length, 1);
     assert.equal(report.extraWebsiteElements[0].text, 'Extra announcement banner');
+  });
+});
+
+describe('Content audit reliability fixes', () => {
+  const exportedDoc = (body: string, title = 'My Draft v3') => ({
+    isHtml: true as const,
+    html: `<html><head><title>${title}</title></head><body>${body}</body></html>`,
+  });
+  const page = (body: string) => `<html><head><title>Page</title></head><body><main>${body}</main></body></html>`;
+
+  test('exported doc file name is not used as the meta title', () => {
+    const tree = parseGoogleDoc(exportedDoc('<p>Meta Title: Best Shoes</p><h1>Best Shoes</h1>'));
+    assert.equal(tree.metadata?.title, undefined);
+  });
+
+  test('Title style is used when the exported doc has no Heading 1', () => {
+    const tree = parseGoogleDoc(exportedDoc('<p class="c1 title">Big Title</p><h2>Sub</h2>'));
+    assert.deepEqual(tree.elements.map((e) => `${e.tag}:${e.text}`), ['h1:Big Title', 'h2:Sub']);
+  });
+
+  test('TITLE style is used when the API doc has no HEADING_1', () => {
+    const para = (style: string, text: string) => ({ paragraph: { paragraphStyle: { namedStyleType: style }, elements: [{ textRun: { content: text } }] } });
+    const tree = parseGoogleDoc({ body: { content: [para('TITLE', 'Big Title'), para('NORMAL_TEXT', 'Body')] } } as docs_v1.Schema$Document);
+    assert.deepEqual(tree.elements.map((e) => e.tag), ['h1', 'p']);
+  });
+
+  test('nested lists in the doc export match a nested list on the page', () => {
+    const ref = parseGoogleDoc(exportedDoc(
+      '<h1>T</h1><ul class="lst-kix_ab-0"><li>A</li><li>B</li></ul><ul class="lst-kix_ab-1"><li>B1</li><li>B2</li></ul><ul class="lst-kix_ab-0"><li>C</li></ul>'
+    ));
+    const web = extractWebsiteSemanticTree(page('<h1>T</h1><ul><li>A</li><li>B<ul><li>B1</li><li>B2</li></ul></li><li>C</li></ul>'));
+    assert.equal(compareNormalizedTrees(ref, web).summary.status, 'PASS');
+  });
+
+  test('separate doc lists with different list ids stay separate', () => {
+    const ref = parseGoogleDoc(exportedDoc('<h1>T</h1><ul class="lst-kix_ab-0"><li>A</li></ul><ul class="lst-kix_cd-0"><li>B</li></ul>'));
+    assert.equal(ref.elements.filter((e) => e.type === 'list').length, 2);
+  });
+
+  test('a <br> inside a paragraph splits it into separate paragraphs', () => {
+    const web = extractWebsiteSemanticTree(page('<h1>T</h1><p>Line one.<br>Line two.</p><h2>A<br>B</h2>'));
+    assert.deepEqual(web.elements.map((e) => e.text), ['T', 'Line one.', 'Line two.', 'A B']);
+  });
+
+  test('case or punctuation-only differences warn instead of failing', () => {
+    const ref = parseGoogleDoc(exportedDoc('<h1>T</h1><p>Shoes are great for running</p><h2>Why Buy</h2>'));
+    const web = extractWebsiteSemanticTree(page('<h1>T</h1><p>Shoes are great for running.</p><h2>Why buy</h2>'));
+    const report = compareNormalizedTrees(ref, web);
+    assert.equal(report.summary.status, 'PASS_WITH_WARNINGS');
+    assert.ok(report.results.filter((r) => r.status === 'CONTENT_MISMATCH').every((r) => r.minor));
+  });
+
+  test('a real wording change still fails', () => {
+    const ref = parseGoogleDoc(exportedDoc('<h1>T</h1><p>Shoes are great for running</p>'));
+    const web = extractWebsiteSemanticTree(page('<h1>T</h1><p>Shoes are great for walking</p>'));
+    assert.equal(compareNormalizedTrees(ref, web).summary.status, 'FAIL');
+  });
+
+  test('editor notes labels are recognised, article sentences are not', () => {
+    for (const line of ['Notes:', 'Editor notes', "Editor's Notes:", 'Internal links:', 'Notes for the editor: check pricing']) {
+      assert.ok(isEditorNotesLine(line), line);
+    }
+    for (const line of ['Note: running shoes wear out after 500 miles.', 'Notes on fit and sizing', 'Internal links help SEO.']) {
+      assert.ok(!isEditorNotesLine(line), line);
+    }
+  });
+});
+
+describe('Soft line breaks in doc labels', () => {
+  const live = 'https://www.compensationlawyers.com/workers-compensation/workers-compensation-benefits-explained/';
+
+  test('exported doc: URL and Meta Title on one paragraph split by <br> are read separately', () => {
+    const lines = exportedDocLines(`<p><span>URL: ${live}</span><br><span>Meta Title: Benefits Explained</span></p>`);
+    assert.equal(auditUrl(lines, live).status, 'MATCH');
+    assert.equal(auditMeta(lines, 'title', 'Benefits Explained').status, 'MATCH');
+  });
+
+  test('API doc: preamble labels split by a soft break (\v) are read separately', () => {
+    const para = (style: string, text: string) => ({ paragraph: { paragraphStyle: { namedStyleType: style }, elements: [{ textRun: { content: text } }] } });
+    const tree = parseGoogleDoc({
+      body: { content: [para('NORMAL_TEXT', `URL: ${live}\u000bMeta Title: Benefits Explained\n`), para('HEADING_1', 'Benefits')] },
+    } as docs_v1.Schema$Document);
+    assert.equal(tree.metadata?.url, live);
+    assert.equal(tree.metadata?.title, 'Benefits Explained');
+  });
+});
+
+describe('Doc URL label in tables and glued text', () => {
+  const live = 'https://www.compensationlawyers.com/workers-compensation/workers-compensation-benefits-explained/';
+  const layouts: Record<string, string> = {
+    'two paragraphs in one table cell': `<table><tr><td><p>URL: ${live}</p><p>Meta Title: X</p></td></tr></table>`,
+    'label cell + value cell with two paragraphs': `<table><tr><td><p>URL</p></td><td><p>${live}</p><p>Meta Title: X</p></td></tr></table>`,
+    'spans glued with no break': `<p><span>URL: ${live}</span><span>Meta Title: X</span></p>`,
+    'separate divs': `<div>URL: ${live}</div><div>Meta Title: X</div>`,
+  };
+  for (const [name, html] of Object.entries(layouts)) {
+    test(`URL matches: ${name}`, () => {
+      const check = auditUrl(exportedDocLines(html), live);
+      assert.equal(check.status, 'MATCH');
+      assert.equal(check.expected, live);
+    });
+  }
+
+  test('meta title is found in a table cell with several paragraphs', () => {
+    assert.equal(auditMeta(exportedDocLines(layouts['two paragraphs in one table cell']), 'title', 'X').status, 'MATCH');
+  });
+
+  test('a real URL ending in /seo is not trimmed', () => {
+    const check = auditUrl(['URL: https://site.com/services/seo'], 'https://site.com/services/seo');
+    assert.equal(check.status, 'MATCH');
+    assert.equal(auditUrl(['URL: https://site.com/services/seo'], 'https://site.com/services/').status, 'MISMATCH');
   });
 });

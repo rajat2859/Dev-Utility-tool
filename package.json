@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "clean": "node -e \"for (const p of ['dist','server.js']) require('fs').rmSync(p,{recursive:true,force:true})\"",
     "lint": "tsc --noEmit",
-    "test": "tsx --test src/lib/utils.test.ts server/content-auditor/__tests__/contentAuditor.test.ts server/content-auditor/__tests__/googleDocsAudit.test.ts server/content-auditor/__tests__/pageSecurity.test.ts server/seo-audit/__tests__/seoAudit.test.ts"
+    "test": "tsx --test src/lib/utils.test.ts server/content-auditor/__tests__/contentAuditor.test.ts server/content-auditor/__tests__/googleDocsAudit.test.ts server/content-auditor/__tests__/pageSecurity.test.ts server/content-auditor/__tests__/linkAudit.test.ts server/content-auditor/__tests__/docTabs.test.ts server/seo-audit/__tests__/seoAudit.test.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",

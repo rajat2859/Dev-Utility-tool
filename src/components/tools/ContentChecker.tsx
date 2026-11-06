@@ -49,7 +49,13 @@ export default function ContentChecker() {
         ))}
       </div>
 
-      {auditMode === 'google-doc' ? <GoogleDocAuditView /> : <BulkDocAuditView />}
+      {/* Both stay mounted so switching modes keeps inputs, results and in-flight runs */}
+      <div hidden={auditMode !== 'google-doc'}>
+        <GoogleDocAuditView />
+      </div>
+      <div hidden={auditMode !== 'bulk'}>
+        <BulkDocAuditView />
+      </div>
     </div>
   );
 }

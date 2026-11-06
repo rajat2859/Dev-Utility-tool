@@ -1,20 +1,21 @@
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { fetchWebpage } from '../webpage/PageFetcher';
-import { fetchWithSafeRedirects, readBodyCapped, UnsafeUrlError } from '../webpage/PageSecurity';
+import { fetchWithSafeRedirects, readBodyCapped, UnsafeUrlError, validateSafeUrl } from '../webpage/PageSecurity';
 import { extractPageAuditModel } from '../webpage/ContentExtractor';
 import { extractPageMetadata } from '../webpage/MetadataExtractor';
 import { parseReference } from '../reference/ReferenceParser';
 import { buildContentAuditReport, type SelectedCheckOptions } from '../report/AuditReportBuilder';
 import { normalizeUrl } from '../../../src/lib/utils';
-import { extractGoogleDocId } from '../google/GoogleDocUrl';
+import { extractGoogleDocId, extractGoogleDocTab } from '../google/GoogleDocUrl';
 import { fetchPublicGoogleDoc } from '../google/GoogleDocsService';
-import { parseGoogleDoc } from '../google/GoogleDocParser';
+import { exportedDocLines, isEditorNotesLine, parseGoogleDoc } from '../google/GoogleDocParser';
 import { extractWebsiteSemanticTree } from '../webpage/domContentExtractor';
 import { compareNormalizedTrees } from '../comparison/deterministicComparator';
 import { auditAltTexts, collectAltTexts, parseAltTextLine } from '../comparison/AltTextMatcher';
 import { auditFaqSchema, auditSchemas, collectPageSchemaTypes, extractSchemaBlocks } from '../comparison/SchemaMatcher';
 import { auditUrl } from '../comparison/UrlMatcher';
+import { auditLinks } from '../comparison/LinkMatcher';
 import { auditMeta } from '../comparison/MetaMatcher';
 import * as cheerio from 'cheerio';
 
@@ -384,7 +385,7 @@ contentAuditRouter.post('/preview-doc', async (req: Request, res: Response) => {
       });
     }
 
-    const docData = await fetchPublicGoogleDoc(docId);
+    const docData = await fetchPublicGoogleDoc(docId, extractGoogleDocTab(rawDocUrl));
     const referenceTree = parseGoogleDoc(docData);
 
     return res.json({
@@ -425,8 +426,13 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
 
     // An invalid selector would otherwise throw deep in extraction as a 500
     if (contentSelector !== undefined) {
+      if (typeof contentSelector !== 'string') {
+        return res.status(400).json({
+          errorType: 'INPUT_INVALID',
+          error: 'Content selector must be a single CSS selector, like main, article or .entry-content.',
+        });
+      }
       try {
-        if (typeof contentSelector !== 'string') throw new Error();
         cheerio.load('')(contentSelector);
       } catch {
         return res.status(400).json({
@@ -447,10 +453,20 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
       });
     }
 
+    // Reject a blocked or malformed page URL before spending time on the doc fetch
+    const sanitizedUrl = normalizeUrl(rawTargetUrl);
+    const targetCheck = await validateSafeUrl(sanitizedUrl);
+    if (!targetCheck.valid) {
+      return res.status(400).json({
+        errorType: 'BLOCKED_URL',
+        error: `Security validation failed: ${targetCheck.reason}`,
+      });
+    }
+
     // Step 2: Fetch public Google Doc via Google Docs API
     let docData;
     try {
-      docData = await fetchPublicGoogleDoc(docId);
+      docData = await fetchPublicGoogleDoc(docId, extractGoogleDocTab(rawDocUrl));
     } catch (apiErr: any) {
       return res.status(400).json({
         errorType: 'DOC_FETCH_FAILED',
@@ -483,28 +499,22 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
       if (alt) refAltTexts.push(alt);
       return !alt;
     });
+    // Editor notes at the end of the doc are not article content
+    const notesAt = referenceTree.elements.findIndex((el, i) => i > 0 && el.type !== 'table' && isEditorNotesLine(el.text));
+    if (notesAt > 0) referenceTree.elements = referenceTree.elements.slice(0, notesAt);
 
     const docLines = [
       ...(referenceTree.metadata?.url ? [`URL: ${referenceTree.metadata.url}`] : []),
       ...(referenceTree.metadata?.title ? [`Meta Title: ${referenceTree.metadata.title}`] : []),
       ...(referenceTree.metadata?.description ? [`Meta Description: ${referenceTree.metadata.description}`] : []),
       ...('isHtml' in docData && docData.isHtml
-        ? (() => {
-            const $doc = cheerio.load(docData.html);
-            return $doc('p, li, tr')
-              .map((_, el) => {
-                const cells = $doc(el).children('td, th');
-                return cells.length ? cells.map((_, c) => $doc(c).text().trim()).get().join(': ') : $doc(el).text();
-              })
-              .get();
-          })()
+        ? exportedDocLines(docData.html)
         : referenceTree.elements.flatMap((el) =>
             el.type === 'table' ? el.rows.map((r) => r.join(': ')) : el.type === 'list' ? el.items : [el.text]
           )),
     ];
 
     // Step 4: Fetch target website
-    const sanitizedUrl = normalizeUrl(rawTargetUrl);
     let pageHtml = '';
     let finalUrl = sanitizedUrl;
     try {
@@ -530,6 +540,15 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
     auditReport.schemas = auditSchemas(refSchemaBlocks, collectPageSchemaTypes($page));
     const { meta } = extractPageMetadata($page);
     auditReport.page = { url: sanitizedUrl, title: meta.titleTag, description: meta.metaDescription, canonical: meta.canonical };
+    const docTab = extractGoogleDocTab(rawDocUrl);
+    auditReport.docTab = { id: docTab, hasOtherTabs: docData.hasOtherTabs };
+    if (docData.hasOtherTabs) {
+      auditReport.notices = [
+        docTab
+          ? `This doc has more than one tab. Only the tab in your link (${docTab}) was audited.`
+          : 'This doc has more than one tab and your link does not name one, so only the first tab was audited. To audit another tab, open it in Google Docs and copy the link from the address bar.',
+      ];
+    }
     let canonical: string | undefined;
     try {
       canonical = meta.canonical ? new URL(meta.canonical, finalUrl).href : undefined;
@@ -539,8 +558,19 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
     auditReport.urlCheck = auditUrl(docLines, finalUrl, canonical);
     auditReport.faqSchema = auditFaqSchema($page);
     auditReport.metaChecks = [auditMeta(docLines, 'title', meta.titleTag), auditMeta(docLines, 'description', meta.metaDescription)];
+    // Relative page links resolve against <base href> when the page sets one, else the final URL
+    let linkBase = finalUrl;
+    try {
+      const baseHref = $page('base[href]').first().attr('href');
+      if (baseHref) linkBase = new URL(baseHref, finalUrl).href;
+    } catch {
+      // unparseable <base>; browsers fall back to the document URL too
+    }
+    Object.assign(auditReport, auditLinks(referenceTree.elements, websiteTree.elements, linkBase));
     const { altTexts, schemas, summary, urlCheck, faqSchema, metaChecks } = auditReport;
+    const links = auditReport.links ?? [];
     if (
+      links.some((l) => l.status === 'WRONG_URL' || l.status === 'NOT_LINKED' || l.status === 'MISSING') ||
       altTexts.some((a) => a.status === 'MISSING') ||
       schemas.some((s) => s.status === 'MISSING') ||
       urlCheck.status === 'MISMATCH' ||
@@ -550,7 +580,8 @@ contentAuditRouter.post('/audit-doc', async (req: Request, res: Response) => {
       summary.status = 'FAIL';
     } else if (
       summary.status === 'PASS' &&
-      (altTexts.some((a) => a.duplicate) ||
+      (links.some((l) => l.status === 'ANCHOR_DIFFERS') ||
+        altTexts.some((a) => a.duplicate) ||
         schemas.some((s) => s.status === 'INVALID') ||
         urlCheck.status === 'NOT_IN_DOC' ||
         urlCheck.canonicalMatches === false ||

@@ -1,4 +1,4 @@
-import type { AltTextComparison, FaqSchemaCheck, MetaCheck, SchemaComparison, UrlCheck } from './report';
+import type { AltTextComparison, FaqSchemaCheck, LinkCheck, MetaCheck, SchemaComparison, UrlCheck } from './report';
 
 export type HeadingTag = 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 
@@ -11,11 +11,18 @@ export type SemanticTag =
 
 export type NormalizedElementType = 'heading' | 'paragraph' | 'list' | 'table';
 
+/** A hyperlink as written: visible anchor text and the raw href */
+export interface LinkRef {
+  text: string;
+  href: string;
+}
+
 export interface BaseNormalizedElement {
   id: string;
   type: NormalizedElementType;
   tag: SemanticTag;
   text: string;
+  links?: LinkRef[];
 }
 
 export interface HeadingElement extends BaseNormalizedElement {
@@ -81,6 +88,8 @@ export interface ElementComparisonResult {
   };
   message: string;
   outOfOrder?: boolean;
+  /** CONTENT_MISMATCH where only case or punctuation differs: a warning, not a failure */
+  minor?: boolean;
 }
 
 export interface AuditSummary {
@@ -101,9 +110,16 @@ export interface ContentAuditReport {
   websiteTree: NormalizedDocument;
   extraWebsiteElements: NormalizedElement[];
   altTexts?: AltTextComparison[];
+  links?: LinkCheck[];
+  /** Links in the page's main content that the doc does not have (informational) */
+  extraLinks?: LinkRef[];
   schemas?: SchemaComparison[];
   urlCheck?: UrlCheck;
   metaChecks?: MetaCheck[];
   faqSchema?: FaqSchemaCheck;
   page?: { url: string; title?: string; description?: string; canonical?: string };
+  /** The doc tab that was audited (from the link; none = first tab) and whether the doc has others */
+  docTab?: { id?: string; hasOtherTabs?: boolean };
+  /** Things the reader must know to trust the result, shown above it */
+  notices?: string[];
 }

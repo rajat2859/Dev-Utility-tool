@@ -1,3 +1,8 @@
+/** The tab a doc link points at (…/edit?tab=t.abc123), if any. A doc with tabs shows one tab per link. */
+export function extractGoogleDocTab(input: string): string | undefined {
+  return /[?&#]tab=(t\.[\w-]+)/i.exec(input || '')?.[1];
+}
+
 export function extractGoogleDocId(input: string): string {
   if (!input || typeof input !== 'string') {
     throw new Error('Please provide a valid Google Doc URL.');
