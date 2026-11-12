@@ -49,7 +49,10 @@ function registerAutoUpdate(getMainWindow) {
     if (updateState.status !== 'ready-to-install') return;
     changeUpdateState({ status: 'installing' });
     // Let the IPC reply reach the renderer before the app quits into the installer.
-    setImmediate(() => autoUpdater.quitAndInstall(true, true));
+    // Not silent: the installer's own progress window covers the gap while the app is closed, so
+    // users see the update installing instead of an app that seems to have vanished (and relaunch it
+    // mid-install). The second argument reopens the app when the installer finishes.
+    setImmediate(() => autoUpdater.quitAndInstall(false, true));
   });
 
   // Check in the background so updates arrive without a manual click;
